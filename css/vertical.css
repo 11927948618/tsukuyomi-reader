@@ -1,0 +1,16 @@
+.vertical-root {
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  line-height: var(--line-height);
+  letter-spacing: var(--letter-spacing);
+}
+
+.vertical-root h1,
+.vertical-root h2,
+.vertical-root h3 {
+  margin: 0 0 1.5rem 0;
+}
+
+.vertical-root p {
+  margin: 0 0 1.5rem 0;
+}

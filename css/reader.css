@@ -1,0 +1,167 @@
+.reader-layout {
+  position: relative;
+  min-height: 100vh;
+  padding-top: 64px;
+}
+
+.reader-topbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 18px;
+  background: color-mix(in srgb, var(--bg), transparent 10%);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--border);
+  z-index: 10;
+  transition: transform 0.2s ease;
+}
+
+.reader-topbar.hidden {
+  transform: translateY(-110%);
+}
+
+.topbar-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.h-scroll {
+  width: min(360px, 40vw);
+  vertical-align: middle;
+}
+
+.reader-main {
+  display: grid;
+  gap: 20px;
+  width: min(1200px, 94vw);
+  margin: 0 auto;
+  padding: 24px 0 48px;
+}
+
+@media (min-width: 960px) {
+  .reader-main {
+    grid-template-columns: 240px 1fr;
+    align-items: start;
+  }
+}
+
+.toc {
+  position: sticky;
+  top: 84px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 16px;
+  max-height: calc(100vh - 120px);
+  overflow: auto;
+}
+
+.toc h3 {
+  font-size: 16px;
+  margin-bottom: 12px;
+}
+
+.toc ul {
+  list-style: none;
+  display: grid;
+  gap: 8px;
+}
+
+.toc button {
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  color: var(--text);
+  border: 1px solid transparent;
+  padding: 8px 10px;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.toc button:hover {
+  border-color: var(--border);
+  background: color-mix(in srgb, var(--panel), #000 6%);
+}
+
+.reader-content {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 24px;
+  min-height: 70vh;
+  overflow-x: auto;
+  overflow-y: hidden;
+  column-width: 100vw;
+  column-gap: 0;
+  scroll-snap-type: x mandatory;
+  font-size: calc(var(--font-size) * 1%);
+  line-height: var(--line-height);
+  letter-spacing: var(--letter-spacing);
+}
+
+.reader-content > * {
+  scroll-snap-align: start;
+}
+
+.reader-title {
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.tap-zone {
+  position: fixed;
+  inset: 0;
+  z-index: 5;
+  background: transparent;
+  pointer-events: none;
+}
+
+.settings-panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: min(320px, 92vw);
+  height: 100vh;
+  background: var(--panel);
+  border-left: 1px solid var(--border);
+  box-shadow: -10px 0 30px rgba(0, 0, 0, 0.25);
+  padding: 20px;
+  transform: translateX(100%);
+  transition: transform 0.2s ease;
+  z-index: 20;
+  display: grid;
+  gap: 14px;
+}
+
+.settings-panel.open {
+  transform: translateX(0);
+}
+
+.settings-panel header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.settings-panel .field {
+  display: grid;
+  gap: 6px;
+}
+
+.settings-panel input[type="range"] {
+  width: 100%;
+}
+
+.settings-panel select {
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text);
+}
