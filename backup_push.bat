@@ -3,21 +3,21 @@ setlocal enabledelayedexpansion
 
 REM =========================================================
 REM TsukuyomiReader backup push (git add/commit/push)
-REM ç½®ãå ´æ‰€: ãƒªãƒã‚¸ãƒˆãƒªç›´ä¸‹ï¼ˆindex.html ãŒã‚ã‚‹å ´æ‰€ï¼‰
-REM ãƒ•ã‚¡ã‚¤ãƒ«å: backup_push.bat
+REM ’u‚«êŠ: ƒŠƒ|ƒWƒgƒŠ’¼‰ºiindex.html ‚ª‚ ‚éêŠj
+REM ƒtƒ@ƒCƒ‹–¼: backup_push.bat
 REM =========================================================
 
-REM ãƒ­ã‚°ï¼ˆåŒã˜ãƒ•ã‚©ãƒ«ãƒ€ã«å‡ºã™ï¼‰
+REM ƒƒOi“¯‚¶ƒtƒHƒ‹ƒ_‚Éo‚·j
 set "LOG=backup_push.log"
 
-REM ã‚¿ã‚¤ãƒ ã‚¹ã‚¿ãƒ³ãƒ—ï¼ˆãƒ•ã‚¡ã‚¤ãƒ«åå®‰å…¨ï¼‰
+REM ƒ^ƒCƒ€ƒXƒ^ƒ“ƒviƒtƒ@ƒCƒ‹–¼ˆÀ‘Sj
 for /f "tokens=1-3 delims=/:. " %%a in ("%date% %time%") do set "TS=%%a%%b%%c"
 set "NOW=%date% %time%"
 
 echo.>> "%LOG%"
 echo ===== [%NOW%] backup_push start =====>> "%LOG%"
 
-REM ãƒªãƒã‚¸ãƒˆãƒªç¢ºèª
+REM ƒŠƒ|ƒWƒgƒŠŠm”F
 git rev-parse --is-inside-work-tree >nul 2>&1
 if errorlevel 1 (
   echo [backup] ERROR: This folder is not a git repository.
@@ -26,7 +26,7 @@ if errorlevel 1 (
   exit /b 1
 )
 
-REM å¤‰æ›´ä¸€è¦§
+REM •ÏXˆê——
 set "CHANGED="
 for /f "delims=" %%l in ('git status --porcelain') do (
   set "CHANGED=1"
