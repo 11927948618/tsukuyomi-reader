@@ -1,0 +1,11 @@
+.vscode/
+*.log
+*.zip
+*.rar
+*.7z
+node_modules/
+dist/
+build/
+
+*.log
+*backup_push.log
