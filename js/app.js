@@ -2,6 +2,8 @@ import { initLibrary } from "./library.js";
 import { initReader } from "./reader.js";
 import { exportZipFromBook } from "./storage.js";
 import { qs, loadJSON, saveJSON } from "./utils.js";
+import { APP_VERSION, BUILD_TIME } from "./version.js";
+
 
 const DEFAULT_SETTINGS = {
   fontSize: 100,
