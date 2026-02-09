@@ -3,6 +3,7 @@ const STATIC_ASSETS = [
   "./",
   "./index.html",
   "./manifest.json",
+  "./sw.js",
   "./css/reset.css",
   "./css/base.css",
   "./css/vertical.css",
