@@ -1,4 +1,4 @@
-const CACHE_NAME = "tsukuyomi-reader-v3";
+const CACHE_NAME = "tsukuyomi-reader-v0.1.3";
 const STATIC_ASSETS = [
   "./",
   "./index.html",
@@ -8,6 +8,7 @@ const STATIC_ASSETS = [
   "./css/vertical.css",
   "./css/reader.css",
   "./js/app.js",
+  "./js/version.js",
   "./js/library.js",
   "./js/reader.js",
   "./js/normalize-txt.js",
@@ -20,6 +21,7 @@ const STATIC_ASSETS = [
 ];
 
 self.addEventListener("install", (event) => {
+  self.skipWaiting();
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => cache.addAll(STATIC_ASSETS))
   );
@@ -27,11 +29,14 @@ self.addEventListener("install", (event) => {
 
 self.addEventListener("activate", (event) => {
   event.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(
-        keys.map((key) => (key !== CACHE_NAME ? caches.delete(key) : null))
+    Promise.all([
+      self.clients.claim(),
+      caches.keys().then((keys) =>
+        Promise.all(
+          keys.map((key) => (key !== CACHE_NAME ? caches.delete(key) : null))
+        )
       )
-    )
+    ])
   );
 });
 

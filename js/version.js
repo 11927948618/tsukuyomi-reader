@@ -1,9 +1,2 @@
-//export const APP_VERSION = "0.1.0";
-//old strings
-
-// js/version.js
-window.APP_VERSION = {
-  label: "rev01",
-  commit: "2758e88"
-};
-[]
+export const APP_VERSION = "0.1.3";
+export const BUILD_TIME = "2026-02-06 12:34";
