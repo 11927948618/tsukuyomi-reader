@@ -183,3 +183,10 @@ registerServiceWorker();
 if (!tryRestoreLastBook()) {
   render("library");
 }
+
+document.addEventListener("DOMContentLoaded", () => {
+  const badge = document.getElementById("versionBadge");
+  if (badge) {
+    badge.textContent = `v${APP_VERSION} (${BUILD_TIME})`;
+  }
+});
