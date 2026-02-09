@@ -1,11 +1,15 @@
+# VS Code
 .vscode/
+
+# Logs
 *.log
+
+# Archives
 *.zip
 *.rar
 *.7z
+
+# Node / build artifacts
 node_modules/
 dist/
 build/
-
-*.log
-*backup_push.log
