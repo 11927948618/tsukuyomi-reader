@@ -1,3 +1,3 @@
-export const APP_VERSION = "0.1.4";
-export const BUILD_TIME = "2026-02-10 13:30";
-export const COMMIT = "fe5eeb1";
+export const APP_VERSION = "0.1.41";
+export const BUILD_TIME = "2026-02-10 19:00";
+export const COMMIT = "318c8d5";
