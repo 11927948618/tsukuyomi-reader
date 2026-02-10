@@ -7,7 +7,12 @@ export function initReader({ book, settings, progress, onBack, onExport, onUpdat
   const settingsBtn = qs("#settingsBtn");
   const closeSettingsBtn = qs("#closeSettingsBtn");
   const settingsPanel = qs("#settingsPanel");
+  const tocBtn = qs("#tocBtn");
+  const tocPanel = qs("#tocPanel");
+  const closeTocBtn = qs("#closeTocBtn");
+  const uiOverlay = qs("#uiOverlay");
   const tocList = qs("#tocList");
+  const readerViewport = qs("#readerViewport");
   const bookContent = qs("#bookContent");
   const bookTitle = qs("#bookTitle");
   const topbar = qs("#readerTopbar");
@@ -17,29 +22,91 @@ export function initReader({ book, settings, progress, onBack, onExport, onUpdat
   const lineHeightRange = qs("#lineHeightRange");
   const letterSpacingRange = qs("#letterSpacingRange");
   const themeSelect = qs("#themeSelect");
-  const refreshHScroll = setupHScroll(bookContent);
+  const scrollContainer = readerViewport || bookContent;
+  const refreshHScroll = setupHScroll(scrollContainer);
 
   backBtn.addEventListener("click", onBack);
   printBtn.addEventListener("click", () => window.print());
   exportBtn.addEventListener("click", onExport);
 
-  settingsBtn.addEventListener("click", () => toggleSettings(true));
+  settingsBtn.addEventListener("click", () => {
+    if (!settingsPanel) return;
+    const isOpen = settingsPanel.classList.contains("open");
+    if (isOpen) {
+      toggleSettings(false);
+    } else {
+      closeToc();
+      toggleSettings(true);
+    }
+  });
   closeSettingsBtn.addEventListener("click", () => toggleSettings(false));
+
+  tocBtn?.addEventListener("click", () => {
+    const isOpen = tocPanel?.classList.contains("open");
+    if (isOpen) {
+      closeToc();
+    } else {
+      toggleSettings(false);
+      openToc();
+    }
+  });
+
+  closeTocBtn?.addEventListener("click", closeToc);
+  uiOverlay?.addEventListener("click", closeAllPanels);
 
   renderBook(book);
   applySettings(settings);
   bindSettingsEvents();
   applyProgress(progress, refreshHScroll);
   bindProgressTracking();
-  bindPageTap(bookContent);
+  bindPageTap(scrollContainer);
+  bindWheelScroll(readerViewport, scrollContainer);
+  applyDisplayMode(document.body.classList.contains("mode-paged") ? "paged" : "scroll", {
+    tapInScroll: false
+  });
+
+  function openOverlay() {
+    if (!uiOverlay) return;
+    uiOverlay.classList.add("open");
+    uiOverlay.setAttribute("aria-hidden", "false");
+  }
+
+  function closeOverlay() {
+    if (!uiOverlay) return;
+    uiOverlay.classList.remove("open");
+    uiOverlay.setAttribute("aria-hidden", "true");
+  }
+
+  function openToc() {
+    if (!tocPanel) return;
+    tocPanel.classList.add("open");
+    tocPanel.setAttribute("aria-hidden", "false");
+    openOverlay();
+  }
+
+  function closeToc() {
+    if (!tocPanel) return;
+    tocPanel.classList.remove("open");
+    tocPanel.setAttribute("aria-hidden", "true");
+    if (!settingsPanel?.classList.contains("open")) closeOverlay();
+  }
+
+  function closeAllPanels() {
+    closeToc();
+    toggleSettings(false);
+    closeOverlay();
+  }
 
   function toggleSettings(open) {
+    if (!settingsPanel) return;
     if (open) {
       settingsPanel.classList.add("open");
       settingsPanel.setAttribute("aria-hidden", "false");
+      openOverlay();
     } else {
       settingsPanel.classList.remove("open");
       settingsPanel.setAttribute("aria-hidden", "true");
+      if (!tocPanel?.classList.contains("open")) closeOverlay();
     }
   }
 
@@ -60,6 +127,7 @@ export function initReader({ book, settings, progress, onBack, onExport, onUpdat
         if (target) {
           target.scrollIntoView({ behavior: "smooth", block: "start" });
         }
+        closeToc();
       });
       li.appendChild(btn);
       tocList.appendChild(li);
@@ -109,20 +177,20 @@ export function initReader({ book, settings, progress, onBack, onExport, onUpdat
   function bindProgressTracking() {
     const handler = throttle(() => {
       const chapterId = getCurrentChapterId();
-      const scrollLeft = bookContent.scrollLeft;
-      const w = bookContent.clientWidth || 1;
+      const scrollLeft = scrollContainer.scrollLeft;
+      const w = scrollContainer.clientWidth || 1;
       const pageIndex = Math.round(scrollLeft / w);
       onUpdateProgress({ chapterId, scrollLeft, pageIndex });
     }, 250);
 
-    bookContent.addEventListener("scroll", handler);
+    scrollContainer.addEventListener("scroll", handler);
   }
 
   function getCurrentChapterId() {
     const chapters = Array.from(bookContent.querySelectorAll("section.chapter"));
     if (chapters.length === 0) return "chapter-001";
 
-    const containerRect = bookContent.getBoundingClientRect();
+    const containerRect = scrollContainer.getBoundingClientRect();
     let candidate = chapters[0];
 
     for (const chapter of chapters) {
@@ -143,11 +211,11 @@ export function initReader({ book, settings, progress, onBack, onExport, onUpdat
 
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
-        const w = bookContent.clientWidth || 1;
+        const w = scrollContainer.clientWidth || 1;
         if (nextProgress.pageIndex != null) {
-          bookContent.scrollLeft = Number(nextProgress.pageIndex) * w;
+          scrollContainer.scrollLeft = Number(nextProgress.pageIndex) * w;
         } else if (nextProgress.scrollLeft != null) {
-          bookContent.scrollLeft = Number(nextProgress.scrollLeft) || 0;
+          scrollContainer.scrollLeft = Number(nextProgress.scrollLeft) || 0;
         }
         if (typeof refresh === "function") refresh();
       });
@@ -197,9 +265,39 @@ export function initReader({ book, settings, progress, onBack, onExport, onUpdat
       } else if (x > w * 0.66) {
         pageBy(content, content.clientWidth);
       } else {
-        topbar.classList.toggle("hidden");
+        toggleChrome();
       }
     });
+  }
+
+  function toggleChrome() {
+    const tocOpen = tocPanel?.classList.contains("open");
+    const settingsOpen = settingsPanel?.classList.contains("open");
+    if (tocOpen || settingsOpen) {
+      closeAllPanels();
+      return;
+    }
+    topbar.classList.toggle("hidden");
+  }
+
+  function applyDisplayMode(mode, options = {}) {
+    if (!tapZone) return;
+    const disableTapZone = mode !== "paged" && !options.tapInScroll;
+    tapZone.classList.toggle("disabled", disableTapZone);
+  }
+
+  function bindWheelScroll(viewport, content) {
+    if (!viewport || !content) return;
+
+    viewport.addEventListener(
+      "wheel",
+      (event) => {
+        if (Math.abs(event.deltaY) <= Math.abs(event.deltaX)) return;
+        content.scrollLeft += event.deltaY;
+        event.preventDefault();
+      },
+      { passive: false }
+    );
   }
 }
 

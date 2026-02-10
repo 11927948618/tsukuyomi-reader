@@ -181,9 +181,14 @@ function registerServiceWorker() {
 }
 
 function setVersionBadge() {
+  const text = `v${APP_VERSION} (${BUILD_TIME})`;
   const badge = document.getElementById("versionBadge");
   if (badge) {
-    badge.textContent = `v${APP_VERSION} (${BUILD_TIME})`;
+    badge.textContent = text;
+  }
+  const buildInfo = document.getElementById("buildInfo");
+  if (buildInfo) {
+    buildInfo.textContent = text;
   }
 }
 
