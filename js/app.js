@@ -2,14 +2,16 @@ import { initLibrary } from "./library.js";
 import { initReader } from "./reader.js";
 import { exportZipFromBook } from "./storage.js";
 import { qs, loadJSON, saveJSON } from "./utils.js";
-import { APP_VERSION, BUILD_TIME } from "./version.js";
+import { APP_VERSION, BUILD_TIME, COMMIT } from "./version.js";
 
 
 const DEFAULT_SETTINGS = {
   fontSize: 100,
   lineHeight: 1.8,
   letterSpacing: 0,
-  theme: "light"
+  theme: "light",
+  displayMode: "paged",
+  tapInScroll: false
 };
 
 const DEFAULT_PROGRESS = {
@@ -180,20 +182,22 @@ function registerServiceWorker() {
   }
 }
 
-function setVersionBadge() {
-  const text = `v${APP_VERSION} (${BUILD_TIME})`;
+function applyVersionBadge() {
   const badge = document.getElementById("versionBadge");
-  if (badge) {
-    badge.textContent = text;
-  }
-  const buildInfo = document.getElementById("buildInfo");
-  if (buildInfo) {
-    buildInfo.textContent = text;
-  }
+  if (badge) badge.textContent = `v${APP_VERSION}`;
+
+  const settingsVersion = document.getElementById("settingsVersion");
+  if (settingsVersion) settingsVersion.textContent = `v${APP_VERSION}`;
+
+  const settingsBuild = document.getElementById("settingsBuildTime");
+  if (settingsBuild) settingsBuild.textContent = BUILD_TIME;
+
+  const settingsCommit = document.getElementById("settingsCommit");
+  if (settingsCommit) settingsCommit.textContent = COMMIT;
 }
 
 function queueVersionBadge() {
-  requestAnimationFrame(() => requestAnimationFrame(setVersionBadge));
+  requestAnimationFrame(() => requestAnimationFrame(applyVersionBadge));
 }
 
 registerServiceWorker();

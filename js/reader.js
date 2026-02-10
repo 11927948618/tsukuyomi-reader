@@ -23,6 +23,8 @@ export function initReader({ book, settings, progress, onBack, onExport, onUpdat
   const letterSpacingRange = qs("#letterSpacingRange");
   const themeSelect = qs("#themeSelect");
   const scrollContainer = readerViewport || bookContent;
+  let displayMode = normalizeDisplayMode(settings?.displayMode);
+  let tapInScroll = Boolean(settings?.tapInScroll);
   const refreshHScroll = setupHScroll(scrollContainer);
 
   backBtn.addEventListener("click", onBack);
@@ -61,9 +63,7 @@ export function initReader({ book, settings, progress, onBack, onExport, onUpdat
   bindProgressTracking();
   bindPageTap(scrollContainer);
   bindWheelScroll(readerViewport, scrollContainer);
-  applyDisplayMode(document.body.classList.contains("mode-paged") ? "paged" : "scroll", {
-    tapInScroll: false
-  });
+  applyDisplayMode(displayMode, { tapInScroll });
 
   function openOverlay() {
     if (!uiOverlay) return;
@@ -81,6 +81,7 @@ export function initReader({ book, settings, progress, onBack, onExport, onUpdat
     if (!tocPanel) return;
     tocPanel.classList.add("open");
     tocPanel.setAttribute("aria-hidden", "false");
+    document.body.classList.add("toc-open");
     openOverlay();
   }
 
@@ -88,6 +89,7 @@ export function initReader({ book, settings, progress, onBack, onExport, onUpdat
     if (!tocPanel) return;
     tocPanel.classList.remove("open");
     tocPanel.setAttribute("aria-hidden", "true");
+    document.body.classList.remove("toc-open");
     if (!settingsPanel?.classList.contains("open")) closeOverlay();
   }
 
@@ -143,6 +145,9 @@ export function initReader({ book, settings, progress, onBack, onExport, onUpdat
     document.documentElement.style.setProperty("--line-height", Number(nextSettings.lineHeight) || 1.8);
     document.documentElement.style.setProperty("--letter-spacing", `${Number(nextSettings.letterSpacing) || 0}px`);
     applyTheme(nextSettings.theme || "light");
+    displayMode = normalizeDisplayMode(nextSettings.displayMode);
+    tapInScroll = Boolean(nextSettings.tapInScroll);
+    applyDisplayMode(displayMode, { tapInScroll });
 
     fontSizeRange.value = String(nextSettings.fontSize ?? 100);
     lineHeightRange.value = String(nextSettings.lineHeight ?? 1.8);
@@ -177,10 +182,10 @@ export function initReader({ book, settings, progress, onBack, onExport, onUpdat
   function bindProgressTracking() {
     const handler = throttle(() => {
       const chapterId = getCurrentChapterId();
-      const scrollLeft = scrollContainer.scrollLeft;
-      const w = scrollContainer.clientWidth || 1;
-      const pageIndex = Math.round(scrollLeft / w);
-      onUpdateProgress({ chapterId, scrollLeft, pageIndex });
+      const offset = displayMode === "scrolly" ? scrollContainer.scrollTop : scrollContainer.scrollLeft;
+      const size = displayMode === "scrolly" ? scrollContainer.clientHeight : scrollContainer.clientWidth;
+      const pageIndex = Math.round(offset / (size || 1));
+      onUpdateProgress({ chapterId, scrollLeft: offset, pageIndex });
     }, 250);
 
     scrollContainer.addEventListener("scroll", handler);
@@ -211,11 +216,15 @@ export function initReader({ book, settings, progress, onBack, onExport, onUpdat
 
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
-        const w = scrollContainer.clientWidth || 1;
-        if (nextProgress.pageIndex != null) {
-          scrollContainer.scrollLeft = Number(nextProgress.pageIndex) * w;
-        } else if (nextProgress.scrollLeft != null) {
-          scrollContainer.scrollLeft = Number(nextProgress.scrollLeft) || 0;
+        const size = displayMode === "scrolly" ? scrollContainer.clientHeight : scrollContainer.clientWidth;
+        const nextOffset =
+          nextProgress.pageIndex != null
+            ? Number(nextProgress.pageIndex) * (size || 1)
+            : Number(nextProgress.scrollLeft) || 0;
+        if (displayMode === "scrolly") {
+          scrollContainer.scrollTop = nextOffset;
+        } else {
+          scrollContainer.scrollLeft = nextOffset;
         }
         if (typeof refresh === "function") refresh();
       });
@@ -254,20 +263,72 @@ export function initReader({ book, settings, progress, onBack, onExport, onUpdat
 
   function bindPageTap(content) {
     if (!content) return;
+    const threshold = 10;
+    let down = null;
 
-    content.addEventListener("click", (e) => {
+    const shouldHandleTap = (event) => {
+      if (displayMode === "paged") return true;
+      return tapInScroll === true;
+    };
+
+    const onTap = (event) => {
+      if (!shouldHandleTap(event)) return;
+      const target = event.target;
+      if (target && typeof target.closest === "function") {
+        if (target.closest("button, input, select, textarea, a")) return;
+      }
       const rect = content.getBoundingClientRect();
-      const x = e.clientX - rect.left;
+      const x = event.clientX - rect.left;
       const w = rect.width || 1;
 
       if (x < w * 0.33) {
-        pageBy(content, -content.clientWidth);
+        pageBy(content, -content.clientWidth, displayMode);
       } else if (x > w * 0.66) {
-        pageBy(content, content.clientWidth);
+        pageBy(content, content.clientWidth, displayMode);
       } else {
         toggleChrome();
       }
-    });
+    };
+
+    if (window.PointerEvent) {
+      content.addEventListener("pointerdown", (event) => {
+        if (event.pointerType === "mouse" && event.button !== 0) return;
+        down = { x: event.clientX, y: event.clientY };
+      });
+      content.addEventListener("pointerup", (event) => {
+        if (!down) return;
+        const dx = Math.abs(event.clientX - down.x);
+        const dy = Math.abs(event.clientY - down.y);
+        down = null;
+        if (dx > threshold || dy > threshold) return;
+        onTap(event);
+      });
+      return;
+    }
+
+    content.addEventListener(
+      "touchstart",
+      (event) => {
+        const touch = event.touches[0];
+        if (!touch) return;
+        down = { x: touch.clientX, y: touch.clientY };
+      },
+      { passive: true }
+    );
+
+    content.addEventListener(
+      "touchend",
+      (event) => {
+        const touch = event.changedTouches[0];
+        if (!touch || !down) return;
+        const dx = Math.abs(touch.clientX - down.x);
+        const dy = Math.abs(touch.clientY - down.y);
+        down = null;
+        if (dx > threshold || dy > threshold) return;
+        onTap(touch);
+      },
+      { passive: true }
+    );
   }
 
   function toggleChrome() {
@@ -282,8 +343,18 @@ export function initReader({ book, settings, progress, onBack, onExport, onUpdat
 
   function applyDisplayMode(mode, options = {}) {
     if (!tapZone) return;
-    const disableTapZone = mode !== "paged" && !options.tapInScroll;
+    const normalized = normalizeDisplayMode(mode);
+    displayMode = normalized;
+    const disableTapZone = normalized !== "paged" && !options.tapInScroll;
     tapZone.classList.toggle("disabled", disableTapZone);
+    document.body.classList.remove("mode-paged", "mode-scrollx", "mode-scrolly");
+    if (normalized === "paged") {
+      document.body.classList.add("mode-paged");
+    } else if (normalized === "scrollx") {
+      document.body.classList.add("mode-scrollx");
+    } else {
+      document.body.classList.add("mode-scrolly");
+    }
   }
 
   function bindWheelScroll(viewport, content) {
@@ -292,6 +363,7 @@ export function initReader({ book, settings, progress, onBack, onExport, onUpdat
     viewport.addEventListener(
       "wheel",
       (event) => {
+        if (displayMode !== "scrollx") return;
         if (Math.abs(event.deltaY) <= Math.abs(event.deltaX)) return;
         content.scrollLeft += event.deltaY;
         event.preventDefault();
@@ -315,6 +387,18 @@ function throttle(fn, wait) {
   };
 }
 
-function pageBy(content, delta) {
+function pageBy(content, delta, mode = "paged") {
+  if (mode === "scrolly") {
+    content.scrollTo({ top: content.scrollTop + delta, behavior: "smooth" });
+    return;
+  }
   content.scrollTo({ left: content.scrollLeft + delta, behavior: "smooth" });
+}
+
+function normalizeDisplayMode(mode) {
+  if (!mode) return "paged";
+  const raw = String(mode).toLowerCase();
+  if (raw === "scrollx" || raw === "scroll-x") return "scrollx";
+  if (raw === "scrolly" || raw === "scroll-y" || raw === "scroll" || raw === "vertical") return "scrolly";
+  return "paged";
 }

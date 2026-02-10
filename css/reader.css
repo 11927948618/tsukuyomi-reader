@@ -148,6 +148,25 @@ body.mode-paged .tap-zone {
   pointer-events: auto;
 }
 
+body.mode-scrollx .reader-viewport {
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  touch-action: pan-x;
+}
+
+body.mode-scrolly .reader-viewport {
+  overflow-x: hidden;
+  overflow-y: auto;
+  scroll-snap-type: none;
+  touch-action: pan-y;
+}
+
+body.mode-scrolly .reader-content {
+  column-width: auto;
+  column-gap: 0;
+}
+
 .tap-zone.disabled {
   pointer-events: none;
 }
@@ -215,4 +234,14 @@ body.mode-paged .tap-zone {
   border-top: 1px solid var(--border);
   padding-top: 10px;
   word-break: break-word;
+}
+
+.build-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.build-label {
+  color: var(--muted);
 }
