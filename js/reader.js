@@ -22,10 +22,15 @@ export function initReader({ book, settings, progress, onBack, onExport, onUpdat
   const lineHeightRange = qs("#lineHeightRange");
   const letterSpacingRange = qs("#letterSpacingRange");
   const themeSelect = qs("#themeSelect");
+  const displayModeRadios = Array.from(document.querySelectorAll('input[name="displayMode"]'));
   const scrollContainer = readerViewport || bookContent;
   let displayMode = normalizeDisplayMode(settings?.displayMode);
   let tapInScroll = Boolean(settings?.tapInScroll);
   const refreshHScroll = setupHScroll(scrollContainer);
+  const applyPageWidth = () => {
+    const width = readerViewport?.clientWidth || scrollContainer?.clientWidth || window.innerWidth;
+    document.documentElement.style.setProperty("--page-width", `${width}px`);
+  };
 
   backBtn.addEventListener("click", onBack);
   printBtn.addEventListener("click", () => window.print());
@@ -57,13 +62,16 @@ export function initReader({ book, settings, progress, onBack, onExport, onUpdat
   uiOverlay?.addEventListener("click", closeAllPanels);
 
   renderBook(book);
+  applyPageWidth();
   applySettings(settings);
   bindSettingsEvents();
   applyProgress(progress, refreshHScroll);
   bindProgressTracking();
-  bindPageTap(scrollContainer);
+  bindPageTap(tapZone, scrollContainer);
   bindWheelScroll(readerViewport, scrollContainer);
   applyDisplayMode(displayMode, { tapInScroll });
+  window.addEventListener("resize", applyPageWidth);
+  window.addEventListener("orientationchange", applyPageWidth);
 
   function openOverlay() {
     if (!uiOverlay) return;
@@ -153,6 +161,9 @@ export function initReader({ book, settings, progress, onBack, onExport, onUpdat
     lineHeightRange.value = String(nextSettings.lineHeight ?? 1.8);
     letterSpacingRange.value = String(nextSettings.letterSpacing ?? 0);
     themeSelect.value = nextSettings.theme || "light";
+    displayModeRadios.forEach((radio) => {
+      radio.checked = radio.value === displayMode;
+    });
   }
 
   function applyTheme(theme) {
@@ -165,6 +176,12 @@ export function initReader({ book, settings, progress, onBack, onExport, onUpdat
     lineHeightRange.addEventListener("input", () => updateSettings({ lineHeight: Number(lineHeightRange.value) }));
     letterSpacingRange.addEventListener("input", () => updateSettings({ letterSpacing: Number(letterSpacingRange.value) }));
     themeSelect.addEventListener("change", () => updateSettings({ theme: themeSelect.value }));
+    displayModeRadios.forEach((radio) => {
+      radio.addEventListener("change", () => {
+        if (!radio.checked) return;
+        updateSettings({ displayMode: normalizeDisplayMode(radio.value) });
+      });
+    });
   }
 
   function updateSettings(patch) {
@@ -173,6 +190,7 @@ export function initReader({ book, settings, progress, onBack, onExport, onUpdat
       lineHeight: Number(lineHeightRange.value) || 1.8,
       letterSpacing: Number(letterSpacingRange.value) || 0,
       theme: themeSelect.value || "light",
+      displayMode: normalizeDisplayMode(displayModeRadios.find((radio) => radio.checked)?.value || displayMode),
       ...patch
     };
     applySettings(next);
@@ -261,41 +279,41 @@ export function initReader({ book, settings, progress, onBack, onExport, onUpdat
     return refresh;
   }
 
-  function bindPageTap(content) {
-    if (!content) return;
+  function bindPageTap(tapEl, scrollEl) {
+    if (!tapEl || !scrollEl) return;
     const threshold = 10;
     let down = null;
 
-    const shouldHandleTap = (event) => {
+    const shouldHandleTap = () => {
       if (displayMode === "paged") return true;
       return tapInScroll === true;
     };
 
     const onTap = (event) => {
-      if (!shouldHandleTap(event)) return;
+      if (!shouldHandleTap()) return;
       const target = event.target;
       if (target && typeof target.closest === "function") {
         if (target.closest("button, input, select, textarea, a")) return;
       }
-      const rect = content.getBoundingClientRect();
+      const rect = tapEl.getBoundingClientRect();
       const x = event.clientX - rect.left;
       const w = rect.width || 1;
 
       if (x < w * 0.33) {
-        pageBy(content, -content.clientWidth, displayMode);
+        pageBy(scrollEl, -scrollEl.clientWidth, displayMode);
       } else if (x > w * 0.66) {
-        pageBy(content, content.clientWidth, displayMode);
+        pageBy(scrollEl, scrollEl.clientWidth, displayMode);
       } else {
         toggleChrome();
       }
     };
 
     if (window.PointerEvent) {
-      content.addEventListener("pointerdown", (event) => {
+      tapEl.addEventListener("pointerdown", (event) => {
         if (event.pointerType === "mouse" && event.button !== 0) return;
         down = { x: event.clientX, y: event.clientY };
       });
-      content.addEventListener("pointerup", (event) => {
+      tapEl.addEventListener("pointerup", (event) => {
         if (!down) return;
         const dx = Math.abs(event.clientX - down.x);
         const dy = Math.abs(event.clientY - down.y);
@@ -306,7 +324,7 @@ export function initReader({ book, settings, progress, onBack, onExport, onUpdat
       return;
     }
 
-    content.addEventListener(
+    tapEl.addEventListener(
       "touchstart",
       (event) => {
         const touch = event.touches[0];
@@ -316,7 +334,7 @@ export function initReader({ book, settings, progress, onBack, onExport, onUpdat
       { passive: true }
     );
 
-    content.addEventListener(
+    tapEl.addEventListener(
       "touchend",
       (event) => {
         const touch = event.changedTouches[0];
@@ -357,15 +375,15 @@ export function initReader({ book, settings, progress, onBack, onExport, onUpdat
     }
   }
 
-  function bindWheelScroll(viewport, content) {
-    if (!viewport || !content) return;
+  function bindWheelScroll(viewport, scrollEl) {
+    if (!viewport || !scrollEl) return;
 
     viewport.addEventListener(
       "wheel",
       (event) => {
         if (displayMode !== "scrollx") return;
-        if (Math.abs(event.deltaY) <= Math.abs(event.deltaX)) return;
-        content.scrollLeft += event.deltaY;
+        const delta = Math.abs(event.deltaY) >= Math.abs(event.deltaX) ? event.deltaY : event.deltaX;
+        scrollEl.scrollLeft += delta;
         event.preventDefault();
       },
       { passive: false }

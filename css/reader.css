@@ -120,7 +120,7 @@ body.theme-dark .version-badge {
 }
 
 .reader-content {
-  column-width: 100vw;
+  column-width: var(--page-width, 100vw);
   column-gap: 0;
   font-size: calc(var(--font-size) * 1%);
   line-height: var(--line-height);
