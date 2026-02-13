@@ -154,10 +154,6 @@ body.theme-dark .version-badge {
   inset: 0;
   z-index: 5;
   background: transparent;
-  pointer-events: none;
-}
-
-body.mode-paged .tap-zone {
   pointer-events: auto;
 }
 

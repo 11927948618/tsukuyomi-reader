@@ -22,10 +22,13 @@ export function initReader({ book, settings, progress, onBack, onExport, onUpdat
   const lineHeightRange = qs("#lineHeightRange");
   const letterSpacingRange = qs("#letterSpacingRange");
   const themeSelect = qs("#themeSelect");
+  const reloadBtn = qs("#reloadBtn");
+  const hardReloadBtn = qs("#hardReloadBtn");
   const displayModeRadios = Array.from(document.querySelectorAll('input[name="displayMode"]'));
   const scrollContainer = readerViewport || bookContent;
   let displayMode = normalizeDisplayMode(settings?.displayMode);
   let tapInScroll = Boolean(settings?.tapInScroll);
+  let skipNextTap = false;
   const refreshHScroll = setupHScroll(scrollContainer);
   const applyPageWidth = () => {
     const width = readerViewport?.clientWidth || scrollContainer?.clientWidth || window.innerWidth;
@@ -35,6 +38,22 @@ export function initReader({ book, settings, progress, onBack, onExport, onUpdat
   backBtn.addEventListener("click", onBack);
   printBtn.addEventListener("click", () => window.print());
   exportBtn.addEventListener("click", onExport);
+  reloadBtn?.addEventListener("click", () => location.reload());
+  hardReloadBtn?.addEventListener("click", async () => {
+    try {
+      if ("caches" in window) {
+        const keys = await caches.keys();
+        const targets = keys.filter((key) => /tsukuyomi|tsukuyomireader/i.test(key));
+        await Promise.all(targets.map((key) => caches.delete(key)));
+      }
+      if ("serviceWorker" in navigator) {
+        const regs = await navigator.serviceWorker.getRegistrations();
+        await Promise.all(regs.map((reg) => reg.unregister()));
+      }
+    } finally {
+      location.reload();
+    }
+  });
 
   settingsBtn.addEventListener("click", () => {
     if (!settingsPanel) return;
@@ -67,6 +86,7 @@ export function initReader({ book, settings, progress, onBack, onExport, onUpdat
   bindSettingsEvents();
   applyProgress(progress, refreshHScroll);
   bindProgressTracking();
+  bindTopEdgeRevealTap(tapZone);
   bindPageTap(tapZone, scrollContainer);
   bindWheelScroll(readerViewport, scrollContainer);
   applyDisplayMode(displayMode, { tapInScroll });
@@ -343,6 +363,11 @@ export function initReader({ book, settings, progress, onBack, onExport, onUpdat
         down = { x: event.clientX, y: event.clientY };
       });
       tapEl.addEventListener("pointerup", (event) => {
+        if (skipNextTap) {
+          skipNextTap = false;
+          down = null;
+          return;
+        }
         if (!down) return;
         const dx = Math.abs(event.clientX - down.x);
         const dy = Math.abs(event.clientY - down.y);
@@ -366,6 +391,11 @@ export function initReader({ book, settings, progress, onBack, onExport, onUpdat
     tapEl.addEventListener(
       "touchend",
       (event) => {
+        if (skipNextTap) {
+          skipNextTap = false;
+          down = null;
+          return;
+        }
         const touch = event.changedTouches[0];
         if (!touch || !down) return;
         const dx = Math.abs(touch.clientX - down.x);
@@ -373,6 +403,41 @@ export function initReader({ book, settings, progress, onBack, onExport, onUpdat
         down = null;
         if (dx > threshold || dy > threshold) return;
         onTap(touch);
+      },
+      { passive: true }
+    );
+  }
+
+  function bindTopEdgeRevealTap(tapEl) {
+    if (!tapEl || !topbar) return;
+
+    const shouldIgnore = (target) => {
+      if (!target || typeof target.closest !== "function") return false;
+      return Boolean(target.closest("button, input, select, textarea, a"));
+    };
+
+    const showTopbar = (y) => {
+      if (y >= 72 || !topbar.classList.contains("hidden")) return;
+      topbar.classList.remove("hidden");
+      document.body.classList.remove("chrome-hidden");
+      skipNextTap = true;
+    };
+
+    if (window.PointerEvent) {
+      tapEl.addEventListener("pointerup", (event) => {
+        if (shouldIgnore(event.target)) return;
+        showTopbar(event.clientY);
+      });
+      return;
+    }
+
+    tapEl.addEventListener(
+      "touchend",
+      (event) => {
+        if (shouldIgnore(event.target)) return;
+        const touch = event.changedTouches[0];
+        if (!touch) return;
+        showTopbar(touch.clientY);
       },
       { passive: true }
     );
@@ -436,11 +501,12 @@ function throttle(fn, wait) {
 }
 
 function pageBy(content, delta, mode = "paged") {
+  const behavior = mode === "paged" ? "auto" : "smooth";
   if (mode === "scrolly") {
-    content.scrollTo({ top: content.scrollTop + delta, behavior: "smooth" });
+    content.scrollTo({ top: content.scrollTop + delta, behavior });
     return;
   }
-  content.scrollTo({ left: content.scrollLeft + delta, behavior: "smooth" });
+  content.scrollTo({ left: content.scrollLeft + delta, behavior });
 }
 
 function normalizeDisplayMode(mode) {
