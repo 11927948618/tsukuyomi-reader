@@ -4,6 +4,10 @@
   padding-top: 64px;
 }
 
+body.chrome-hidden .reader-layout {
+  padding-top: 0;
+}
+
 .reader-topbar {
   position: fixed;
   top: 0;
@@ -132,8 +136,17 @@ body.theme-dark .version-badge {
 }
 
 .reader-title {
+  flex: 1;
+  min-width: 0;
+  text-align: center;
   font-size: 18px;
   font-weight: 600;
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
 }
 
 .tap-zone {
@@ -244,4 +257,16 @@ body.mode-scrolly .reader-content {
 
 .build-label {
   color: var(--muted);
+}
+
+html,
+body {
+  height: 100%;
+  overflow: hidden;
+}
+
+@media (pointer: coarse) {
+  .h-scroll {
+    display: none;
+  }
 }

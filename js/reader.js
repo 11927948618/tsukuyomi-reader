@@ -143,6 +143,16 @@ export function initReader({ book, settings, progress, onBack, onExport, onUpdat
       tocList.appendChild(li);
     });
 
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        if (displayMode !== "scrolly") {
+          const max = Math.max(0, scrollContainer.scrollWidth - scrollContainer.clientWidth);
+          scrollContainer.scrollLeft = max;
+        }
+        refreshHScroll?.();
+      });
+    });
+
     // Phase 1は全文一括DOM生成。大容量対応はPhase 2で検討。
   }
 
@@ -234,6 +244,18 @@ export function initReader({ book, settings, progress, onBack, onExport, onUpdat
 
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
+        const isDefaultProgress =
+          !nextProgress.chapterId &&
+          Number(nextProgress.scrollLeft) === 0 &&
+          Number(nextProgress.pageIndex) === 0;
+
+        if (isDefaultProgress && displayMode !== "scrolly") {
+          const max = Math.max(0, scrollContainer.scrollWidth - scrollContainer.clientWidth);
+          scrollContainer.scrollLeft = max;
+          if (typeof refresh === "function") refresh();
+          return;
+        }
+
         const size = displayMode === "scrolly" ? scrollContainer.clientHeight : scrollContainer.clientWidth;
         const nextOffset =
           nextProgress.pageIndex != null
@@ -298,13 +320,20 @@ export function initReader({ book, settings, progress, onBack, onExport, onUpdat
       const rect = tapEl.getBoundingClientRect();
       const x = event.clientX - rect.left;
       const w = rect.width || 1;
+      const page = scrollEl.clientWidth || 1;
+
+      if (x >= w * 0.33 && x <= w * 0.66) {
+        toggleChrome();
+        return;
+      }
+
+      if (x > w * 0.66) {
+        pageBy(scrollEl, -page, displayMode);
+        return;
+      }
 
       if (x < w * 0.33) {
-        pageBy(scrollEl, -scrollEl.clientWidth, displayMode);
-      } else if (x > w * 0.66) {
-        pageBy(scrollEl, scrollEl.clientWidth, displayMode);
-      } else {
-        toggleChrome();
+        pageBy(scrollEl, page, displayMode);
       }
     };
 
@@ -357,6 +386,7 @@ export function initReader({ book, settings, progress, onBack, onExport, onUpdat
       return;
     }
     topbar.classList.toggle("hidden");
+    document.body.classList.toggle("chrome-hidden", topbar.classList.contains("hidden"));
   }
 
   function applyDisplayMode(mode, options = {}) {
