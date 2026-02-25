@@ -22,12 +22,15 @@ export function initReader({ book, settings, progress, onBack, onExport, onUpdat
   const lineHeightRange = qs("#lineHeightRange");
   const letterSpacingRange = qs("#letterSpacingRange");
   const themeSelect = qs("#themeSelect");
+  const writingModeSelect = qs("#writingModeSelect");
   const reloadBtn = qs("#reloadBtn");
   const hardReloadBtn = qs("#hardReloadBtn");
   const displayModeRadios = Array.from(document.querySelectorAll('input[name="displayMode"]'));
   const scrollContainer = readerViewport || bookContent;
   let displayMode = normalizeDisplayMode(settings?.displayMode);
   let tapInScroll = Boolean(settings?.tapInScroll);
+  let writingModePreference = normalizeWritingModePreference(settings?.writingModePreference);
+  let pageDirection = writingModePreference === "vertical" ? "rtl" : "ltr";
   let skipNextTap = false;
   const refreshHScroll = setupHScroll(scrollContainer);
   const applyPageWidth = () => {
@@ -165,10 +168,9 @@ export function initReader({ book, settings, progress, onBack, onExport, onUpdat
 
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
-        if (displayMode !== "scrolly") {
-          const max = Math.max(0, scrollContainer.scrollWidth - scrollContainer.clientWidth);
-          scrollContainer.scrollLeft = max;
-        }
+        applyWritingModePreference(writingModePreference);
+        updatePageDirection();
+        scrollContainer.scrollLeft = toPhysicalLeft(scrollContainer, 0, pageDirection);
         refreshHScroll?.();
       });
     });
@@ -185,12 +187,16 @@ export function initReader({ book, settings, progress, onBack, onExport, onUpdat
     applyTheme(nextSettings.theme || "light");
     displayMode = normalizeDisplayMode(nextSettings.displayMode);
     tapInScroll = Boolean(nextSettings.tapInScroll);
+    writingModePreference = normalizeWritingModePreference(nextSettings.writingModePreference);
+    applyWritingModePreference(writingModePreference);
+    updatePageDirection({ preservePosition: true });
     applyDisplayMode(displayMode, { tapInScroll });
 
     fontSizeRange.value = String(nextSettings.fontSize ?? 100);
     lineHeightRange.value = String(nextSettings.lineHeight ?? 1.8);
     letterSpacingRange.value = String(nextSettings.letterSpacing ?? 0);
     themeSelect.value = nextSettings.theme || "light";
+    if (writingModeSelect) writingModeSelect.value = writingModePreference;
     displayModeRadios.forEach((radio) => {
       radio.checked = radio.value === displayMode;
     });
@@ -206,6 +212,9 @@ export function initReader({ book, settings, progress, onBack, onExport, onUpdat
     lineHeightRange.addEventListener("input", () => updateSettings({ lineHeight: Number(lineHeightRange.value) }));
     letterSpacingRange.addEventListener("input", () => updateSettings({ letterSpacing: Number(letterSpacingRange.value) }));
     themeSelect.addEventListener("change", () => updateSettings({ theme: themeSelect.value }));
+    writingModeSelect?.addEventListener("change", () => {
+      updateSettings({ writingModePreference: normalizeWritingModePreference(writingModeSelect.value) });
+    });
     displayModeRadios.forEach((radio) => {
       radio.addEventListener("change", () => {
         if (!radio.checked) return;
@@ -221,6 +230,7 @@ export function initReader({ book, settings, progress, onBack, onExport, onUpdat
       letterSpacing: Number(letterSpacingRange.value) || 0,
       theme: themeSelect.value || "light",
       displayMode: normalizeDisplayMode(displayModeRadios.find((radio) => radio.checked)?.value || displayMode),
+      writingModePreference: normalizeWritingModePreference(writingModeSelect?.value || writingModePreference),
       ...patch
     };
     applySettings(next);
@@ -230,10 +240,20 @@ export function initReader({ book, settings, progress, onBack, onExport, onUpdat
   function bindProgressTracking() {
     const handler = throttle(() => {
       const chapterId = getCurrentChapterId();
-      const offset = displayMode === "scrolly" ? scrollContainer.scrollTop : scrollContainer.scrollLeft;
-      const size = displayMode === "scrolly" ? scrollContainer.clientHeight : scrollContainer.clientWidth;
-      const pageIndex = Math.round(offset / (size || 1));
-      onUpdateProgress({ chapterId, scrollLeft: offset, pageIndex });
+
+      if (displayMode === "scrolly") {
+        const offset = scrollContainer.scrollTop;
+        const size = scrollContainer.clientHeight || 1;
+        const pageIndex = Math.round(offset / size);
+        onUpdateProgress({ chapterId, scrollTop: offset, pageIndex });
+        return;
+      }
+
+      const physical = scrollContainer.scrollLeft;
+      const logical = toLogicalLeft(scrollContainer, physical, pageDirection);
+      const size = scrollContainer.clientWidth || 1;
+      const pageIndex = Math.round(logical / size);
+      onUpdateProgress({ chapterId, scrollLeft: logical, pageIndex });
     }, 250);
 
     scrollContainer.addEventListener("scroll", handler);
@@ -260,32 +280,24 @@ export function initReader({ book, settings, progress, onBack, onExport, onUpdat
   }
 
   function applyProgress(nextProgress, refresh) {
-    if (!nextProgress) return;
-
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
-        const isDefaultProgress =
-          !nextProgress.chapterId &&
-          Number(nextProgress.scrollLeft) === 0 &&
-          Number(nextProgress.pageIndex) === 0;
-
-        if (isDefaultProgress && displayMode !== "scrolly") {
-          const max = Math.max(0, scrollContainer.scrollWidth - scrollContainer.clientWidth);
-          scrollContainer.scrollLeft = max;
+        if (displayMode === "scrolly") {
+          const topRaw = Number(nextProgress?.scrollTop);
+          const top = Number.isFinite(topRaw)
+            ? topRaw
+            : (Number(nextProgress?.pageIndex) || 0) * (scrollContainer.clientHeight || 1);
+          scrollContainer.scrollTop = top;
           if (typeof refresh === "function") refresh();
           return;
         }
 
-        const size = displayMode === "scrolly" ? scrollContainer.clientHeight : scrollContainer.clientWidth;
-        const nextOffset =
-          nextProgress.pageIndex != null
-            ? Number(nextProgress.pageIndex) * (size || 1)
-            : Number(nextProgress.scrollLeft) || 0;
-        if (displayMode === "scrolly") {
-          scrollContainer.scrollTop = nextOffset;
-        } else {
-          scrollContainer.scrollLeft = nextOffset;
-        }
+        const logical =
+          nextProgress?.pageIndex != null
+            ? Number(nextProgress.pageIndex) * (scrollContainer.clientWidth || 1)
+            : Number(nextProgress?.scrollLeft);
+        const logicalSafe = Number.isFinite(logical) ? logical : 0;
+        scrollContainer.scrollLeft = toPhysicalLeft(scrollContainer, logicalSafe, pageDirection);
         if (typeof refresh === "function") refresh();
       });
     });
@@ -296,18 +308,19 @@ export function initReader({ book, settings, progress, onBack, onExport, onUpdat
     if (!slider || !content) return;
 
     const refresh = () => {
-      const max = Math.max(0, content.scrollWidth - content.clientWidth);
+      const max = getMaxLeft(content);
       slider.max = String(max);
-      slider.value = String(Math.min(max, content.scrollLeft));
+      slider.value = String(toLogicalLeft(content, content.scrollLeft, pageDirection));
       slider.disabled = max === 0;
     };
 
     slider.addEventListener("input", () => {
-      content.scrollLeft = Number(slider.value);
+      const logical = Number(slider.value) || 0;
+      content.scrollLeft = toPhysicalLeft(content, logical, pageDirection);
     });
 
     content.addEventListener("scroll", () => {
-      slider.value = String(content.scrollLeft);
+      slider.value = String(toLogicalLeft(content, content.scrollLeft, pageDirection));
     });
 
     window.addEventListener("resize", refresh);
@@ -326,13 +339,12 @@ export function initReader({ book, settings, progress, onBack, onExport, onUpdat
     const threshold = 10;
     let down = null;
 
-    const shouldHandleTap = () => {
+    const shouldHandlePagingTap = () => {
       if (displayMode === "paged") return true;
       return tapInScroll === true;
     };
 
     const onTap = (event) => {
-      if (!shouldHandleTap()) return;
       const target = event.target;
       if (target && typeof target.closest === "function") {
         if (target.closest("button, input, select, textarea, a")) return;
@@ -347,13 +359,15 @@ export function initReader({ book, settings, progress, onBack, onExport, onUpdat
         return;
       }
 
+      if (!shouldHandlePagingTap()) return;
+
       if (x > w * 0.66) {
-        pageBy(scrollEl, -page, displayMode);
+        pageBy(scrollEl, page, displayMode);
         return;
       }
 
       if (x < w * 0.33) {
-        pageBy(scrollEl, page, displayMode);
+        pageBy(scrollEl, -page, displayMode);
       }
     };
 
@@ -458,8 +472,7 @@ export function initReader({ book, settings, progress, onBack, onExport, onUpdat
     if (!tapZone) return;
     const normalized = normalizeDisplayMode(mode);
     displayMode = normalized;
-    const disableTapZone = normalized !== "paged" && !options.tapInScroll;
-    tapZone.classList.toggle("disabled", disableTapZone);
+    tapZone.classList.remove("disabled");
     document.body.classList.remove("mode-paged", "mode-scrollx", "mode-scrolly");
     if (normalized === "paged") {
       document.body.classList.add("mode-paged");
@@ -476,13 +489,41 @@ export function initReader({ book, settings, progress, onBack, onExport, onUpdat
     viewport.addEventListener(
       "wheel",
       (event) => {
-        if (displayMode !== "scrollx") return;
+        if (displayMode === "scrolly") return;
         const delta = Math.abs(event.deltaY) >= Math.abs(event.deltaX) ? event.deltaY : event.deltaX;
-        scrollEl.scrollLeft += delta;
+        scrollEl.scrollLeft += pageDirection === "rtl" ? -delta : delta;
         event.preventDefault();
       },
       { passive: false }
     );
+  }
+
+  function applyWritingModePreference(mode) {
+    if (!bookContent) return;
+    bookContent.classList.remove("force-vertical", "force-horizontal");
+    if (mode === "vertical") {
+      bookContent.classList.add("force-vertical");
+    } else if (mode === "horizontal") {
+      bookContent.classList.add("force-horizontal");
+    }
+  }
+
+  function detectPageDirection() {
+    if (writingModePreference === "vertical") return "rtl";
+    if (writingModePreference === "horizontal") return "ltr";
+    const probe = bookContent.querySelector("section.chapter, p, div, span") || bookContent;
+    const writingMode = String(window.getComputedStyle(probe).writingMode || "").toLowerCase();
+    return writingMode.includes("vertical") ? "rtl" : "ltr";
+  }
+
+  function updatePageDirection(options = {}) {
+    const prevDirection = pageDirection;
+    pageDirection = detectPageDirection();
+    if (options.preservePosition && prevDirection !== pageDirection) {
+      const logical = toLogicalLeft(scrollContainer, scrollContainer.scrollLeft, prevDirection);
+      scrollContainer.scrollLeft = toPhysicalLeft(scrollContainer, logical, pageDirection);
+    }
+    refreshHScroll?.();
   }
 }
 
@@ -507,6 +548,31 @@ function pageBy(content, delta, mode = "paged") {
     return;
   }
   content.scrollTo({ left: content.scrollLeft + delta, behavior });
+}
+
+function getMaxLeft(el) {
+  return Math.max(0, el.scrollWidth - el.clientWidth);
+}
+
+function toLogicalLeft(el, physicalLeft, direction = "rtl") {
+  const max = getMaxLeft(el);
+  const physical = Number(physicalLeft) || 0;
+  const logical = direction === "rtl" ? max - physical : physical;
+  return Math.max(0, Math.min(max, logical));
+}
+
+function toPhysicalLeft(el, logicalLeft, direction = "rtl") {
+  const max = getMaxLeft(el);
+  const logical = Number(logicalLeft) || 0;
+  const physical = direction === "rtl" ? max - logical : logical;
+  return Math.max(0, Math.min(max, physical));
+}
+
+function normalizeWritingModePreference(mode) {
+  const raw = String(mode || "auto").toLowerCase();
+  if (raw === "vertical") return "vertical";
+  if (raw === "horizontal") return "horizontal";
+  return "auto";
 }
 
 function normalizeDisplayMode(mode) {

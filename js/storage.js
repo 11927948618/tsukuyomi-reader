@@ -87,7 +87,10 @@ export async function exportZipFromBook(book, options = {}) {
       fontSize: Number(settings.fontSize) || 100,
       lineHeight: Number(settings.lineHeight) || 1.8,
       letterSpacing: Number(settings.letterSpacing) || 0,
-      theme: settings.theme || "light"
+      theme: settings.theme || "light",
+      displayMode: settings.displayMode || "paged",
+      tapInScroll: Boolean(settings.tapInScroll),
+      writingModePreference: settings.writingModePreference || "auto"
     },
     toc: Array.isArray(book.toc) ? book.toc : []
   };

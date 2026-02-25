@@ -11,12 +11,14 @@ const DEFAULT_SETTINGS = {
   letterSpacing: 0,
   theme: "light",
   displayMode: "paged",
-  tapInScroll: false
+  tapInScroll: false,
+  writingModePreference: "auto"
 };
 
 const DEFAULT_PROGRESS = {
   chapterId: null,
   scrollLeft: 0,
+  scrollTop: 0,
   pageIndex: 0
 };
 
@@ -139,6 +141,7 @@ function saveProgress(bookId, progress) {
   if (!bookId) return;
   const payload = {
     scrollLeft: Number(progress.scrollLeft) || 0,
+    scrollTop: Number(progress.scrollTop) || 0,
     pageIndex: Number(progress.pageIndex) || 0,
     chapterId: progress.chapterId || null,
     updatedAt: new Date().toISOString()

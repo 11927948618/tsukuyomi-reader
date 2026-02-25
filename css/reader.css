@@ -131,6 +131,16 @@ body.theme-dark .version-badge {
   letter-spacing: var(--letter-spacing);
 }
 
+.reader-content.force-vertical {
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+}
+
+.reader-content.force-horizontal {
+  writing-mode: horizontal-tb;
+  text-orientation: mixed;
+}
+
 .reader-content > * {
   scroll-snap-align: start;
 }
