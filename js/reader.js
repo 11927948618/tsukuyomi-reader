@@ -1,11 +1,12 @@
 import { qs, escapeHtml } from "./utils.js";
 
-export function initReader({ book, settings, progress, onBack, onExport, onUpdateSettings, onUpdateProgress }) {
+export function initReader({ book, settings, progress, onBack, onExport, onUpdateSettings, onSaveSettings, onUpdateProgress }) {
   const backBtn = qs("#backBtn");
   const printBtn = qs("#printBtn");
   const exportBtn = qs("#exportBtn");
   const settingsBtn = qs("#settingsBtn");
   const closeSettingsBtn = qs("#closeSettingsBtn");
+  const saveSettingsBtn = qs("#saveSettingsBtn");
   const settingsPanel = qs("#settingsPanel");
   const tocBtn = qs("#tocBtn");
   const tocPanel = qs("#tocPanel");
@@ -36,6 +37,10 @@ export function initReader({ book, settings, progress, onBack, onExport, onUpdat
   const applyPageWidth = () => {
     const width = readerViewport?.clientWidth || scrollContainer?.clientWidth || window.innerWidth;
     document.documentElement.style.setProperty("--page-width", `${width}px`);
+  };
+  const applyTopbarOffset = () => {
+    const height = topbar?.classList.contains("hidden") ? 0 : (topbar?.offsetHeight || 64);
+    document.documentElement.style.setProperty("--reader-topbar-height", `${height}px`);
   };
 
   backBtn.addEventListener("click", onBack);
@@ -93,8 +98,11 @@ export function initReader({ book, settings, progress, onBack, onExport, onUpdat
   bindPageTap(tapZone, scrollContainer);
   bindWheelScroll(readerViewport, scrollContainer);
   applyDisplayMode(displayMode, { tapInScroll });
+  applyTopbarOffset();
   window.addEventListener("resize", applyPageWidth);
   window.addEventListener("orientationchange", applyPageWidth);
+  window.addEventListener("resize", applyTopbarOffset);
+  window.addEventListener("orientationchange", applyTopbarOffset);
 
   function openOverlay() {
     if (!uiOverlay) return;
@@ -215,6 +223,14 @@ export function initReader({ book, settings, progress, onBack, onExport, onUpdat
     writingModeSelect?.addEventListener("change", () => {
       updateSettings({ writingModePreference: normalizeWritingModePreference(writingModeSelect.value) });
     });
+    saveSettingsBtn?.addEventListener("click", () => {
+      const next = getCurrentSettings();
+      onSaveSettings?.(next);
+      saveSettingsBtn.textContent = "保存しました";
+      window.setTimeout(() => {
+        if (saveSettingsBtn) saveSettingsBtn.textContent = "設定を保存";
+      }, 1200);
+    });
     displayModeRadios.forEach((radio) => {
       radio.addEventListener("change", () => {
         if (!radio.checked) return;
@@ -223,8 +239,8 @@ export function initReader({ book, settings, progress, onBack, onExport, onUpdat
     });
   }
 
-  function updateSettings(patch) {
-    const next = {
+  function getCurrentSettings(patch = {}) {
+    return {
       fontSize: Number(fontSizeRange.value) || 100,
       lineHeight: Number(lineHeightRange.value) || 1.8,
       letterSpacing: Number(letterSpacingRange.value) || 0,
@@ -233,6 +249,10 @@ export function initReader({ book, settings, progress, onBack, onExport, onUpdat
       writingModePreference: normalizeWritingModePreference(writingModeSelect?.value || writingModePreference),
       ...patch
     };
+  }
+
+  function updateSettings(patch) {
+    const next = getCurrentSettings(patch);
     applySettings(next);
     onUpdateSettings(next);
   }
@@ -466,6 +486,7 @@ export function initReader({ book, settings, progress, onBack, onExport, onUpdat
     }
     topbar.classList.toggle("hidden");
     document.body.classList.toggle("chrome-hidden", topbar.classList.contains("hidden"));
+    applyTopbarOffset();
   }
 
   function applyDisplayMode(mode, options = {}) {

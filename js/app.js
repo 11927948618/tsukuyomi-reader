@@ -12,7 +12,7 @@ const DEFAULT_SETTINGS = {
   theme: "light",
   displayMode: "paged",
   tapInScroll: false,
-  writingModePreference: "auto"
+  writingModePreference: "vertical"
 };
 
 const DEFAULT_PROGRESS = {
@@ -73,6 +73,10 @@ async function render(screen) {
         appState.settings = { ...appState.settings, ...nextSettings };
         applyTheme(appState.settings.theme);
       },
+      onSaveSettings: (nextSettings) => {
+        appState.settings = { ...appState.settings, ...nextSettings };
+        saveSettings(appState.currentBookId, appState.settings);
+      },
       onUpdateProgress: (nextProgress) => {
         appState.progress = { ...appState.progress, ...nextProgress };
         saveProgress(appState.currentBookId, appState.progress);
@@ -86,9 +90,11 @@ async function render(screen) {
 function applyBook(book) {
   appState.currentBook = book;
   appState.currentBookId = buildBookId(book);
+  const savedSettings = loadSettings(appState.currentBookId);
   appState.settings = {
     ...DEFAULT_SETTINGS,
-    ...(book.settings || book.meta?.settings || {})
+    ...(book.settings || book.meta?.settings || {}),
+    ...(savedSettings || {})
   };
   appState.progress = {
     ...DEFAULT_PROGRESS,
@@ -183,6 +189,29 @@ function registerServiceWorker() {
   if ("serviceWorker" in navigator) {
     navigator.serviceWorker.register("./sw.js").catch(() => {});
   }
+}
+
+function saveSettings(bookId, settings) {
+  if (!bookId) return;
+  const payload = {
+    fontSize: Number(settings.fontSize) || 100,
+    lineHeight: Number(settings.lineHeight) || 1.8,
+    letterSpacing: Number(settings.letterSpacing) || 0,
+    theme: settings.theme || "light",
+    displayMode: settings.displayMode || "paged",
+    tapInScroll: Boolean(settings.tapInScroll),
+    writingModePreference: settings.writingModePreference || "vertical",
+    updatedAt: new Date().toISOString()
+  };
+  const ok = saveJSON(`tsukiyomi:settings:${bookId}`, payload);
+  if (!ok) {
+    appState.startupMessage = "設定保存に失敗しました（容量不足の可能性）";
+  }
+}
+
+function loadSettings(bookId) {
+  if (!bookId) return null;
+  return loadJSON(`tsukiyomi:settings:${bookId}`, null);
 }
 
 function applyVersionBadge() {

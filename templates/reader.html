@@ -1,19 +1,21 @@
 <section class="screen reader-layout" id="readerScreen">
   <div class="reader-topbar" id="readerTopbar">
-    <div class="topbar-group">
-      <button class="button ghost" id="backBtn">Library</button>
-      <button class="button ghost" id="tocBtn">章</button>
-      <button class="button ghost" id="settingsBtn">設定</button>
+    <div class="topbar-controls">
+      <div class="topbar-group topbar-group-left">
+        <button class="button ghost" id="backBtn">Library</button>
+        <button class="button ghost" id="tocBtn">章</button>
+        <button class="button ghost" id="settingsBtn">設定</button>
+      </div>
+
+      <div class="topbar-group topbar-group-right">
+        <span id="versionBadge" class="version-badge" aria-hidden="true"></span>
+        <button class="button ghost" id="exportBtn">保存ZIP</button>
+        <input id="hScroll" class="h-scroll" type="range" min="0" value="0" step="1" aria-label="横スクロール" />
+        <button class="button" id="printBtn">Print</button>
+      </div>
     </div>
 
     <div class="reader-title" id="bookTitle">-</div>
-
-    <div class="topbar-group">
-      <span id="versionBadge" class="version-badge" aria-hidden="true"></span>
-      <button class="button ghost" id="exportBtn">保存ZIP</button>
-      <input id="hScroll" class="h-scroll" type="range" min="0" value="0" step="1" aria-label="横スクロール" />
-      <button class="button" id="printBtn">Print</button>
-    </div>
   </div>
 
   <div class="reader-main">
@@ -76,6 +78,11 @@
         <option value="vertical">vertical（縦書き）</option>
         <option value="horizontal">horizontal（横書き）</option>
       </select>
+    </div>
+
+    <div class="field">
+      <span class="label">設定</span>
+      <button class="button" id="saveSettingsBtn" type="button">設定を保存</button>
     </div>
 
     <div class="field">
