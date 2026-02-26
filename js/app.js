@@ -9,9 +9,11 @@ const DEFAULT_SETTINGS = {
   fontSize: 100,
   lineHeight: 1.8,
   letterSpacing: 0,
+  wrapWidthPercent: 100,
   theme: "light",
   displayMode: "paged",
   tapInScroll: false,
+  wheelPaging: false,
   writingModePreference: "vertical"
 };
 
@@ -197,9 +199,11 @@ function saveSettings(bookId, settings) {
     fontSize: Number(settings.fontSize) || 100,
     lineHeight: Number(settings.lineHeight) || 1.8,
     letterSpacing: Number(settings.letterSpacing) || 0,
+    wrapWidthPercent: Number(settings.wrapWidthPercent) || 100,
     theme: settings.theme || "light",
     displayMode: settings.displayMode || "paged",
     tapInScroll: Boolean(settings.tapInScroll),
+    wheelPaging: Boolean(settings.wheelPaging),
     writingModePreference: settings.writingModePreference || "vertical",
     updatedAt: new Date().toISOString()
   };

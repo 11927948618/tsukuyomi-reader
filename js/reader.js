@@ -22,21 +22,31 @@ export function initReader({ book, settings, progress, onBack, onExport, onUpdat
   const fontSizeRange = qs("#fontSizeRange");
   const lineHeightRange = qs("#lineHeightRange");
   const letterSpacingRange = qs("#letterSpacingRange");
+  const wrapWidthRange = qs("#wrapWidthRange");
   const themeSelect = qs("#themeSelect");
   const writingModeSelect = qs("#writingModeSelect");
+  const wheelPagingCheck = qs("#wheelPagingCheck");
   const reloadBtn = qs("#reloadBtn");
   const hardReloadBtn = qs("#hardReloadBtn");
   const displayModeRadios = Array.from(document.querySelectorAll('input[name="displayMode"]'));
   const scrollContainer = readerViewport || bookContent;
   let displayMode = normalizeDisplayMode(settings?.displayMode);
   let tapInScroll = Boolean(settings?.tapInScroll);
+  let wheelPaging = Boolean(settings?.wheelPaging);
+  let wrapWidthPercent = normalizeWrapWidthPercent(settings?.wrapWidthPercent);
   let writingModePreference = normalizeWritingModePreference(settings?.writingModePreference);
   let pageDirection = writingModePreference === "vertical" ? "rtl" : "ltr";
   let skipNextTap = false;
   const refreshHScroll = setupHScroll(scrollContainer);
   const applyPageWidth = () => {
     const width = readerViewport?.clientWidth || scrollContainer?.clientWidth || window.innerWidth;
-    document.documentElement.style.setProperty("--page-width", `${width}px`);
+    const wrapped = Math.round(width * (wrapWidthPercent / 100));
+    document.documentElement.style.setProperty("--page-width", `${Math.max(240, wrapped)}px`);
+  };
+  const applyViewportMetrics = () => {
+    const visualHeight = Number(window.visualViewport?.height) || Number(window.innerHeight) || 0;
+    if (!visualHeight) return;
+    document.documentElement.style.setProperty("--reader-viewport-height", `${Math.round(visualHeight)}px`);
   };
   const applyTopbarLayoutMode = () => {
     const controls = topbar?.querySelector(".topbar-controls");
@@ -122,11 +132,16 @@ export function initReader({ book, settings, progress, onBack, onExport, onUpdat
   bindPageTap(tapZone, scrollContainer);
   bindWheelScroll(readerViewport, scrollContainer);
   applyDisplayMode(displayMode, { tapInScroll });
+  applyViewportMetrics();
   reflowTopbar();
   window.addEventListener("resize", applyPageWidth);
   window.addEventListener("orientationchange", applyPageWidth);
+  window.addEventListener("resize", applyViewportMetrics);
+  window.addEventListener("orientationchange", applyViewportMetrics);
+  window.visualViewport?.addEventListener("resize", applyViewportMetrics);
   window.addEventListener("resize", reflowTopbar);
   window.addEventListener("orientationchange", reflowTopbar);
+  window.visualViewport?.addEventListener("resize", reflowTopbar);
 
   function openOverlay() {
     if (!uiOverlay) return;
@@ -219,16 +234,21 @@ export function initReader({ book, settings, progress, onBack, onExport, onUpdat
     applyTheme(nextSettings.theme || "light");
     displayMode = normalizeDisplayMode(nextSettings.displayMode);
     tapInScroll = Boolean(nextSettings.tapInScroll);
+    wheelPaging = Boolean(nextSettings.wheelPaging);
+    wrapWidthPercent = normalizeWrapWidthPercent(nextSettings.wrapWidthPercent);
     writingModePreference = normalizeWritingModePreference(nextSettings.writingModePreference);
     applyWritingModePreference(writingModePreference);
     updatePageDirection({ preservePosition: true });
+    applyPageWidth();
     applyDisplayMode(displayMode, { tapInScroll });
 
     fontSizeRange.value = String(nextSettings.fontSize ?? 100);
     lineHeightRange.value = String(nextSettings.lineHeight ?? 1.8);
     letterSpacingRange.value = String(nextSettings.letterSpacing ?? 0);
+    if (wrapWidthRange) wrapWidthRange.value = String(wrapWidthPercent);
     themeSelect.value = nextSettings.theme || "light";
     if (writingModeSelect) writingModeSelect.value = writingModePreference;
+    if (wheelPagingCheck) wheelPagingCheck.checked = wheelPaging;
     displayModeRadios.forEach((radio) => {
       radio.checked = radio.value === displayMode;
     });
@@ -243,9 +263,15 @@ export function initReader({ book, settings, progress, onBack, onExport, onUpdat
     fontSizeRange.addEventListener("input", () => updateSettings({ fontSize: Number(fontSizeRange.value) }));
     lineHeightRange.addEventListener("input", () => updateSettings({ lineHeight: Number(lineHeightRange.value) }));
     letterSpacingRange.addEventListener("input", () => updateSettings({ letterSpacing: Number(letterSpacingRange.value) }));
+    wrapWidthRange?.addEventListener("input", () => {
+      updateSettings({ wrapWidthPercent: normalizeWrapWidthPercent(wrapWidthRange.value) });
+    });
     themeSelect.addEventListener("change", () => updateSettings({ theme: themeSelect.value }));
     writingModeSelect?.addEventListener("change", () => {
       updateSettings({ writingModePreference: normalizeWritingModePreference(writingModeSelect.value) });
+    });
+    wheelPagingCheck?.addEventListener("change", () => {
+      updateSettings({ wheelPaging: Boolean(wheelPagingCheck.checked) });
     });
     saveSettingsBtn?.addEventListener("click", () => {
       const next = getCurrentSettings();
@@ -268,8 +294,10 @@ export function initReader({ book, settings, progress, onBack, onExport, onUpdat
       fontSize: Number(fontSizeRange.value) || 100,
       lineHeight: Number(lineHeightRange.value) || 1.8,
       letterSpacing: Number(letterSpacingRange.value) || 0,
+      wrapWidthPercent: normalizeWrapWidthPercent(wrapWidthRange?.value),
       theme: themeSelect.value || "light",
       displayMode: normalizeDisplayMode(displayModeRadios.find((radio) => radio.checked)?.value || displayMode),
+      wheelPaging: Boolean(wheelPagingCheck?.checked),
       writingModePreference: normalizeWritingModePreference(writingModeSelect?.value || writingModePreference),
       ...patch
     };
@@ -351,20 +379,35 @@ export function initReader({ book, settings, progress, onBack, onExport, onUpdat
     const slider = hScroll;
     if (!slider || !content) return;
 
+    const toSliderValue = (logical, max) => {
+      if (pageDirection === "rtl") return max - logical;
+      return logical;
+    };
+
+    const fromSliderValue = (raw, max) => {
+      if (pageDirection === "rtl") return max - raw;
+      return raw;
+    };
+
     const refresh = () => {
       const max = getMaxLeft(content);
+      const logical = toLogicalLeft(content, content.scrollLeft, pageDirection);
       slider.max = String(max);
-      slider.value = String(toLogicalLeft(content, content.scrollLeft, pageDirection));
+      slider.value = String(toSliderValue(logical, max));
       slider.disabled = max === 0;
     };
 
     slider.addEventListener("input", () => {
-      const logical = Number(slider.value) || 0;
+      const max = Number(slider.max) || 0;
+      const raw = Number(slider.value) || 0;
+      const logical = fromSliderValue(raw, max);
       content.scrollLeft = toPhysicalLeft(content, logical, pageDirection);
     });
 
     content.addEventListener("scroll", () => {
-      slider.value = String(toLogicalLeft(content, content.scrollLeft, pageDirection));
+      const max = Number(slider.max) || getMaxLeft(content);
+      const logical = toLogicalLeft(content, content.scrollLeft, pageDirection);
+      slider.value = String(toSliderValue(logical, max));
     });
 
     window.addEventListener("resize", refresh);
@@ -474,17 +517,24 @@ export function initReader({ book, settings, progress, onBack, onExport, onUpdat
       return Boolean(target.closest("button, input, select, textarea, a"));
     };
 
-    const showTopbar = (y) => {
-      if (y >= 72 || !topbar.classList.contains("hidden")) return;
-      topbar.classList.remove("hidden");
-      document.body.classList.remove("chrome-hidden");
-      skipNextTap = true;
+    const toggleTopbarAtTopEdge = (y) => {
+      if (y >= 72) return;
+      if (topbar.classList.contains("hidden")) {
+        topbar.classList.remove("hidden");
+        document.body.classList.remove("chrome-hidden");
+        skipNextTap = true;
+        reflowTopbar();
+        return;
+      }
+      topbar.classList.add("hidden");
+      document.body.classList.add("chrome-hidden");
+      reflowTopbar();
     };
 
     if (window.PointerEvent) {
       tapEl.addEventListener("pointerup", (event) => {
         if (shouldIgnore(event.target)) return;
-        showTopbar(event.clientY);
+        toggleTopbarAtTopEdge(event.clientY);
       });
       return;
     }
@@ -495,7 +545,7 @@ export function initReader({ book, settings, progress, onBack, onExport, onUpdat
         if (shouldIgnore(event.target)) return;
         const touch = event.changedTouches[0];
         if (!touch) return;
-        showTopbar(touch.clientY);
+        toggleTopbarAtTopEdge(touch.clientY);
       },
       { passive: true }
     );
@@ -530,11 +580,32 @@ export function initReader({ book, settings, progress, onBack, onExport, onUpdat
 
   function bindWheelScroll(viewport, scrollEl) {
     if (!viewport || !scrollEl) return;
+    const isWindows = /windows/i.test(navigator.userAgent || "");
+    let wheelLock = false;
 
     viewport.addEventListener(
       "wheel",
       (event) => {
         if (displayMode === "scrolly") return;
+        if (isWindows && wheelPaging) {
+          const axisDelta = Math.abs(event.deltaY) >= Math.abs(event.deltaX) ? event.deltaY : event.deltaX;
+          if (Math.abs(axisDelta) < 1) return;
+          if (wheelLock) {
+            event.preventDefault();
+            return;
+          }
+          wheelLock = true;
+          window.setTimeout(() => {
+            wheelLock = false;
+          }, 160);
+
+          const step = scrollEl.clientWidth || 1;
+          const signed = axisDelta > 0 ? step : -step;
+          const physicalDelta = pageDirection === "rtl" ? -signed : signed;
+          pageBy(scrollEl, physicalDelta, displayMode);
+          event.preventDefault();
+          return;
+        }
         const delta = Math.abs(event.deltaY) >= Math.abs(event.deltaX) ? event.deltaY : event.deltaX;
         scrollEl.scrollLeft += pageDirection === "rtl" ? -delta : delta;
         event.preventDefault();
@@ -618,6 +689,12 @@ function normalizeWritingModePreference(mode) {
   if (raw === "vertical") return "vertical";
   if (raw === "horizontal") return "horizontal";
   return "auto";
+}
+
+function normalizeWrapWidthPercent(value) {
+  const raw = Number(value);
+  if (!Number.isFinite(raw)) return 100;
+  return Math.max(75, Math.min(100, Math.round(raw)));
 }
 
 function normalizeDisplayMode(mode) {
