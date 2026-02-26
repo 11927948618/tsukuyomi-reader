@@ -49,6 +49,16 @@ body.chrome-hidden .reader-layout {
   justify-content: flex-end;
 }
 
+body.topbar-auto-wrap .topbar-controls {
+  flex-wrap: wrap;
+  overflow-x: visible;
+}
+
+body.topbar-auto-wrap .topbar-group-right {
+  margin-left: 0;
+  justify-content: flex-start;
+}
+
 .version-badge {
   font-size: 11px;
   opacity: 0.65;

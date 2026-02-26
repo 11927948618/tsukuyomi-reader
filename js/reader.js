@@ -38,9 +38,33 @@ export function initReader({ book, settings, progress, onBack, onExport, onUpdat
     const width = readerViewport?.clientWidth || scrollContainer?.clientWidth || window.innerWidth;
     document.documentElement.style.setProperty("--page-width", `${width}px`);
   };
+  const applyTopbarLayoutMode = () => {
+    const controls = topbar?.querySelector(".topbar-controls");
+    if (!topbar || !controls) return;
+
+    const isWindows = /windows/i.test(navigator.userAgent || "");
+    if (!isWindows) {
+      document.body.classList.remove("topbar-auto-wrap");
+      return;
+    }
+
+    const taskbarRowPx = 48;
+    const reservePx = taskbarRowPx * 2;
+    const viewportH = Number(window.innerHeight) || 0;
+    const availH = Number(window.screen?.availHeight) || viewportH;
+    const usableH = Math.max(0, Math.min(viewportH, availH) - reservePx);
+
+    const overflow = controls.scrollWidth > controls.clientWidth + 2;
+    const shouldWrap = overflow || usableH < 620 || window.innerWidth < 980;
+    document.body.classList.toggle("topbar-auto-wrap", shouldWrap);
+  };
   const applyTopbarOffset = () => {
     const height = topbar?.classList.contains("hidden") ? 0 : (topbar?.offsetHeight || 64);
     document.documentElement.style.setProperty("--reader-topbar-height", `${height}px`);
+  };
+  const reflowTopbar = () => {
+    applyTopbarLayoutMode();
+    applyTopbarOffset();
   };
 
   backBtn.addEventListener("click", onBack);
@@ -98,11 +122,11 @@ export function initReader({ book, settings, progress, onBack, onExport, onUpdat
   bindPageTap(tapZone, scrollContainer);
   bindWheelScroll(readerViewport, scrollContainer);
   applyDisplayMode(displayMode, { tapInScroll });
-  applyTopbarOffset();
+  reflowTopbar();
   window.addEventListener("resize", applyPageWidth);
   window.addEventListener("orientationchange", applyPageWidth);
-  window.addEventListener("resize", applyTopbarOffset);
-  window.addEventListener("orientationchange", applyTopbarOffset);
+  window.addEventListener("resize", reflowTopbar);
+  window.addEventListener("orientationchange", reflowTopbar);
 
   function openOverlay() {
     if (!uiOverlay) return;
@@ -486,7 +510,7 @@ export function initReader({ book, settings, progress, onBack, onExport, onUpdat
     }
     topbar.classList.toggle("hidden");
     document.body.classList.toggle("chrome-hidden", topbar.classList.contains("hidden"));
-    applyTopbarOffset();
+    reflowTopbar();
   }
 
   function applyDisplayMode(mode, options = {}) {
