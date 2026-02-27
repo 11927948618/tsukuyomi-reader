@@ -130,7 +130,7 @@ export function initReader({ book, settings, progress, onBack, onExport, onUpdat
   bindProgressTracking();
   bindTopEdgeRevealTap(tapZone);
   bindPageTap(tapZone, scrollContainer);
-  bindWheelScroll(readerViewport, scrollContainer);
+  bindWheelScroll(readerViewport, scrollContainer, tapZone);
   applyDisplayMode(displayMode, { tapInScroll });
   applyViewportMetrics();
   reflowTopbar();
@@ -369,8 +369,13 @@ export function initReader({ book, settings, progress, onBack, onExport, onUpdat
             ? Number(nextProgress.pageIndex) * (scrollContainer.clientWidth || 1)
             : Number(nextProgress?.scrollLeft);
         const logicalSafe = Number.isFinite(logical) ? logical : 0;
-        scrollContainer.scrollLeft = toPhysicalLeft(scrollContainer, logicalSafe, pageDirection);
-        if (typeof refresh === "function") refresh();
+        const applyHorizontalProgress = () => {
+          scrollContainer.scrollLeft = toPhysicalLeft(scrollContainer, logicalSafe, pageDirection);
+          if (typeof refresh === "function") refresh();
+        };
+
+        applyHorizontalProgress();
+        requestAnimationFrame(applyHorizontalProgress);
       });
     });
   }
@@ -578,14 +583,19 @@ export function initReader({ book, settings, progress, onBack, onExport, onUpdat
     }
   }
 
-  function bindWheelScroll(viewport, scrollEl) {
+  function bindWheelScroll(viewport, scrollEl, captureEl) {
     if (!viewport || !scrollEl) return;
     const isWindows = /windows/i.test(navigator.userAgent || "");
     let wheelLock = false;
+    const wheelTarget = captureEl || viewport;
 
-    viewport.addEventListener(
+    wheelTarget.addEventListener(
       "wheel",
       (event) => {
+        const target = event.target;
+        if (target && typeof target.closest === "function") {
+          if (target.closest("#settingsPanel, #tocPanel")) return;
+        }
         if (displayMode === "scrolly") return;
         if (isWindows && wheelPaging) {
           const axisDelta = Math.abs(event.deltaY) >= Math.abs(event.deltaX) ? event.deltaY : event.deltaX;
@@ -685,7 +695,7 @@ function toPhysicalLeft(el, logicalLeft, direction = "rtl") {
 }
 
 function normalizeWritingModePreference(mode) {
-  const raw = String(mode || "auto").toLowerCase();
+  const raw = String(mode || "vertical").toLowerCase();
   if (raw === "vertical") return "vertical";
   if (raw === "horizontal") return "horizontal";
   return "auto";
