@@ -29,7 +29,8 @@ const appState = {
   currentBook: null,
   currentBookId: null,
   settings: { ...DEFAULT_SETTINGS },
-  progress: { ...DEFAULT_PROGRESS }
+  progress: { ...DEFAULT_PROGRESS },
+  openSettingsOnReader: false
 };
 
 async function loadTemplate(name) {
@@ -49,7 +50,19 @@ async function render(screen) {
         render("reader");
       },
       onExport: () => exportCurrentBook(),
-      getCurrentBook: () => appState.currentBook
+      getCurrentBook: () => appState.currentBook,
+      onOpenReaderSettings: () => {
+        if (!appState.currentBook) {
+          const status = qs("#statusMessage");
+          if (status) {
+            status.textContent = "先に本を読み込んでください";
+            status.className = "status error";
+          }
+          return;
+        }
+        appState.openSettingsOnReader = true;
+        render("reader");
+      }
     });
     if (appState.startupMessage) {
       const status = qs("#statusMessage");
@@ -69,6 +82,7 @@ async function render(screen) {
       book: appState.currentBook,
       settings: appState.settings,
       progress: appState.progress,
+      openSettingsOnStart: Boolean(appState.openSettingsOnReader),
       onBack: () => render("library"),
       onExport: () => exportCurrentBook(),
       onUpdateSettings: (nextSettings) => {
@@ -84,6 +98,7 @@ async function render(screen) {
         saveProgress(appState.currentBookId, appState.progress);
       }
     });
+    appState.openSettingsOnReader = false;
     persistLastOpened();
     queueVersionBadge();
   }

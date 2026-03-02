@@ -251,17 +251,12 @@ body.mode-scrolly .reader-content {
   background: var(--panel);
   border-left: 1px solid var(--border);
   box-shadow: -10px 0 30px rgba(0, 0, 0, 0.25);
-  padding: 14px 14px calc(20px + env(safe-area-inset-bottom));
   transform: translateX(100%);
   transition: transform 0.2s ease;
   z-index: 950;
   display: grid;
-  gap: 10px;
-  align-content: start;
-  overflow-y: auto;
-  overflow-x: hidden;
-  overscroll-behavior: contain;
-  -webkit-overflow-scrolling: touch;
+  grid-template-rows: auto minmax(0, 1fr);
+  overflow: hidden;
 }
 
 .settings-panel.open {
@@ -276,8 +271,24 @@ body.mode-scrolly .reader-content {
   top: 0;
   background: var(--panel);
   z-index: 1;
-  padding: 4px 0 10px;
+  padding: 4px 14px 10px;
   border-bottom: 1px solid var(--border);
+}
+
+.settings-scroll {
+  display: grid;
+  gap: 10px;
+  align-content: start;
+  padding: 0 14px calc(20px + env(safe-area-inset-bottom));
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+}
+
+body.settings-open .tap-zone {
+  pointer-events: none;
 }
 
 .settings-panel .field {
@@ -358,14 +369,21 @@ body {
 
   .settings-panel {
     width: min(340px, 96vw);
-    padding: 12px 12px max(12px, env(safe-area-inset-bottom));
+  }
+
+  .settings-panel > header {
+    padding: 12px 12px 8px;
+  }
+
+  .settings-scroll {
+    padding: 0 12px max(12px, env(safe-area-inset-bottom));
     gap: 8px;
   }
 }
 
 @media (max-width: 420px) {
-  .settings-panel {
-    padding: 14px;
+  .settings-scroll {
+    padding: 0 14px 14px;
     gap: 10px;
   }
 }

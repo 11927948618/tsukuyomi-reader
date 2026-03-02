@@ -3,12 +3,15 @@ import { normalizeTxtToBook } from "./normalize-txt.js";
 import { normalizeEpubToBook } from "./normalize-epub.js";
 import { importZipToBook } from "./storage.js";
 
-export function initLibrary({ onOpenBook, onExport, getCurrentBook }) {
+export function initLibrary({ onOpenBook, onExport, getCurrentBook, onOpenReaderSettings }) {
   const txtInput = qs("#txtInput");
   const txtEncoding = qs("#txtEncoding");
   const htmlInput = qs("#htmlInput");
   const zipInput = qs("#zipInput");
   const exportBtn = qs("#exportBtn");
+  const openReaderSettingsBtn = qs("#openReaderSettingsBtn");
+  const libraryReloadBtn = qs("#libraryReloadBtn");
+  const libraryHardReloadBtn = qs("#libraryHardReloadBtn");
   const statusMessage = qs("#statusMessage");
   const debugDecode = qs("#debugDecode");
 
@@ -18,6 +21,27 @@ export function initLibrary({ onOpenBook, onExport, getCurrentBook }) {
   };
 
   exportBtn.disabled = !getCurrentBook();
+
+  openReaderSettingsBtn?.addEventListener("click", () => {
+    onOpenReaderSettings?.();
+  });
+
+  libraryReloadBtn?.addEventListener("click", () => location.reload());
+  libraryHardReloadBtn?.addEventListener("click", async () => {
+    try {
+      if ("caches" in window) {
+        const keys = await caches.keys();
+        const targets = keys.filter((key) => /tsukuyomi|tsukuyomireader/i.test(key));
+        await Promise.all(targets.map((key) => caches.delete(key)));
+      }
+      if ("serviceWorker" in navigator) {
+        const regs = await navigator.serviceWorker.getRegistrations();
+        await Promise.all(regs.map((reg) => reg.unregister()));
+      }
+    } finally {
+      location.reload();
+    }
+  });
 
   exportBtn.addEventListener("click", () => {
     const book = getCurrentBook();

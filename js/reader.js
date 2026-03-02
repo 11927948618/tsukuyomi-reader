@@ -1,6 +1,16 @@
 import { qs, escapeHtml } from "./utils.js";
 
-export function initReader({ book, settings, progress, onBack, onExport, onUpdateSettings, onSaveSettings, onUpdateProgress }) {
+export function initReader({
+  book,
+  settings,
+  progress,
+  openSettingsOnStart = false,
+  onBack,
+  onExport,
+  onUpdateSettings,
+  onSaveSettings,
+  onUpdateProgress
+}) {
   const backBtn = qs("#backBtn");
   const printBtn = qs("#printBtn");
   const exportBtn = qs("#exportBtn");
@@ -143,6 +153,9 @@ export function initReader({ book, settings, progress, onBack, onExport, onUpdat
   window.addEventListener("resize", reflowTopbar);
   window.addEventListener("orientationchange", reflowTopbar);
   window.visualViewport?.addEventListener("resize", reflowTopbar);
+  if (openSettingsOnStart) {
+    requestAnimationFrame(() => toggleSettings(true));
+  }
 
   function openOverlay() {
     if (!uiOverlay) return;
@@ -183,10 +196,12 @@ export function initReader({ book, settings, progress, onBack, onExport, onUpdat
     if (open) {
       settingsPanel.classList.add("open");
       settingsPanel.setAttribute("aria-hidden", "false");
+      document.body.classList.add("settings-open");
       openOverlay();
     } else {
       settingsPanel.classList.remove("open");
       settingsPanel.setAttribute("aria-hidden", "true");
+      document.body.classList.remove("settings-open");
       if (!tocPanel?.classList.contains("open")) closeOverlay();
     }
   }
