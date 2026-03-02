@@ -1,7 +1,7 @@
 <section class="screen" id="libraryScreen">
   <div class="container">
     <h1>Tsukuyomi Reader</h1>
-    <p class="status">TXT / HTML / 保存ZIP を読み込みます。</p>
+    <p class="status">TXT / EPUB / HTML / バックアップZIP を読み込みます。</p>
 
     <div class="grid cols-2" style="margin-top: 20px;">
       <div class="card">
@@ -14,8 +14,8 @@
 
         <div style="height: 12px;"></div>
 
-        <label class="label" for="txtInput">TXT読み込み</label>
-        <input class="input" id="txtInput" type="file" accept=".txt,text/plain" />
+        <label class="label" for="txtInput">TXT / EPUB読み込み</label>
+        <input class="input" id="txtInput" type="file" accept=".txt,.epub,text/plain,application/epub+zip" />
       </div>
 
       <div class="card">
@@ -24,13 +24,13 @@
       </div>
 
       <div class="card">
-        <label class="label" for="zipInput">保存ZIP読み込み</label>
+        <label class="label" for="zipInput">バックアップZIP読み込み</label>
         <input class="input" id="zipInput" type="file" accept=".zip,application/zip" />
       </div>
 
       <div class="card">
-        <p class="label">保存ZIPを書き出し</p>
-        <button class="button" id="exportBtn">現在の本を保存ZIPとして書き出し</button>
+        <p class="label">バックアップZIPを書き出し</p>
+        <button class="button" id="exportBtn">現在の本をバックアップZIPとして書き出し</button>
       </div>
 
       <div class="card">

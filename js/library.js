@@ -1,5 +1,6 @@
 import { qs, readFileAsText, safeText } from "./utils.js";
 import { normalizeTxtToBook } from "./normalize-txt.js";
+import { normalizeEpubToBook } from "./normalize-epub.js";
 import { importZipToBook } from "./storage.js";
 
 export function initLibrary({ onOpenBook, onExport, getCurrentBook }) {
@@ -30,6 +31,22 @@ export function initLibrary({ onOpenBook, onExport, getCurrentBook }) {
   txtInput.addEventListener("change", async (event) => {
     const file = event.target.files[0];
     if (!file) return;
+    const name = String(file.name || "").toLowerCase();
+    const isEpub = name.endsWith(".epub") || file.type === "application/epub+zip";
+
+    if (isEpub) {
+      setStatus("EPUB読み込み中...");
+      try {
+        const book = await normalizeEpubToBook(file);
+        if (debugDecode) debugDecode.textContent = "";
+        setStatus("EPUB読み込み完了", "ok");
+        onOpenBook(book);
+      } catch (err) {
+        setStatus(err.message || "読み込みに失敗しました", "error");
+      }
+      return;
+    }
+
     setStatus("TXT読み込み中...");
     try {
       const mode = txtEncoding ? txtEncoding.value : "auto";
@@ -61,10 +78,10 @@ export function initLibrary({ onOpenBook, onExport, getCurrentBook }) {
   zipInput.addEventListener("change", async (event) => {
     const file = event.target.files[0];
     if (!file) return;
-    setStatus("ZIP読み込み中...");
+    setStatus("バックアップZIP読み込み中...");
     try {
       const book = await importZipToBook(file);
-      setStatus("ZIP読み込み完了", "ok");
+      setStatus("バックアップZIP読み込み完了", "ok");
       onOpenBook(book);
     } catch (err) {
       setStatus(err.message || "読み込みに失敗しました", "error");
