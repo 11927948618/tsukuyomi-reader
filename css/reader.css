@@ -78,6 +78,19 @@ body.theme-dark .version-badge {
   vertical-align: middle;
 }
 
+.h-scroll-wrap {
+  display: grid;
+  gap: 2px;
+}
+
+.h-scroll-page-info {
+  font-size: 11px;
+  line-height: 1.2;
+  color: var(--muted);
+  text-align: center;
+  white-space: nowrap;
+}
+
 .reader-main {
   display: grid;
   grid-template-columns: 1fr;
@@ -318,7 +331,7 @@ body {
 }
 
 @media (pointer: coarse) {
-  .h-scroll {
+  .h-scroll-wrap {
     display: none;
   }
 }

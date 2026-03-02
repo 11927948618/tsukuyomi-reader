@@ -19,6 +19,7 @@ export function initReader({ book, settings, progress, onBack, onExport, onUpdat
   const topbar = qs("#readerTopbar");
   const tapZone = qs("#tapZone");
   const hScroll = qs("#hScroll");
+  const hScrollPageInfo = qs("#hScrollPageInfo");
   const fontSizeRange = qs("#fontSizeRange");
   const lineHeightRange = qs("#lineHeightRange");
   const letterSpacingRange = qs("#letterSpacingRange");
@@ -382,6 +383,7 @@ export function initReader({ book, settings, progress, onBack, onExport, onUpdat
 
   function setupHScroll(content) {
     const slider = hScroll;
+    const pageInfo = hScrollPageInfo;
     if (!slider || !content) return;
 
     const toSliderValue = (logical, max) => {
@@ -394,12 +396,21 @@ export function initReader({ book, settings, progress, onBack, onExport, onUpdat
       return raw;
     };
 
+    const updatePageInfo = (logical, max) => {
+      if (!pageInfo) return;
+      const pageSize = content.clientWidth || 1;
+      const totalPages = Math.max(1, Math.floor(max / pageSize) + 1);
+      const currentPage = Math.min(totalPages, Math.max(1, Math.round(logical / pageSize) + 1));
+      pageInfo.textContent = `${currentPage} / ${totalPages}`;
+    };
+
     const refresh = () => {
       const max = getMaxLeft(content);
       const logical = toLogicalLeft(content, content.scrollLeft, pageDirection);
       slider.max = String(max);
       slider.value = String(toSliderValue(logical, max));
       slider.disabled = max === 0;
+      updatePageInfo(logical, max);
     };
 
     slider.addEventListener("input", () => {
@@ -407,12 +418,14 @@ export function initReader({ book, settings, progress, onBack, onExport, onUpdat
       const raw = Number(slider.value) || 0;
       const logical = fromSliderValue(raw, max);
       content.scrollLeft = toPhysicalLeft(content, logical, pageDirection);
+      updatePageInfo(logical, max);
     });
 
     content.addEventListener("scroll", () => {
       const max = Number(slider.max) || getMaxLeft(content);
       const logical = toLogicalLeft(content, content.scrollLeft, pageDirection);
       slider.value = String(toSliderValue(logical, max));
+      updatePageInfo(logical, max);
     });
 
     window.addEventListener("resize", refresh);
