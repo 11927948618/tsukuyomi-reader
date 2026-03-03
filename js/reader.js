@@ -291,12 +291,7 @@ export function initReader({
       updateSettings({ wheelPaging: Boolean(wheelPagingCheck.checked) });
     });
     applyGenkoPresetBtn?.addEventListener("click", () => {
-      updateSettings({
-        fontSize: 100,
-        lineHeight: 1.8,
-        letterSpacing: 0,
-        wrapWidthPercent: 88
-      });
+      updateSettings(buildGenkoPresetFromCurrent());
       applyGenkoPresetBtn.textContent = "適用しました";
       window.setTimeout(() => {
         if (applyGenkoPresetBtn) applyGenkoPresetBtn.textContent = "400字目安を適用";
@@ -336,6 +331,38 @@ export function initReader({
     const next = getCurrentSettings(patch);
     applySettings(next);
     onUpdateSettings(next);
+  }
+
+  function buildGenkoPresetFromCurrent() {
+    const viewportWidth = readerViewport?.clientWidth || scrollContainer?.clientWidth || window.innerWidth || 1;
+    const viewportHeight = readerViewport?.clientHeight || scrollContainer?.clientHeight || window.innerHeight || 1;
+    const fontSize = Number(fontSizeRange.value) || 100;
+    const lineHeightNow = Number(lineHeightRange.value) || 1.8;
+    const letterSpacing = Number(letterSpacingRange.value) || 0;
+    const mode = normalizeWritingModePreference(writingModeSelect?.value || writingModePreference);
+
+    const fontPx = (fontSize / 100) * 16;
+    const targetLineHeightRaw = viewportHeight / (20 * Math.max(10, fontPx));
+    const targetLineHeight = clamp(targetLineHeightRaw, 1.4, 2.4);
+    const naturalLineHeight = clamp(
+      targetLineHeight,
+      Math.max(1.4, lineHeightNow - 0.35),
+      Math.min(2.4, lineHeightNow + 0.35)
+    );
+
+    const charAdvance =
+      mode === "horizontal"
+        ? Math.max(6, fontPx * 0.95 + letterSpacing)
+        : Math.max(6, fontPx * naturalLineHeight);
+    const targetWrapPx = charAdvance * 20;
+    const wrapWidthPercent = normalizeWrapWidthPercent((targetWrapPx / viewportWidth) * 100);
+
+    return {
+      fontSize,
+      lineHeight: Number(naturalLineHeight.toFixed(1)),
+      letterSpacing,
+      wrapWidthPercent
+    };
   }
 
   function bindProgressTracking() {
@@ -745,7 +772,7 @@ function normalizeWritingModePreference(mode) {
 function normalizeWrapWidthPercent(value) {
   const raw = Number(value);
   if (!Number.isFinite(raw)) return 100;
-  return Math.max(75, Math.min(100, Math.round(raw)));
+  return Math.max(60, Math.min(130, Math.round(raw)));
 }
 
 function normalizeDisplayMode(mode) {
@@ -754,4 +781,8 @@ function normalizeDisplayMode(mode) {
   if (raw === "scrollx" || raw === "scroll-x") return "scrollx";
   if (raw === "scrolly" || raw === "scroll-y" || raw === "scroll" || raw === "vertical") return "scrolly";
   return "paged";
+}
+
+function clamp(value, min, max) {
+  return Math.max(min, Math.min(max, value));
 }
