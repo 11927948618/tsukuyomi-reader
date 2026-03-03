@@ -309,6 +309,24 @@ body.settings-open .tap-zone {
   gap: 4px;
 }
 
+.range-with-guide {
+  position: relative;
+  padding-top: 16px;
+}
+
+.range-guide-marker {
+  position: absolute;
+  top: 0;
+  left: var(--genko-guide-percent, 100%);
+  transform: translateX(-50%);
+  font-size: 11px;
+  line-height: 1.1;
+  color: var(--muted);
+  white-space: nowrap;
+  pointer-events: none;
+  user-select: none;
+}
+
 .settings-panel input[type="range"] {
   width: 100%;
 }

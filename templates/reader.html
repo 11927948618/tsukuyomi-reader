@@ -62,7 +62,10 @@
 
       <div class="field">
         <label class="label" for="wrapWidthRange">折り返し位置（ページ幅）</label>
-        <input id="wrapWidthRange" type="range" min="75" max="100" step="1" />
+        <div class="range-with-guide">
+          <input id="wrapWidthRange" type="range" min="75" max="100" step="1" />
+          <span class="range-guide-marker" id="genkoGuideMarker" aria-hidden="true">▲ 20字×20行 目安</span>
+        </div>
       </div>
 
       <div class="field">
