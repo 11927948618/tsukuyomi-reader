@@ -25,6 +25,7 @@ export async function normalizeEpubToBook(file) {
   const opfDoc = parseXml(opfText, "OPF");
   const opfDir = dirname(opfPath);
   const opfInfo = parseOpf(opfDoc, opfDir);
+  const blobUrlCache = new Map();
 
   if (opfInfo.spine.length === 0) {
     throw new Error("EPUBのspineが見つかりません");
@@ -41,6 +42,7 @@ export async function normalizeEpubToBook(file) {
     const chapterText = await readTextFromZip(zip, chapterPath);
     const chapterDoc = parseHtml(chapterText);
     sanitizeChapter(chapterDoc);
+    await rewriteChapterAssets(chapterDoc, chapterPath, zip, opfInfo.mediaTypeByPath, blobUrlCache);
 
     const chapterId = `chapter-${String(chapters.length + 1).padStart(3, "0")}`;
     const fallbackTitle = filenameStem(item.href) || `章${chapters.length + 1}`;
@@ -84,6 +86,9 @@ export async function normalizeEpubToBook(file) {
     toc = await buildTocFromNcx(zip, opfInfo.ncxPath, chapterPathToId);
   }
   if (toc.length === 0) {
+    toc = buildTocFromHeadings(chapters);
+  }
+  if (toc.length === 0) {
     toc = chapters.map((chapter) => ({ title: chapter.title, chapterId: chapter.id }));
   }
 
@@ -97,6 +102,10 @@ export async function normalizeEpubToBook(file) {
     toc,
     meta: null
   };
+}
+
+export async function normalizeEpub(file) {
+  return normalizeEpubToBook(file);
 }
 
 async function findOpfPath(zip) {
@@ -124,15 +133,19 @@ function parseOpf(opfDoc, opfDir) {
   const spineNode = getFirstElementByLocalName(opfDoc, "spine");
 
   const manifest = new Map();
+  const mediaTypeByPath = new Map();
   for (const item of manifestItems) {
     const id = item.getAttribute("id");
     const href = item.getAttribute("href");
     if (!id || !href) continue;
-    manifest.set(id, {
+    const normalizedHref = normalizePath(resolvePath(opfDir, href));
+    const entry = {
       href,
       mediaType: item.getAttribute("media-type") || "",
       properties: item.getAttribute("properties") || ""
-    });
+    };
+    manifest.set(id, entry);
+    mediaTypeByPath.set(normalizedHref, entry.mediaType);
   }
 
   const spine = [];
@@ -166,7 +179,7 @@ function parseOpf(opfDoc, opfDir) {
   const titleNode = metadataTitles[0] || null;
   const title = titleNode ? titleNode.textContent || "" : "";
 
-  return { title, manifest, spine, navPath, ncxPath };
+  return { title, manifest, spine, navPath, ncxPath, mediaTypeByPath };
 }
 
 async function buildTocFromNav(zip, navPath, chapterPathToId) {
@@ -274,6 +287,82 @@ function sanitizeChapter(doc) {
   });
 }
 
+async function rewriteChapterAssets(doc, chapterPath, zip, mediaTypeByPath, blobUrlCache) {
+  const body = doc.body || doc.documentElement;
+  if (!body) return;
+
+  const replaceAttr = async (el, attrName) => {
+    const raw = (el.getAttribute(attrName) || "").trim();
+    if (!raw) return;
+    const rewritten = await toBlobUrl(raw, chapterPath, zip, mediaTypeByPath, blobUrlCache);
+    if (rewritten) {
+      el.setAttribute(attrName, rewritten);
+    }
+  };
+
+  const replaceSrcset = async (el) => {
+    const raw = (el.getAttribute("srcset") || "").trim();
+    if (!raw) return;
+    const parts = raw
+      .split(",")
+      .map((part) => part.trim())
+      .filter(Boolean);
+    const out = [];
+    for (const part of parts) {
+      const [urlToken, descriptor = ""] = part.split(/\s+/, 2);
+      const rewritten = await toBlobUrl(urlToken, chapterPath, zip, mediaTypeByPath, blobUrlCache);
+      if (!rewritten) continue;
+      out.push(descriptor ? `${rewritten} ${descriptor}` : rewritten);
+    }
+    if (out.length > 0) {
+      el.setAttribute("srcset", out.join(", "));
+    } else {
+      el.removeAttribute("srcset");
+    }
+  };
+
+  for (const img of Array.from(body.querySelectorAll("img[src]"))) {
+    await replaceAttr(img, "src");
+  }
+
+  for (const source of Array.from(body.querySelectorAll("source[src]"))) {
+    await replaceAttr(source, "src");
+  }
+
+  for (const source of Array.from(body.querySelectorAll("source[srcset]"))) {
+    await replaceSrcset(source);
+  }
+
+  for (const image of Array.from(body.querySelectorAll("image[href], image[xlink\\:href]"))) {
+    await replaceAttr(image, "href");
+    await replaceAttr(image, "xlink:href");
+  }
+}
+
+async function toBlobUrl(rawUrl, chapterPath, zip, mediaTypeByPath, blobUrlCache) {
+  const raw = String(rawUrl || "").trim();
+  if (!raw || raw.startsWith("#")) return null;
+  if (raw.startsWith("data:")) return raw;
+  if (/^[a-z][a-z0-9+.-]*:/i.test(raw) || raw.startsWith("//")) return null;
+
+  const pathOnly = raw.split("#")[0].split("?")[0];
+  if (!pathOnly) return null;
+  const resolved = normalizePath(resolvePath(dirname(chapterPath), pathOnly));
+  const found = findZipEntryPath(zip, resolved);
+  if (!found) return null;
+
+  if (blobUrlCache.has(resolved)) return blobUrlCache.get(resolved);
+
+  const file = zip.file(found);
+  if (!file) return null;
+  const blob = await file.async("blob");
+  const knownType = mediaTypeByPath?.get(resolved) || guessMimeType(resolved);
+  const typedBlob = blob.type || !knownType ? blob : new Blob([blob], { type: knownType });
+  const blobUrl = URL.createObjectURL(typedBlob);
+  blobUrlCache.set(resolved, blobUrl);
+  return blobUrl;
+}
+
 function extractChapterTitle(doc) {
   const heading = doc.querySelector("h1, h2, h3, title");
   return heading ? heading.textContent || "" : "";
@@ -364,4 +453,27 @@ function dedupeToc(toc) {
     out.push(item);
   }
   return out;
+}
+
+function buildTocFromHeadings(chapters) {
+  const toc = [];
+  for (let i = 0; i < chapters.length; i += 1) {
+    const chapter = chapters[i];
+    const heading = chapter.section.querySelector("h1, h2");
+    const title = safeText(heading?.textContent || chapter.title || "", `章${i + 1}`);
+    toc.push({ title, chapterId: chapter.id });
+  }
+  return dedupeToc(toc);
+}
+
+function guessMimeType(path) {
+  const ext = (path.split(".").pop() || "").toLowerCase();
+  if (ext === "jpg" || ext === "jpeg") return "image/jpeg";
+  if (ext === "png") return "image/png";
+  if (ext === "gif") return "image/gif";
+  if (ext === "webp") return "image/webp";
+  if (ext === "svg") return "image/svg+xml";
+  if (ext === "avif") return "image/avif";
+  if (ext === "bmp") return "image/bmp";
+  return "";
 }

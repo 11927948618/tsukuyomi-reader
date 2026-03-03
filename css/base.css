@@ -130,6 +130,45 @@ select.input option {
   gap: 16px;
 }
 
+/* Compact spacing for the library screen while keeping safe tap targets. */
+#libraryScreen .container {
+  padding: 16px 0 24px;
+}
+
+#libraryScreen .status {
+  margin-top: 4px;
+  line-height: 1.35;
+}
+
+#libraryScreen .library-grid {
+  margin-top: 12px;
+  gap: 12px;
+}
+
+#libraryScreen .card {
+  padding: 14px;
+}
+
+#libraryScreen .label {
+  margin-bottom: 4px;
+  line-height: 1.3;
+}
+
+#libraryScreen .input {
+  min-height: 40px;
+  padding: 8px 10px;
+}
+
+#libraryScreen .button {
+  min-height: 40px;
+  padding: 8px 14px;
+}
+
+#libraryScreen .library-card-stack {
+  display: grid;
+  gap: 8px;
+}
+
 @media (min-width: 900px) {
   .grid.cols-2 {
     grid-template-columns: 1fr 1fr;

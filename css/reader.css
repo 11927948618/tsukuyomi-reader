@@ -8,6 +8,10 @@ body.chrome-hidden .reader-layout {
   padding-top: 0;
 }
 
+body.chrome-hidden .reader-main {
+  height: var(--reader-viewport-height, 100dvh);
+}
+
 .reader-topbar {
   position: fixed;
   top: 0;
@@ -255,7 +259,7 @@ body.mode-scrolly .reader-content {
   transition: transform 0.2s ease;
   z-index: 950;
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-rows: auto 1fr auto;
   overflow: hidden;
 }
 
@@ -275,16 +279,25 @@ body.mode-scrolly .reader-content {
   border-bottom: 1px solid var(--border);
 }
 
-.settings-scroll {
+.settings-body {
   display: grid;
   gap: 10px;
   align-content: start;
   padding: 0 14px calc(20px + env(safe-area-inset-bottom));
-  overflow-y: auto;
-  overflow-x: hidden;
+  overflow: auto;
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
   touch-action: pan-y;
+}
+
+.settings-footer {
+  padding: 10px 14px calc(12px + env(safe-area-inset-bottom));
+  border-top: 1px solid var(--border);
+  background: var(--panel);
+}
+
+.settings-footer .button {
+  width: 100%;
 }
 
 body.settings-open .tap-zone {
@@ -375,15 +388,27 @@ body {
     padding: 12px 12px 8px;
   }
 
-  .settings-scroll {
+  .settings-body {
     padding: 0 12px max(12px, env(safe-area-inset-bottom));
     gap: 8px;
   }
+
+  .settings-footer {
+    padding: 10px 12px max(10px, env(safe-area-inset-bottom));
+  }
 }
 
-@media (max-width: 420px) {
-  .settings-scroll {
-    padding: 0 14px 14px;
-    gap: 10px;
+@media (max-width: 480px) {
+  .settings-panel > header {
+    padding: 10px 10px 7px;
+  }
+
+  .settings-body {
+    padding: 0 10px max(10px, env(safe-area-inset-bottom));
+    gap: 6px;
+  }
+
+  .settings-footer {
+    padding: 8px 10px max(8px, env(safe-area-inset-bottom));
   }
 }

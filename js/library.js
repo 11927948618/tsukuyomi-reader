@@ -1,6 +1,6 @@
 import { qs, readFileAsText, safeText } from "./utils.js";
 import { normalizeTxtToBook } from "./normalize-txt.js";
-import { normalizeEpubToBook } from "./normalize-epub.js";
+import { normalizeEpub } from "./normalize-epub.js";
 import { importZipToBook } from "./storage.js";
 
 export function initLibrary({ onOpenBook, onExport, getCurrentBook, onOpenReaderSettings }) {
@@ -61,7 +61,7 @@ export function initLibrary({ onOpenBook, onExport, getCurrentBook, onOpenReader
     if (isEpub) {
       setStatus("EPUB読み込み中...");
       try {
-        const book = await normalizeEpubToBook(file);
+        const book = await normalizeEpub(file);
         if (debugDecode) debugDecode.textContent = "";
         setStatus("EPUB読み込み完了", "ok");
         onOpenBook(book);

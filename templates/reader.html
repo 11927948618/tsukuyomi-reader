@@ -44,7 +44,7 @@
       <button class="button ghost" id="closeSettingsBtn">閉じる</button>
     </header>
 
-    <div class="settings-scroll">
+    <div class="settings-body">
       <div class="field">
         <label class="label" for="fontSizeRange">文字サイズ</label>
         <input id="fontSizeRange" type="range" min="80" max="140" step="1" />
@@ -94,11 +94,6 @@
       </div>
 
       <div class="field">
-        <span class="label">設定</span>
-        <button class="button" id="saveSettingsBtn" type="button">設定を保存</button>
-      </div>
-
-      <div class="field">
         <span class="label">再起動 / 同期</span>
         <button class="button ghost" id="reloadBtn" type="button">再起動（リロード）</button>
         <button class="button" id="hardReloadBtn" type="button">強制同期（キャッシュ破棄）</button>
@@ -118,6 +113,10 @@
           <span id="settingsCommit">-</span>
         </div>
       </div>
+    </div>
+
+    <div class="settings-footer">
+      <button class="button" id="saveSettingsBtn" type="button">設定を保存</button>
     </div>
   </aside>
 </section>

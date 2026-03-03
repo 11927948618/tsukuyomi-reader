@@ -1,18 +1,15 @@
 <section class="screen" id="libraryScreen">
   <div class="container">
-    <h1>Tsukuyomi Reader</h1>
     <p class="status">TXT / EPUB / HTML / バックアップZIP を読み込みます。</p>
 
-    <div class="grid cols-2" style="margin-top: 20px;">
-      <div class="card">
+    <div class="grid cols-2 library-grid">
+      <div class="card library-card-stack">
         <label class="label" for="txtEncoding">TXT文字コード</label>
         <select class="input" id="txtEncoding">
           <option value="auto" selected>自動判別</option>
           <option value="utf-8">UTF-8</option>
           <option value="shift_jis">Shift_JIS（CP932）</option>
         </select>
-
-        <div style="height: 12px;"></div>
 
         <label class="label" for="txtInput">TXT / EPUB読み込み</label>
         <input class="input" id="txtInput" type="file" accept=".txt,.epub,text/plain,application/epub+zip" />
@@ -28,12 +25,10 @@
         <input class="input" id="zipInput" type="file" accept=".zip,application/zip" />
       </div>
 
-      <div class="card">
+      <div class="card library-card-stack">
         <p class="label">設定メニュー</p>
         <button class="button ghost" id="openReaderSettingsBtn" type="button">読書設定を開く</button>
-        <div style="height: 8px;"></div>
         <button class="button ghost" id="libraryReloadBtn" type="button">再起動（リロード）</button>
-        <div style="height: 8px;"></div>
         <button class="button" id="libraryHardReloadBtn" type="button">強制同期（キャッシュ破棄）</button>
       </div>
 
