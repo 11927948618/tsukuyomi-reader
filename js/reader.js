@@ -37,6 +37,7 @@ export function initReader({
   const themeSelect = qs("#themeSelect");
   const writingModeSelect = qs("#writingModeSelect");
   const wheelPagingCheck = qs("#wheelPagingCheck");
+  const applyGenkoPresetBtn = qs("#applyGenkoPresetBtn");
   const reloadBtn = qs("#reloadBtn");
   const hardReloadBtn = qs("#hardReloadBtn");
   const displayModeRadios = Array.from(document.querySelectorAll('input[name="displayMode"]'));
@@ -288,6 +289,18 @@ export function initReader({
     });
     wheelPagingCheck?.addEventListener("change", () => {
       updateSettings({ wheelPaging: Boolean(wheelPagingCheck.checked) });
+    });
+    applyGenkoPresetBtn?.addEventListener("click", () => {
+      updateSettings({
+        fontSize: 100,
+        lineHeight: 1.8,
+        letterSpacing: 0,
+        wrapWidthPercent: 88
+      });
+      applyGenkoPresetBtn.textContent = "適用しました";
+      window.setTimeout(() => {
+        if (applyGenkoPresetBtn) applyGenkoPresetBtn.textContent = "400字目安を適用";
+      }, 1200);
     });
     saveSettingsBtn?.addEventListener("click", () => {
       const next = getCurrentSettings();

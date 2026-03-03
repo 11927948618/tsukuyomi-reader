@@ -64,8 +64,14 @@
         <label class="label" for="wrapWidthRange">折り返し位置（ページ幅）</label>
         <div class="range-with-guide">
           <input id="wrapWidthRange" type="range" min="75" max="100" step="1" />
-          <span class="range-guide-marker" id="genkoGuideMarker" aria-hidden="true">▲ 20字×20行 目安</span>
+          <span class="range-guide-pin" aria-hidden="true"></span>
         </div>
+        <span class="range-guide-hint">この印が 20字×20行（400字）目安</span>
+      </div>
+
+      <div class="field">
+        <span class="label">原稿用紙プリセット</span>
+        <button class="button ghost" id="applyGenkoPresetBtn" type="button">400字目安を適用</button>
       </div>
 
       <div class="field">
