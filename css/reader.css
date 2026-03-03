@@ -312,6 +312,7 @@ body.settings-open .tap-zone {
 .range-with-guide {
   position: relative;
   padding-top: 16px;
+  --genko-guide-percent: 88%;
 }
 
 .range-guide-marker {

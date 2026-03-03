@@ -34,7 +34,6 @@ export function initReader({
   const lineHeightRange = qs("#lineHeightRange");
   const letterSpacingRange = qs("#letterSpacingRange");
   const wrapWidthRange = qs("#wrapWidthRange");
-  const genkoGuideMarker = qs("#genkoGuideMarker");
   const themeSelect = qs("#themeSelect");
   const writingModeSelect = qs("#writingModeSelect");
   const wheelPagingCheck = qs("#wheelPagingCheck");
@@ -54,7 +53,6 @@ export function initReader({
     const width = readerViewport?.clientWidth || scrollContainer?.clientWidth || window.innerWidth;
     const wrapped = Math.round(width * (wrapWidthPercent / 100));
     document.documentElement.style.setProperty("--page-width", `${Math.max(240, wrapped)}px`);
-    updateGenkoGuideMarker();
   };
   const applyViewportMetrics = () => {
     const visualHeight = Number(window.visualViewport?.height) || Number(window.innerHeight) || 0;
@@ -270,7 +268,6 @@ export function initReader({
     displayModeRadios.forEach((radio) => {
       radio.checked = radio.value === displayMode;
     });
-    updateGenkoGuideMarker();
   }
 
   function applyTheme(theme) {
@@ -326,26 +323,6 @@ export function initReader({
     const next = getCurrentSettings(patch);
     applySettings(next);
     onUpdateSettings(next);
-  }
-
-  function updateGenkoGuideMarker() {
-    if (!wrapWidthRange || !genkoGuideMarker) return;
-    const viewportWidth = readerViewport?.clientWidth || scrollContainer?.clientWidth || window.innerWidth;
-    if (!viewportWidth) return;
-
-    const computed = window.getComputedStyle(bookContent);
-    const fontPx = Number.parseFloat(computed.fontSize) || 16;
-    const lineHeightSetting = Number(lineHeightRange?.value) || 1.8;
-    const letterSpacing = Number(letterSpacingRange?.value) || 0;
-    const mode = normalizeWritingModePreference(writingModeSelect?.value || writingModePreference);
-
-    // Rough guide: in vertical mode we align to ~20 columns, horizontal to ~20 chars.
-    const unit = mode === "vertical" ? fontPx * lineHeightSetting : fontPx + letterSpacing;
-    const guidePx = unit * 20;
-    const percentRaw = (guidePx / viewportWidth) * 100;
-    const percent = Math.max(75, Math.min(100, Math.round(percentRaw)));
-    genkoGuideMarker.parentElement?.style.setProperty("--genko-guide-percent", `${percent}%`);
-    genkoGuideMarker.textContent = `▲ 20字×20行 目安 (${percent}%)`;
   }
 
   function bindProgressTracking() {
