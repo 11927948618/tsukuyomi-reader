@@ -63,6 +63,49 @@ body.topbar-auto-wrap .topbar-group-right {
   justify-content: flex-start;
 }
 
+body.topbar-mobile-wrap .topbar-controls {
+  flex-wrap: wrap;
+  overflow-x: visible;
+  align-items: flex-start;
+}
+
+body.topbar-mobile-wrap .topbar-group {
+  flex-wrap: wrap;
+}
+
+body.topbar-mobile-wrap .topbar-group-right {
+  margin-left: 0;
+  justify-content: flex-start;
+  width: 100%;
+}
+
+body.topbar-mobile-wrap .h-scroll-wrap {
+  order: 1;
+  display: grid;
+  flex: 1 1 100%;
+  min-width: 0;
+}
+
+body.topbar-mobile-wrap .h-scroll {
+  width: 100%;
+}
+
+body.topbar-mobile-wrap .topbar-group-right .version-badge {
+  display: none;
+}
+
+body.topbar-mobile-wrap .topbar-group-right .button {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+body.topbar-mobile-wrap #exportBtn {
+  max-width: 48vw;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .version-badge {
   font-size: 11px;
   opacity: 0.65;
@@ -391,12 +434,6 @@ body {
   overflow: hidden;
 }
 
-@media (pointer: coarse) {
-  .h-scroll-wrap {
-    display: none;
-  }
-}
-
 @media (max-width: 900px) {
   .reader-topbar {
     gap: 8px;
@@ -410,6 +447,44 @@ body {
 
   .topbar-group {
     gap: 6px;
+  }
+
+  .topbar-controls {
+    flex-wrap: wrap;
+    overflow-x: visible;
+  }
+
+  .topbar-group-right {
+    margin-left: 0;
+    justify-content: flex-start;
+    width: 100%;
+  }
+
+  .h-scroll-wrap {
+    order: 1;
+    flex: 1 1 100%;
+    min-width: 0;
+  }
+
+  .h-scroll {
+    width: 100%;
+  }
+
+  .topbar-group-right .version-badge {
+    display: none;
+  }
+
+  .topbar-group-right .button {
+    min-width: 0;
+    padding: 7px 10px;
+    font-size: 12px;
+  }
+
+  #exportBtn {
+    max-width: 48vw;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .reader-title {

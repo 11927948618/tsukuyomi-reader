@@ -65,10 +65,18 @@ export function initReader({
     if (!topbar || !controls) return;
 
     const isWindows = /windows/i.test(navigator.userAgent || "");
+    const isCoarsePointer = window.matchMedia?.("(pointer: coarse)")?.matches || false;
+    const narrowViewport = window.innerWidth < 980;
+
     if (!isWindows) {
+      // Touch / small-screen devices should prefer wrapped controls over horizontal clipping.
+      const mobileWrap = isCoarsePointer || narrowViewport;
+      document.body.classList.toggle("topbar-mobile-wrap", mobileWrap);
       document.body.classList.remove("topbar-auto-wrap");
       return;
     }
+
+    document.body.classList.remove("topbar-mobile-wrap");
 
     const taskbarRowPx = 48;
     const reservePx = taskbarRowPx * 2;
