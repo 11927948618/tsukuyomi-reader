@@ -5,6 +5,7 @@ const STATIC_ASSETS = [
   "./manifest.json",
   "./sw.js",
   "./README.md",
+  "./book/manifest.json",
   "./css/reset.css",
   "./css/base.css",
   "./css/vertical.css",
@@ -16,17 +17,38 @@ const STATIC_ASSETS = [
   "./js/normalize-txt.js",
   "./js/normalize-epub.js",
   "./js/storage.js",
-  "./js/paging.js",
   "./js/utils.js",
   "./templates/library.html",
   "./templates/reader.html"
 ];
 
+// Light edition keeps bundled-book restrictions at the library boundary.
+// When reverting to the generic edition, this helper can be removed together with book/manifest.json support.
+async function cacheBundledBooks(cache) {
+  try {
+    const res = await fetch("./book/manifest.json", { cache: "no-store" });
+    if (!res.ok) return;
+    const manifest = await res.json();
+    const books = Array.isArray(manifest?.books) ? manifest.books : [];
+    const urls = books
+      .map((entry) => String(entry?.path || entry?.filename || "").replace(/^\.?\/+/, ""))
+      .filter(Boolean)
+      .map((relativePath) => `./book/${relativePath.split("/").map((part) => encodeURIComponent(part)).join("/")}`);
+    if (urls.length > 0) {
+      await cache.addAll(urls);
+    }
+  } catch (err) {
+    // Leave install successful even when bundled-book cache priming fails.
+  }
+}
+
 self.addEventListener("install", (event) => {
   self.skipWaiting();
-  event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(STATIC_ASSETS))
-  );
+  event.waitUntil((async () => {
+    const cache = await caches.open(CACHE_NAME);
+    await cache.addAll(STATIC_ASSETS);
+    await cacheBundledBooks(cache);
+  })());
 });
 
 self.addEventListener("activate", (event) => {
@@ -45,11 +67,25 @@ self.addEventListener("activate", (event) => {
 self.addEventListener("fetch", (event) => {
   const req = event.request;
   const url = new URL(req.url);
+  const isBundledBookAsset = url.pathname.includes("/book/");
   const isHtmlRequest =
     req.mode === "navigate" ||
     req.destination === "document" ||
     url.pathname.endsWith(".html") ||
     url.pathname.endsWith("/");
+
+  if (isBundledBookAsset) {
+    event.respondWith(
+      fetch(req)
+        .then((res) => {
+          const resClone = res.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(req, resClone));
+          return res;
+        })
+        .catch(() => caches.match(req))
+    );
+    return;
+  }
 
   if (isHtmlRequest) {
     event.respondWith(

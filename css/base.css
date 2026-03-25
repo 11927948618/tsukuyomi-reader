@@ -169,6 +169,27 @@ select.input option {
   gap: 8px;
 }
 
+#libraryScreen .bundled-book-meta {
+  display: grid;
+  gap: 2px;
+}
+
+#libraryScreen .bundled-book-title {
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+#libraryScreen .bundled-book-note {
+  font-size: 0.9rem;
+  color: var(--muted);
+  line-height: 1.35;
+}
+
+#libraryScreen .bundled-book-button {
+  width: 100%;
+  justify-content: flex-start;
+}
+
 @media (min-width: 900px) {
   .grid.cols-2 {
     grid-template-columns: 1fr 1fr;

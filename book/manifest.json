@@ -1,0 +1,18 @@
+{
+  "formatVersion": 1,
+  "mode": "bundled-books",
+  "books": [
+    {
+      "filename": "SameAgain改稿.txt",
+      "title": "Same Again 改稿",
+      "kind": "txt",
+      "description": "同梱TXT"
+    },
+    {
+      "filename": "第01.0部 光の端に立つ At the Dawn's Edge.md.epub",
+      "title": "第01.0部 光の端に立つ At the Dawn's Edge",
+      "kind": "epub",
+      "description": "同梱EPUB"
+    }
+  ]
+}

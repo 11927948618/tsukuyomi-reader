@@ -3,24 +3,44 @@ import { normalizeTxtToBook } from "./normalize-txt.js";
 import { normalizeEpub } from "./normalize-epub.js";
 import { importZipToBook } from "./storage.js";
 
+// Light edition uses only books bundled under ./book/.
+// Set this to false when restoring the generic library importer for the full edition.
+const LIGHT_EDITION_BUNDLED_ONLY = true;
+const BUNDLED_BOOK_MANIFEST_PATH = "./book/manifest.json";
+
 export function initLibrary({ onOpenBook, onExport, getCurrentBook, onOpenReaderSettings }) {
   const txtInput = qs("#txtInput");
   const txtEncoding = qs("#txtEncoding");
   const htmlInput = qs("#htmlInput");
   const zipInput = qs("#zipInput");
+  const bundledBooksStatus = qs("#bundledBooksStatus");
+  const bundledBooksList = qs("#bundledBooksList");
   const exportBtn = qs("#exportBtn");
   const openReaderSettingsBtn = qs("#openReaderSettingsBtn");
   const libraryReloadBtn = qs("#libraryReloadBtn");
   const libraryHardReloadBtn = qs("#libraryHardReloadBtn");
   const statusMessage = qs("#statusMessage");
   const debugDecode = qs("#debugDecode");
+  const manualImportCards = Array.from(document.querySelectorAll("[data-manual-import]"));
 
   const setStatus = (message, type = "") => {
     statusMessage.textContent = message;
     statusMessage.className = `status ${type}`.trim();
   };
+  const setDebug = (text = "") => {
+    if (!debugDecode) return;
+    debugDecode.textContent = text;
+    debugDecode.hidden = !text;
+  };
 
   exportBtn.disabled = !getCurrentBook();
+  setStatus(LIGHT_EDITION_BUNDLED_ONLY ? "同梱書籍を選んでください" : "待機中");
+
+  if (LIGHT_EDITION_BUNDLED_ONLY) {
+    manualImportCards.forEach((card) => {
+      card.hidden = true;
+    });
+  }
 
   openReaderSettingsBtn?.addEventListener("click", () => {
     onOpenReaderSettings?.();
@@ -62,7 +82,7 @@ export function initLibrary({ onOpenBook, onExport, getCurrentBook, onOpenReader
       setStatus("EPUB読み込み中...");
       try {
         const book = await normalizeEpub(file);
-        if (debugDecode) debugDecode.textContent = "";
+        setDebug("");
         setStatus("EPUB読み込み完了", "ok");
         onOpenBook(book);
       } catch (err) {
@@ -75,7 +95,7 @@ export function initLibrary({ onOpenBook, onExport, getCurrentBook, onOpenReader
     try {
       const mode = txtEncoding ? txtEncoding.value : "auto";
       const { text, encoding, debug } = await decodeTxtAuto(file, mode);
-      if (debugDecode) debugDecode.textContent = debug;
+      setDebug(debug);
       console.log("[TXT decode] pick:", encoding);
       const book = normalizeTxtToBook(text, file.name);
       setStatus("TXT読み込み完了", "ok");
@@ -91,6 +111,7 @@ export function initLibrary({ onOpenBook, onExport, getCurrentBook, onOpenReader
     setStatus("HTML読み込み中...");
     try {
       const htmlText = await readFileAsText(file);
+      setDebug("");
       const book = normalizeHtmlToBook(htmlText, file.name);
       setStatus("HTML読み込み完了", "ok");
       onOpenBook(book);
@@ -104,12 +125,22 @@ export function initLibrary({ onOpenBook, onExport, getCurrentBook, onOpenReader
     if (!file) return;
     setStatus("バックアップZIP読み込み中...");
     try {
+      setDebug("");
       const book = await importZipToBook(file);
       setStatus("バックアップZIP読み込み完了", "ok");
       onOpenBook(book);
     } catch (err) {
       setStatus(err.message || "読み込みに失敗しました", "error");
     }
+  });
+
+  void initBundledBooksShelf({
+    bundledBooksStatus,
+    bundledBooksList,
+    txtEncoding,
+    setDebug,
+    setStatus,
+    onOpenBook
   });
 }
 
@@ -123,6 +154,10 @@ function countReplacement(text) {
 
 async function decodeTxtAuto(file, mode = "auto") {
   const buffer = await file.arrayBuffer();
+  return decodeTxtBuffer(buffer, mode);
+}
+
+function decodeTxtBuffer(buffer, mode = "auto") {
 
   const utf8Text = new TextDecoder("utf-8", { fatal: false }).decode(buffer);
   const utf8 = utf8Text.replace(/^\uFEFF/, "").replace(/\r\n?/g, "\n");
@@ -220,4 +255,163 @@ function normalizeHtmlToBook(htmlText, filename = "") {
     toc,
     meta: null
   };
+}
+
+async function initBundledBooksShelf({
+  bundledBooksStatus,
+  bundledBooksList,
+  txtEncoding,
+  setDebug,
+  setStatus,
+  onOpenBook
+}) {
+  if (!bundledBooksStatus || !bundledBooksList) return;
+
+  try {
+    const manifest = await loadBundledBookManifest();
+    const books = Array.isArray(manifest.books) ? manifest.books : [];
+
+    if (books.length === 0) {
+      bundledBooksStatus.textContent = "book/manifest.json に本が登録されていません";
+      bundledBooksStatus.className = "status error";
+      return;
+    }
+
+    bundledBooksStatus.textContent = `${books.length}冊の同梱書籍を利用できます`;
+    bundledBooksStatus.className = "status ok";
+    bundledBooksList.innerHTML = "";
+
+    books.forEach((entry) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "button ghost bundled-book-button";
+
+      const meta = document.createElement("span");
+      meta.className = "bundled-book-meta";
+
+      const title = document.createElement("span");
+      title.className = "bundled-book-title";
+      title.textContent = safeText(entry.title, entry.filename || "Untitled");
+
+      const note = document.createElement("span");
+      note.className = "bundled-book-note";
+      note.textContent = buildBundledBookNote(entry);
+
+      meta.appendChild(title);
+      meta.appendChild(note);
+      button.appendChild(meta);
+
+      button.addEventListener("click", async () => {
+        bundledBooksStatus.textContent = `${title.textContent} を読み込み中...`;
+        bundledBooksStatus.className = "status";
+        setStatus(`${title.textContent} を読み込み中...`);
+        try {
+          const book = await openBundledBook(entry, txtEncoding?.value || "auto", setDebug);
+          bundledBooksStatus.textContent = `${title.textContent} を開きました`;
+          bundledBooksStatus.className = "status ok";
+          setStatus("同梱書籍を開きました", "ok");
+          onOpenBook(book);
+        } catch (err) {
+          bundledBooksStatus.textContent = err.message || "同梱書籍の読み込みに失敗しました";
+          bundledBooksStatus.className = "status error";
+          setStatus(err.message || "同梱書籍の読み込みに失敗しました", "error");
+        }
+      });
+
+      bundledBooksList.appendChild(button);
+    });
+  } catch (err) {
+    bundledBooksStatus.textContent = err.message || "同梱書籍の一覧取得に失敗しました";
+    bundledBooksStatus.className = "status error";
+  }
+}
+
+async function loadBundledBookManifest() {
+  const res = await fetch(BUNDLED_BOOK_MANIFEST_PATH, { cache: "no-store" });
+  if (!res.ok) {
+    throw new Error("book/manifest.json を読み込めません");
+  }
+  const manifest = await res.json();
+  if (Number(manifest?.formatVersion) !== 1) {
+    throw new Error("book/manifest.json の formatVersion が未対応です");
+  }
+  return manifest;
+}
+
+async function openBundledBook(entry, txtMode = "auto", setDebug) {
+  const relativePath = safeText(entry?.path || entry?.filename, "");
+  if (!relativePath) {
+    throw new Error("book/manifest.json の path または filename が不足しています");
+  }
+
+  const filename = relativePath.split("/").pop() || relativePath;
+  const sourceUrl = buildBundledBookUrl(relativePath);
+  const kind = normalizeBundledBookKind(entry?.kind, filename);
+
+  if (kind === "epub") {
+    const res = await fetch(sourceUrl);
+    if (!res.ok) throw new Error(`同梱EPUBを読み込めません: ${filename}`);
+    const blob = await res.blob();
+    const file = new File([blob], filename, { type: "application/epub+zip" });
+    setDebug?.("");
+    return normalizeEpub(file);
+  }
+
+  if (kind === "txt") {
+    const res = await fetch(sourceUrl);
+    if (!res.ok) throw new Error(`同梱TXTを読み込めません: ${filename}`);
+    const buffer = await res.arrayBuffer();
+    const { text, debug } = decodeTxtBuffer(buffer, txtMode);
+    setDebug?.(debug);
+    return normalizeTxtToBook(text, filename);
+  }
+
+  if (kind === "html") {
+    const res = await fetch(sourceUrl);
+    if (!res.ok) throw new Error(`同梱HTMLを読み込めません: ${filename}`);
+    const htmlText = await res.text();
+    setDebug?.("");
+    return normalizeHtmlToBook(htmlText, filename);
+  }
+
+  if (kind === "zip") {
+    const res = await fetch(sourceUrl);
+    if (!res.ok) throw new Error(`同梱ZIPを読み込めません: ${filename}`);
+    const blob = await res.blob();
+    const file = new File([blob], filename, { type: "application/zip" });
+    setDebug?.("");
+    return importZipToBook(file);
+  }
+
+  throw new Error(`未対応の同梱書籍形式です: ${filename}`);
+}
+
+function buildBundledBookUrl(relativePath) {
+  const normalized = String(relativePath).replace(/^\.?\/+/, "");
+  return `./book/${normalized.split("/").map((part) => encodeURIComponent(part)).join("/")}`;
+}
+
+function normalizeBundledBookKind(kind, filename) {
+  const hinted = String(kind || "").toLowerCase();
+  if (hinted === "txt" || hinted === "epub" || hinted === "html" || hinted === "zip") return hinted;
+
+  const lower = String(filename || "").toLowerCase();
+  if (lower.endsWith(".epub")) return "epub";
+  if (lower.endsWith(".html") || lower.endsWith(".htm")) return "html";
+  if (lower.endsWith(".zip")) return "zip";
+  return "txt";
+}
+
+function buildBundledBookNote(entry) {
+  const parts = [];
+  const kind = normalizeBundledBookKind(entry?.kind, entry?.filename || "");
+  parts.push(kind.toUpperCase());
+
+  if (entry?.description) {
+    parts.push(String(entry.description));
+  } else if (entry?.filename) {
+    parts.push(String(entry.filename));
+  }
+
+  return parts.join(" / ");
 }

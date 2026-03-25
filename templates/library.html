@@ -1,9 +1,15 @@
 <section class="screen" id="libraryScreen">
   <div class="container">
-    <p class="status">TXT / EPUB / HTML / バックアップZIP を読み込みます。</p>
+    <p class="status">同梱書籍を読むライト版の導線です。汎用版では外部ファイル読み込みを再度有効化できます。</p>
 
     <div class="grid cols-2 library-grid">
-      <div class="card library-card-stack">
+      <div class="card library-card-stack" id="bundledBooksCard">
+        <p class="label">同梱書籍</p>
+        <div id="bundledBooksStatus" class="status">同梱書籍を確認中...</div>
+        <div id="bundledBooksList" class="library-card-stack"></div>
+      </div>
+
+      <div class="card library-card-stack" data-manual-import>
         <label class="label" for="txtEncoding">TXT文字コード</label>
         <select class="input" id="txtEncoding">
           <option value="auto" selected>自動判別</option>
@@ -15,12 +21,12 @@
         <input class="input" id="txtInput" type="file" accept=".txt,.epub,text/plain,application/epub+zip" />
       </div>
 
-      <div class="card">
+      <div class="card" data-manual-import>
         <label class="label" for="htmlInput">HTML読み込み</label>
         <input class="input" id="htmlInput" type="file" accept=".html,.htm,text/html" />
       </div>
 
-      <div class="card">
+      <div class="card" data-manual-import>
         <label class="label" for="zipInput">バックアップZIP読み込み</label>
         <input class="input" id="zipInput" type="file" accept=".zip,application/zip" />
       </div>
@@ -43,6 +49,6 @@
       </div>
     </div>
 
-    <pre id="debugDecode" style="white-space:pre-wrap; border:1px solid #ddd; padding:8px; max-height:30vh; overflow:auto;"></pre>
+    <pre id="debugDecode" hidden style="white-space:pre-wrap; border:1px solid #ddd; padding:8px; max-height:30vh; overflow:auto;"></pre>
   </div>
 </section>

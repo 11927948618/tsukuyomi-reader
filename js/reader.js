@@ -247,7 +247,7 @@ export function initReader({
       });
     });
 
-    // Phase 1は全文一括DOM生成。大容量対応はPhase 2で検討。
+    // 現状は全文一括DOM生成。大容量書籍向けの分割描画は別対応とする。
   }
 
   function applySettings(nextSettings) {
