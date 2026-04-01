@@ -1,4 +1,4 @@
-const CACHE_NAME = "tsukuyomi-reader-v0.1.8";
+const CACHE_NAME = "tsukuyomi-reader-v0.1.43";
 const STATIC_ASSETS = [
   "./",
   "./index.html",
@@ -6,6 +6,8 @@ const STATIC_ASSETS = [
   "./sw.js",
   "./README.md",
   "./book/manifest.json",
+  "./assets/icons/icon.svg",
+  "./assets/icons/icon-maskable.svg",
   "./css/reset.css",
   "./css/base.css",
   "./css/vertical.css",

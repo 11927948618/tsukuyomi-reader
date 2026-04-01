@@ -81,7 +81,10 @@ export function initLibrary({ onOpenBook, onExport, getCurrentBook, onOpenReader
     if (isEpub) {
       setStatus("EPUB読み込み中...");
       try {
-        const book = await normalizeEpub(file);
+        const book = attachBookSource(await normalizeEpub(file), "file-import", {
+          kind: "epub",
+          filename: file.name || ""
+        });
         setDebug("");
         setStatus("EPUB読み込み完了", "ok");
         onOpenBook(book);
@@ -97,7 +100,11 @@ export function initLibrary({ onOpenBook, onExport, getCurrentBook, onOpenReader
       const { text, encoding, debug } = await decodeTxtAuto(file, mode);
       setDebug(debug);
       console.log("[TXT decode] pick:", encoding);
-      const book = normalizeTxtToBook(text, file.name);
+      const book = attachBookSource(normalizeTxtToBook(text, file.name), "file-import", {
+        kind: "txt",
+        filename: file.name || "",
+        encoding
+      });
       setStatus("TXT読み込み完了", "ok");
       onOpenBook(book);
     } catch (err) {
@@ -112,7 +119,10 @@ export function initLibrary({ onOpenBook, onExport, getCurrentBook, onOpenReader
     try {
       const htmlText = await readFileAsText(file);
       setDebug("");
-      const book = normalizeHtmlToBook(htmlText, file.name);
+      const book = attachBookSource(normalizeHtmlToBook(htmlText, file.name), "file-import", {
+        kind: "html",
+        filename: file.name || ""
+      });
       setStatus("HTML読み込み完了", "ok");
       onOpenBook(book);
     } catch (err) {
@@ -126,7 +136,10 @@ export function initLibrary({ onOpenBook, onExport, getCurrentBook, onOpenReader
     setStatus("バックアップZIP読み込み中...");
     try {
       setDebug("");
-      const book = await importZipToBook(file);
+      const book = attachBookSource(await importZipToBook(file), "backup-zip", {
+        kind: "zip",
+        filename: file.name || ""
+      });
       setStatus("バックアップZIP読み込み完了", "ok");
       onOpenBook(book);
     } catch (err) {
@@ -354,7 +367,10 @@ async function openBundledBook(entry, txtMode = "auto", setDebug) {
     const blob = await res.blob();
     const file = new File([blob], filename, { type: "application/epub+zip" });
     setDebug?.("");
-    return normalizeEpub(file);
+    return attachBookSource(await normalizeEpub(file), "bundled", {
+      path: relativePath,
+      kind
+    });
   }
 
   if (kind === "txt") {
@@ -363,7 +379,10 @@ async function openBundledBook(entry, txtMode = "auto", setDebug) {
     const buffer = await res.arrayBuffer();
     const { text, debug } = decodeTxtBuffer(buffer, txtMode);
     setDebug?.(debug);
-    return normalizeTxtToBook(text, filename);
+    return attachBookSource(normalizeTxtToBook(text, filename), "bundled", {
+      path: relativePath,
+      kind
+    });
   }
 
   if (kind === "html") {
@@ -371,7 +390,10 @@ async function openBundledBook(entry, txtMode = "auto", setDebug) {
     if (!res.ok) throw new Error(`同梱HTMLを読み込めません: ${filename}`);
     const htmlText = await res.text();
     setDebug?.("");
-    return normalizeHtmlToBook(htmlText, filename);
+    return attachBookSource(normalizeHtmlToBook(htmlText, filename), "bundled", {
+      path: relativePath,
+      kind
+    });
   }
 
   if (kind === "zip") {
@@ -380,7 +402,10 @@ async function openBundledBook(entry, txtMode = "auto", setDebug) {
     const blob = await res.blob();
     const file = new File([blob], filename, { type: "application/zip" });
     setDebug?.("");
-    return importZipToBook(file);
+    return attachBookSource(await importZipToBook(file), "bundled", {
+      path: relativePath,
+      kind
+    });
   }
 
   throw new Error(`未対応の同梱書籍形式です: ${filename}`);
@@ -389,6 +414,17 @@ async function openBundledBook(entry, txtMode = "auto", setDebug) {
 function buildBundledBookUrl(relativePath) {
   const normalized = String(relativePath).replace(/^\.?\/+/, "");
   return `./book/${normalized.split("/").map((part) => encodeURIComponent(part)).join("/")}`;
+}
+
+function attachBookSource(book, sourceType, sourceData = null) {
+  return {
+    ...book,
+    meta: {
+      ...(book?.meta && typeof book.meta === "object" ? book.meta : {}),
+      sourceType,
+      sourceData
+    }
+  };
 }
 
 function normalizeBundledBookKind(kind, filename) {

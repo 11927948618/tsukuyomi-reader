@@ -50,8 +50,41 @@ export function initReader({
   let pageDirection = writingModePreference === "vertical" ? "rtl" : "ltr";
   let skipNextTap = false;
   const refreshHScroll = setupHScroll(scrollContainer);
+  const getViewportInnerSize = (axis = "x") => {
+    const fallback = axis === "x" ? window.innerWidth : window.innerHeight;
+    const el = readerViewport || scrollContainer;
+    if (!el) return Math.max(1, fallback || 1);
+
+    const styles = window.getComputedStyle(el);
+    const size = axis === "x" ? el.clientWidth : el.clientHeight;
+    const paddingStart = parseFloat(axis === "x" ? styles.paddingLeft : styles.paddingTop) || 0;
+    const paddingEnd = parseFloat(axis === "x" ? styles.paddingRight : styles.paddingBottom) || 0;
+    const inner = Math.round(size - paddingStart - paddingEnd);
+    return Math.max(1, inner || size || fallback || 1);
+  };
+  const getHorizontalPageSize = () => getViewportInnerSize("x");
+  const getVerticalPageSize = () => getViewportInnerSize("y");
+  const scrollToLogicalLeft = (logicalLeft, behavior = "auto") => {
+    const physicalLeft = toPhysicalLeft(scrollContainer, logicalLeft, pageDirection);
+    scrollContainer.scrollTo({ left: physicalLeft, behavior });
+  };
+  const stepHorizontalPage = (stepCount, behavior = "auto") => {
+    const pageSize = getHorizontalPageSize();
+    const logical = toLogicalLeft(scrollContainer, scrollContainer.scrollLeft, pageDirection);
+    const epsilon = Math.max(1, pageSize * 0.02);
+
+    let pageIndex;
+    if (stepCount > 0) {
+      pageIndex = Math.floor((logical + epsilon) / pageSize) + stepCount;
+    } else {
+      pageIndex = Math.ceil((logical - epsilon) / pageSize) + stepCount;
+    }
+
+    const targetLogical = clamp(pageIndex * pageSize, 0, getMaxLeft(scrollContainer));
+    scrollToLogicalLeft(targetLogical, behavior);
+  };
   const applyPageWidth = () => {
-    const width = readerViewport?.clientWidth || scrollContainer?.clientWidth || window.innerWidth;
+    const width = getHorizontalPageSize();
     const wrapped = Math.round(width * (wrapWidthPercent / 100));
     document.documentElement.style.setProperty("--page-width", `${Math.max(240, wrapped)}px`);
   };
@@ -342,8 +375,8 @@ export function initReader({
   }
 
   function buildGenkoPresetFromCurrent() {
-    const viewportWidth = readerViewport?.clientWidth || scrollContainer?.clientWidth || window.innerWidth || 1;
-    const viewportHeight = readerViewport?.clientHeight || scrollContainer?.clientHeight || window.innerHeight || 1;
+    const viewportWidthSafe = getHorizontalPageSize();
+    const viewportHeight = getVerticalPageSize();
     const fontSize = Number(fontSizeRange.value) || 100;
     const lineHeightNow = Number(lineHeightRange.value) || 1.8;
     const letterSpacing = Number(letterSpacingRange.value) || 0;
@@ -363,7 +396,7 @@ export function initReader({
         ? Math.max(6, fontPx * 0.95 + letterSpacing)
         : Math.max(6, fontPx * naturalLineHeight);
     const targetWrapPx = charAdvance * 20;
-    const wrapWidthPercent = normalizeWrapWidthPercent((targetWrapPx / viewportWidth) * 100);
+    const wrapWidthPercent = normalizeWrapWidthPercent((targetWrapPx / viewportWidthSafe) * 100);
 
     return {
       fontSize,
@@ -379,7 +412,7 @@ export function initReader({
 
       if (displayMode === "scrolly") {
         const offset = scrollContainer.scrollTop;
-        const size = scrollContainer.clientHeight || 1;
+        const size = getVerticalPageSize();
         const pageIndex = Math.round(offset / size);
         onUpdateProgress({ chapterId, scrollTop: offset, pageIndex });
         return;
@@ -387,7 +420,7 @@ export function initReader({
 
       const physical = scrollContainer.scrollLeft;
       const logical = toLogicalLeft(scrollContainer, physical, pageDirection);
-      const size = scrollContainer.clientWidth || 1;
+      const size = getHorizontalPageSize();
       const pageIndex = Math.round(logical / size);
       onUpdateProgress({ chapterId, scrollLeft: logical, pageIndex });
     }, 250);
@@ -422,7 +455,7 @@ export function initReader({
           const topRaw = Number(nextProgress?.scrollTop);
           const top = Number.isFinite(topRaw)
             ? topRaw
-            : (Number(nextProgress?.pageIndex) || 0) * (scrollContainer.clientHeight || 1);
+            : (Number(nextProgress?.pageIndex) || 0) * getVerticalPageSize();
           scrollContainer.scrollTop = top;
           if (typeof refresh === "function") refresh();
           return;
@@ -430,11 +463,11 @@ export function initReader({
 
         const logical =
           nextProgress?.pageIndex != null
-            ? Number(nextProgress.pageIndex) * (scrollContainer.clientWidth || 1)
+            ? Number(nextProgress.pageIndex) * getHorizontalPageSize()
             : Number(nextProgress?.scrollLeft);
         const logicalSafe = Number.isFinite(logical) ? logical : 0;
         const applyHorizontalProgress = () => {
-          scrollContainer.scrollLeft = toPhysicalLeft(scrollContainer, logicalSafe, pageDirection);
+          scrollToLogicalLeft(logicalSafe);
           if (typeof refresh === "function") refresh();
         };
 
@@ -461,7 +494,7 @@ export function initReader({
 
     const updatePageInfo = (logical, max) => {
       if (!pageInfo) return;
-      const pageSize = content.clientWidth || 1;
+      const pageSize = getHorizontalPageSize();
       const totalPages = Math.max(1, Math.floor(max / pageSize) + 1);
       const currentPage = Math.min(totalPages, Math.max(1, Math.round(logical / pageSize) + 1));
       pageInfo.textContent = `${currentPage} / ${totalPages}`;
@@ -480,7 +513,7 @@ export function initReader({
       const max = Number(slider.max) || 0;
       const raw = Number(slider.value) || 0;
       const logical = fromSliderValue(raw, max);
-      content.scrollLeft = toPhysicalLeft(content, logical, pageDirection);
+      scrollToLogicalLeft(logical);
       updatePageInfo(logical, max);
     });
 
@@ -520,7 +553,6 @@ export function initReader({
       const rect = tapEl.getBoundingClientRect();
       const x = event.clientX - rect.left;
       const w = rect.width || 1;
-      const page = scrollEl.clientWidth || 1;
 
       if (x >= w * 0.33 && x <= w * 0.66) {
         toggleChrome();
@@ -530,12 +562,20 @@ export function initReader({
       if (!shouldHandlePagingTap()) return;
 
       if (x > w * 0.66) {
-        pageBy(scrollEl, page, displayMode);
+        if (displayMode === "scrolly") {
+          pageBy(scrollEl, getVerticalPageSize(), displayMode);
+        } else {
+          stepHorizontalPage(1, displayMode === "paged" ? "auto" : "smooth");
+        }
         return;
       }
 
       if (x < w * 0.33) {
-        pageBy(scrollEl, -page, displayMode);
+        if (displayMode === "scrolly") {
+          pageBy(scrollEl, -getVerticalPageSize(), displayMode);
+        } else {
+          stepHorizontalPage(-1, displayMode === "paged" ? "auto" : "smooth");
+        }
       }
     };
 
@@ -685,10 +725,7 @@ export function initReader({
             wheelLock = false;
           }, 160);
 
-          const step = scrollEl.clientWidth || 1;
-          const signed = axisDelta > 0 ? step : -step;
-          const physicalDelta = pageDirection === "rtl" ? -signed : signed;
-          pageBy(scrollEl, physicalDelta, displayMode);
+          stepHorizontalPage(axisDelta > 0 ? 1 : -1, displayMode === "paged" ? "auto" : "smooth");
           event.preventDefault();
           return;
         }

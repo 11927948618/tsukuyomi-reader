@@ -62,6 +62,7 @@
 - ダブルクリック用に `UpdateBookManifest.bat` も用意しています
 - `TsukuyomiReader.bat` 起動時も、先に manifest 更新を試みます
 - 既存の `title` / `description` は、同じ相対パスの本であれば再生成時も引き継ぎます
+- ライト版では、前回キャッシュの自動復元も同梱書籍に限定します
 
 ## 今後の候補
 - 大容量書籍向けの分割描画

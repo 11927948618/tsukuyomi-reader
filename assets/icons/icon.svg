@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Tsukuyomi Reader icon">
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0%" stop-color="#101014"/>
+      <stop offset="100%" stop-color="#1c2336"/>
+    </linearGradient>
+    <linearGradient id="moon" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0%" stop-color="#fff7d9"/>
+      <stop offset="100%" stop-color="#d4c18f"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+  <circle cx="256" cy="256" r="150" fill="#24314c"/>
+  <path d="M318 108c-53 18-91 69-91 129 0 75 61 136 136 136 17 0 33-3 49-9-27 31-68 50-114 50-82 0-148-66-148-148 0-76 58-139 132-147 12-1 24-1 36 1z" fill="url(#moon)"/>
+  <path d="M160 140h18v232h-18zm44 44h18v188h-18zm44-22h18v210h-18z" fill="#8ea4d6" opacity=".85"/>
+  <circle cx="355" cy="163" r="8" fill="#fff7d9"/>
+  <circle cx="386" cy="202" r="5" fill="#fff7d9" opacity=".75"/>
+</svg>

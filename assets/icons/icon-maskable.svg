@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Tsukuyomi Reader maskable icon">
+  <rect width="512" height="512" rx="128" fill="#101014"/>
+  <rect x="76" y="76" width="360" height="360" rx="96" fill="#182238"/>
+  <circle cx="256" cy="256" r="126" fill="#24314c"/>
+  <path d="M309 139c-43 15-74 56-74 105 0 62 51 113 113 113 14 0 27-2 40-7-23 26-57 42-95 42-69 0-124-56-124-124 0-64 49-117 110-123 10-1 20-1 30 1z" fill="#f1ddb1"/>
+  <path d="M178 158h18v196h-18zm44 38h18v158h-18zm44-20h18v178h-18z" fill="#9eb2db"/>
+</svg>

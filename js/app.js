@@ -4,6 +4,7 @@ import { exportZipFromBook } from "./storage.js";
 import { qs, loadJSON, saveJSON } from "./utils.js";
 import { APP_VERSION, BUILD_TIME, COMMIT } from "./version.js";
 
+const LIGHT_EDITION_BUNDLED_ONLY = true;
 
 const DEFAULT_SETTINGS = {
   fontSize: 100,
@@ -135,12 +136,13 @@ function buildBookId(book) {
 
 function persistLastOpened() {
   if (!appState.currentBook || !appState.currentBookId) return;
+  const source = getBookSource(appState.currentBook);
 
   const lastOpened = {
     bookId: appState.currentBookId,
     title: appState.currentBook.title || "Untitled",
-    sourceType: "cache",
-    sourceData: null,
+    sourceType: source.sourceType,
+    sourceData: source.sourceData,
     savedAt: new Date().toISOString()
   };
 
@@ -149,6 +151,8 @@ function persistLastOpened() {
     title: appState.currentBook.title || "Untitled",
     html: appState.currentBook.html || "",
     toc: Array.isArray(appState.currentBook.toc) ? appState.currentBook.toc : [],
+    sourceType: source.sourceType,
+    sourceData: source.sourceData,
     cachedAt: new Date().toISOString()
   };
 
@@ -175,15 +179,23 @@ function saveProgress(bookId, progress) {
   }
 }
 
-function tryRestoreLastBook() {
+async function tryRestoreLastBook() {
   const cached = loadJSON("tsukiyomi:lastBookCache", null);
-  if (!cached || !cached.html || !cached.toc) return false;
+  if (!cached || !cached.html || !Array.isArray(cached.toc)) return false;
+
+  if (LIGHT_EDITION_BUNDLED_ONLY && cached.sourceType !== "bundled") {
+    appState.startupMessage = "ライト版では外部書籍の自動復元を無効にしています";
+    return false;
+  }
 
   const book = {
     title: cached.title || "Untitled",
     html: cached.html,
     toc: Array.isArray(cached.toc) ? cached.toc : [],
-    meta: null
+    meta: {
+      sourceType: cached.sourceType || "cache",
+      sourceData: cached.sourceData || null
+    }
   };
 
   applyBook(book);
@@ -193,7 +205,7 @@ function tryRestoreLastBook() {
     appState.progress = { ...DEFAULT_PROGRESS, ...progress };
   }
 
-  render("reader");
+  await render("reader");
   return true;
 }
 
@@ -251,7 +263,17 @@ function queueVersionBadge() {
   requestAnimationFrame(() => requestAnimationFrame(applyVersionBadge));
 }
 
-registerServiceWorker();
-if (!tryRestoreLastBook()) {
-  render("library");
+function getBookSource(book) {
+  const meta = book?.meta && typeof book.meta === "object" ? book.meta : null;
+  return {
+    sourceType: typeof meta?.sourceType === "string" ? meta.sourceType : "cache",
+    sourceData: meta?.sourceData && typeof meta.sourceData === "object" ? meta.sourceData : null
+  };
 }
+
+registerServiceWorker();
+tryRestoreLastBook().then((restored) => {
+  if (!restored) {
+    render("library");
+  }
+});
