@@ -24,6 +24,7 @@ const DEFAULT_PROGRESS = {
   scrollTop: 0,
   pageIndex: 0
 };
+const BUNDLED_BOOK_MANIFEST_PATH = "./book/manifest.json";
 
 const appRoot = qs("#appRoot");
 const appState = {
@@ -183,7 +184,8 @@ async function tryRestoreLastBook() {
   const cached = loadJSON("tsukiyomi:lastBookCache", null);
   if (!cached || !cached.html || !Array.isArray(cached.toc)) return false;
 
-  if (LIGHT_EDITION_BUNDLED_ONLY && cached.sourceType !== "bundled") {
+  const restoreSourceType = await resolveRestoreSourceType(cached);
+  if (LIGHT_EDITION_BUNDLED_ONLY && restoreSourceType !== "bundled") {
     appState.startupMessage = "ライト版では外部書籍の自動復元を無効にしています";
     return false;
   }
@@ -193,7 +195,7 @@ async function tryRestoreLastBook() {
     html: cached.html,
     toc: Array.isArray(cached.toc) ? cached.toc : [],
     meta: {
-      sourceType: cached.sourceType || "cache",
+      sourceType: restoreSourceType || cached.sourceType || "cache",
       sourceData: cached.sourceData || null
     }
   };
@@ -269,6 +271,44 @@ function getBookSource(book) {
     sourceType: typeof meta?.sourceType === "string" ? meta.sourceType : "cache",
     sourceData: meta?.sourceData && typeof meta.sourceData === "object" ? meta.sourceData : null
   };
+}
+
+async function resolveRestoreSourceType(cached) {
+  const sourceType = typeof cached?.sourceType === "string" ? cached.sourceType : "";
+  if (!LIGHT_EDITION_BUNDLED_ONLY) {
+    return sourceType || "cache";
+  }
+
+  if (sourceType === "bundled") {
+    return "bundled";
+  }
+
+  // Compatibility path for caches created before sourceType/sourceData were stored.
+  // If the cached title still matches a bundled title, migrate it back into bundled restore flow.
+  if (!sourceType || sourceType === "cache") {
+    const bundledTitles = await loadBundledBookTitles();
+    if (bundledTitles.has(String(cached?.title || "").trim())) {
+      return "bundled";
+    }
+  }
+
+  return sourceType || "cache";
+}
+
+async function loadBundledBookTitles() {
+  try {
+    const res = await fetch(BUNDLED_BOOK_MANIFEST_PATH, { cache: "no-store" });
+    if (!res.ok) return new Set();
+    const manifest = await res.json();
+    const books = Array.isArray(manifest?.books) ? manifest.books : [];
+    return new Set(
+      books
+        .map((entry) => String(entry?.title || "").trim())
+        .filter(Boolean)
+    );
+  } catch (err) {
+    return new Set();
+  }
 }
 
 registerServiceWorker();
