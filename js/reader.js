@@ -561,21 +561,33 @@ export function initReader({
 
       if (!shouldHandlePagingTap()) return;
 
-      if (x > w * 0.66) {
+      const advance = () => {
         if (displayMode === "scrolly") {
           pageBy(scrollEl, getVerticalPageSize(), displayMode);
         } else {
           stepHorizontalPage(1, displayMode === "paged" ? "auto" : "smooth");
         }
-        return;
-      }
+      };
 
-      if (x < w * 0.33) {
+      const goBack = () => {
         if (displayMode === "scrolly") {
           pageBy(scrollEl, -getVerticalPageSize(), displayMode);
         } else {
           stepHorizontalPage(-1, displayMode === "paged" ? "auto" : "smooth");
         }
+      };
+
+      const advanceOnRight = displayMode === "scrolly" || pageDirection !== "rtl";
+
+      if (x > w * 0.66) {
+        if (advanceOnRight) advance();
+        else goBack();
+        return;
+      }
+
+      if (x < w * 0.33) {
+        if (advanceOnRight) goBack();
+        else advance();
       }
     };
 
