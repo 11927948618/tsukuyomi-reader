@@ -577,7 +577,7 @@ export function initReader({
         }
       };
 
-      const advanceOnRight = displayMode === "scrolly" || pageDirection !== "rtl";
+      const advanceOnRight = detectPageDirection() !== "rtl";
 
       if (x > w * 0.66) {
         if (advanceOnRight) advance();
