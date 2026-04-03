@@ -1,4 +1,4 @@
-const CACHE_NAME = "tsukuyomi-reader-v0.1.43";
+const CACHE_NAME = "tsukuyomi-reader-v0.1.45";
 const STATIC_ASSETS = [
   "./",
   "./index.html",
@@ -68,6 +68,7 @@ self.addEventListener("activate", (event) => {
 
 self.addEventListener("fetch", (event) => {
   const req = event.request;
+  if (req.method !== "GET") return;
   const url = new URL(req.url);
   const isBundledBookAsset = url.pathname.includes("/book/");
   const isHtmlRequest =
@@ -75,6 +76,7 @@ self.addEventListener("fetch", (event) => {
     req.destination === "document" ||
     url.pathname.endsWith(".html") ||
     url.pathname.endsWith("/");
+  const isSameOrigin = url.origin === self.location.origin;
 
   if (isBundledBookAsset) {
     event.respondWith(
@@ -107,14 +109,15 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
+  if (!isSameOrigin) return;
+
   event.respondWith(
-    caches.match(req).then((cached) => {
-      if (cached) return cached;
-      return fetch(req).then((res) => {
+    fetch(req)
+      .then((res) => {
         const resClone = res.clone();
         caches.open(CACHE_NAME).then((cache) => cache.put(req, resClone));
         return res;
-      });
-    })
+      })
+      .catch(() => caches.match(req))
   );
 });
