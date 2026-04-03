@@ -6,6 +6,7 @@ export function normalizeTxtToBook(text, filename = "") {
   let current = null;
   let paragraphLines = [];
   let chapterIndex = 0;
+  let pendingBlankLines = 0;
 
   const flushParagraph = () => {
     if (!current) return;
@@ -14,16 +15,17 @@ export function normalizeTxtToBook(text, filename = "") {
     const escaped = escapeHtml(raw);
     const rubyApplied = escaped.replace(/｜(.+?)《(.+?)》/g, "<ruby>$1<rt>$2</rt></ruby>");
     const withBreaks = rubyApplied.replace(/\n/g, "<br>");
-    current.paragraphs.push(withBreaks);
+    current.blocks.push({ type: "paragraph", html: withBreaks });
     paragraphLines = [];
   };
 
   const startChapter = (title) => {
     flushParagraph();
+    pendingBlankLines = 0;
     chapterIndex += 1;
     current = {
       title: safeText(title, `章${chapterIndex}`),
-      paragraphs: []
+      blocks: []
     };
     chapters.push(current);
   };
@@ -41,7 +43,15 @@ export function normalizeTxtToBook(text, filename = "") {
 
     if (line.trim() === "") {
       flushParagraph();
+      if (current.blocks.length > 0) {
+        pendingBlankLines += 1;
+      }
       continue;
+    }
+
+    if (pendingBlankLines > 0 && current.blocks.length > 0) {
+      current.blocks.push({ type: "gap", count: pendingBlankLines });
+      pendingBlankLines = 0;
     }
 
     paragraphLines.push(line);
@@ -60,7 +70,12 @@ export function normalizeTxtToBook(text, filename = "") {
 
   const html = chapters.map((ch, idx) => {
     const chapterId = `chapter-${String(idx + 1).padStart(3, "0")}`;
-    const body = ch.paragraphs.map((p) => `<p class="txt-paragraph">${p}</p>`).join("\n");
+    const body = ch.blocks.map((block) => {
+      if (block.type === "gap") {
+        return `<div class="txt-gap" aria-hidden="true" style="--gap-lines:${Math.max(1, Number(block.count) || 1)}"></div>`;
+      }
+      return `<p class="txt-paragraph">${block.html}</p>`;
+    }).join("\n");
     return `\n<section class=\"chapter\" data-chapter=\"${chapterId}\" id=\"${chapterId}\">\n  <h1>${escapeHtml(ch.title)}</h1>\n  ${body || ""}\n</section>`;
   }).join("\n");
 

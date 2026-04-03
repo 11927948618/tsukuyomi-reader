@@ -246,8 +246,12 @@ body.theme-dark .version-badge {
   line-height: 1.45;
 }
 
-.reader-content .txt-paragraph + .txt-paragraph {
-  margin-block-start: 1em;
+.reader-content .txt-paragraph {
+  margin: 0;
+}
+
+.reader-content .txt-gap {
+  block-size: calc(1.25em * var(--gap-lines, 1));
 }
 
 .reader-content .chapter > *:last-child {
