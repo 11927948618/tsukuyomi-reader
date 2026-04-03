@@ -20,6 +20,19 @@ if errorlevel 1 (
   exit /b 1
 )
 
+REM --- refresh bundled-book manifest before status/add ---
+if exist "%~dp0UpdateBookManifest.bat" (
+  echo [backup] Updating bundled-book manifest...
+  echo [backup] Updating bundled-book manifest...>> "%LOG%"
+  call "%~dp0UpdateBookManifest.bat" --no-pause >> "%LOG%" 2>&1
+  if errorlevel 1 (
+    echo [backup] Manifest update failed. See log: %LOG%
+    echo [backup] Manifest update failed.>> "%LOG%"
+    pause
+    exit /b 1
+  )
+)
+
 REM --- show status (log) ---
 echo [backup] status:>> "%LOG%"
 git status -sb >> "%LOG%" 2>&1

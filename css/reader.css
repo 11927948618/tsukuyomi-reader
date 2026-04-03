@@ -241,51 +241,13 @@ body.theme-dark .version-badge {
 .reader-content .chapter > h1,
 .reader-content .chapter > h2,
 .reader-content .chapter > h3 {
-  margin-block: 0 0.85em;
+  margin: 0;
   font-size: 1.15em;
   line-height: 1.45;
 }
 
-.reader-content p,
-.reader-content ul,
-.reader-content ol,
-.reader-content blockquote,
-.reader-content pre {
-  margin: 0;
-}
-
-.reader-content p + p,
-.reader-content ul + p,
-.reader-content ol + p,
-.reader-content blockquote + p,
-.reader-content pre + p,
-.reader-content p + ul,
-.reader-content p + ol,
-.reader-content p + blockquote,
-.reader-content p + pre,
-.reader-content ul + ul,
-.reader-content ol + ol,
-.reader-content blockquote + blockquote,
-.reader-content pre + pre {
-  margin-block-start: 0.45em;
-}
-
-.reader-content li + li {
-  margin-block-start: 0.25em;
-}
-
-.reader-content blockquote {
-  margin-block: 0.55em;
-  padding-inline: 0.8em;
-  border-inline-start: 2px solid var(--border);
-  color: color-mix(in srgb, var(--text), var(--muted) 28%);
-}
-
-.reader-content pre {
-  margin-block: 0.55em;
-  white-space: pre-wrap;
-  word-break: break-word;
-  font: inherit;
+.reader-content .txt-paragraph + .txt-paragraph {
+  margin-block-start: 0.55em;
 }
 
 .reader-content .chapter > *:last-child {

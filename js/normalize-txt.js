@@ -60,7 +60,7 @@ export function normalizeTxtToBook(text, filename = "") {
 
   const html = chapters.map((ch, idx) => {
     const chapterId = `chapter-${String(idx + 1).padStart(3, "0")}`;
-    const body = ch.paragraphs.map((p) => `<p>${p}</p>`).join("\n");
+    const body = ch.paragraphs.map((p) => `<p class="txt-paragraph">${p}</p>`).join("\n");
     return `\n<section class=\"chapter\" data-chapter=\"${chapterId}\" id=\"${chapterId}\">\n  <h1>${escapeHtml(ch.title)}</h1>\n  ${body || ""}\n</section>`;
   }).join("\n");
 
