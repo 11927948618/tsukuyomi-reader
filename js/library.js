@@ -474,3 +474,10 @@ function normalizeBundledBookKind(kind, filename) {
   if (lower.endsWith(".zip")) return "zip";
   return "txt";
 }
+
+function defaultDescription(kind) {
+  if (kind === "epub") return "同梱EPUB";
+  if (kind === "html") return "同梱HTML";
+  if (kind === "zip") return "同梱ZIP";
+  return "同梱TXT";
+}
