@@ -7,6 +7,7 @@ import { importZipToBook } from "./storage.js";
 // Set this to false when restoring the generic library importer for the full edition.
 const LIGHT_EDITION_BUNDLED_ONLY = true;
 const BUNDLED_BOOK_MANIFEST_PATH = "./book/manifest.json";
+const MAX_BUNDLED_BOOKS = 6;
 
 export function initLibrary({ onOpenBook, onExport, getCurrentBook, onOpenReaderSettings }) {
   const txtInput = qs("#txtInput");
@@ -290,28 +291,60 @@ async function initBundledBooksShelf({
       return;
     }
 
-    bundledBooksStatus.textContent = `${books.length}冊の同梱書籍を利用できます`;
+    if (books.length > MAX_BUNDLED_BOOKS) {
+      bundledBooksStatus.textContent = `同梱書籍は最大${MAX_BUNDLED_BOOKS}冊までです。book/manifest.json を整理してください`;
+      bundledBooksStatus.className = "status error";
+      bundledBooksList.innerHTML = "";
+      return;
+    }
+
+    bundledBooksStatus.textContent = `${books.length}冊の同梱書籍を利用できます（上限${MAX_BUNDLED_BOOKS}冊）`;
     bundledBooksStatus.className = "status ok";
     bundledBooksList.innerHTML = "";
 
-    books.forEach((entry) => {
+    books.forEach((entry, indexValue) => {
       const button = document.createElement("button");
       button.type = "button";
       button.className = "button ghost bundled-book-button";
+      button.setAttribute("aria-label", `${safeText(entry.title, entry.filename || "Untitled")} を開く`);
+
+      const index = document.createElement("span");
+      index.className = "bundled-book-index";
+      index.textContent = String(indexValue + 1).padStart(2, "0");
 
       const meta = document.createElement("span");
       meta.className = "bundled-book-meta";
+
+      const top = document.createElement("span");
+      top.className = "bundled-book-topline";
+
+      const kind = document.createElement("span");
+      kind.className = `bundled-book-kind kind-${normalizeBundledBookKind(entry?.kind, entry?.filename || "")}`;
+      kind.textContent = normalizeBundledBookKind(entry?.kind, entry?.filename || "").toUpperCase();
 
       const title = document.createElement("span");
       title.className = "bundled-book-title";
       title.textContent = safeText(entry.title, entry.filename || "Untitled");
 
-      const note = document.createElement("span");
-      note.className = "bundled-book-note";
-      note.textContent = buildBundledBookNote(entry);
+      const desc = document.createElement("span");
+      desc.className = "bundled-book-note";
+      desc.textContent = safeText(entry?.description, defaultDescription(normalizeBundledBookKind(entry?.kind, entry?.filename || "")));
 
+      const file = document.createElement("span");
+      file.className = "bundled-book-file";
+      file.textContent = entry.path || entry.filename || "";
+
+      const action = document.createElement("span");
+      action.className = "bundled-book-action";
+      action.textContent = "開く";
+
+      top.appendChild(kind);
+      top.appendChild(action);
+      meta.appendChild(top);
       meta.appendChild(title);
-      meta.appendChild(note);
+      meta.appendChild(desc);
+      meta.appendChild(file);
+      button.appendChild(index);
       button.appendChild(meta);
 
       button.addEventListener("click", async () => {
@@ -347,6 +380,10 @@ async function loadBundledBookManifest() {
   const manifest = await res.json();
   if (Number(manifest?.formatVersion) !== 1) {
     throw new Error("book/manifest.json の formatVersion が未対応です");
+  }
+  const books = Array.isArray(manifest?.books) ? manifest.books : [];
+  if (books.length > MAX_BUNDLED_BOOKS) {
+    throw new Error(`同梱書籍は最大${MAX_BUNDLED_BOOKS}冊までです`);
   }
   return manifest;
 }
@@ -436,18 +473,4 @@ function normalizeBundledBookKind(kind, filename) {
   if (lower.endsWith(".html") || lower.endsWith(".htm")) return "html";
   if (lower.endsWith(".zip")) return "zip";
   return "txt";
-}
-
-function buildBundledBookNote(entry) {
-  const parts = [];
-  const kind = normalizeBundledBookKind(entry?.kind, entry?.filename || "");
-  parts.push(kind.toUpperCase());
-
-  if (entry?.description) {
-    parts.push(String(entry.description));
-  } else if (entry?.filename) {
-    parts.push(String(entry.filename));
-  }
-
-  return parts.join(" / ");
 }

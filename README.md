@@ -56,6 +56,7 @@
 ## ライト版メモ
 - 同梱書籍の一覧は `book/manifest.json` で管理します
 - 実ファイルは `book/` 直下またはその配下に置けます
+- ライト版の同梱上限は `6冊` とします
 - ライト版の制約は主に `js/library.js` に閉じ込めています
 - 汎用版へ戻すときは `LIGHT_EDITION_BUNDLED_ONLY` と `book/manifest.json` の導線を外す想定です
 - `book/` に本を追加したら `node ./scripts/generate-book-manifest.mjs` で manifest を再生成できます

@@ -7,6 +7,7 @@ const __dirname = path.dirname(__filename);
 const projectRoot = path.resolve(__dirname, "..");
 const bookRoot = path.join(projectRoot, "book");
 const manifestPath = path.join(bookRoot, "manifest.json");
+const MAX_BUNDLED_BOOKS = 6;
 
 const SUPPORTED_EXTENSIONS = new Map([
   [".txt", "txt"],
@@ -42,6 +43,10 @@ async function main() {
       description: safeText(existing.description, defaultDescription(kind))
     };
   });
+
+  if (books.length > MAX_BUNDLED_BOOKS) {
+    throw new Error(`bundled books limit exceeded: ${books.length}/${MAX_BUNDLED_BOOKS}`);
+  }
 
   const manifest = {
     formatVersion: 1,

@@ -135,6 +135,12 @@ select.input option {
   padding: 16px 0 24px;
 }
 
+#libraryScreen {
+  min-height: 100dvh;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+}
+
 #libraryScreen .status {
   margin-top: 4px;
   line-height: 1.35;
@@ -169,13 +175,106 @@ select.input option {
   gap: 8px;
 }
 
+#libraryScreen #bundledBooksCard {
+  gap: 10px;
+}
+
+#libraryScreen .bundled-book-button {
+  width: 100%;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 12px;
+  align-items: start;
+  justify-content: flex-start;
+  text-align: left;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--panel), #000 4%);
+  transition: transform 0.12s ease, border-color 0.12s ease, background 0.12s ease;
+}
+
+#libraryScreen .bundled-book-button:hover,
+#libraryScreen .bundled-book-button:focus-visible {
+  border-color: color-mix(in srgb, var(--accent), var(--border) 35%);
+  background: color-mix(in srgb, var(--panel), var(--accent) 10%);
+  transform: translateY(-1px);
+  outline: none;
+}
+
+#libraryScreen .bundled-book-index {
+  display: inline-grid;
+  place-items: center;
+  min-width: 2.25rem;
+  min-height: 2.25rem;
+  padding: 0 0.35rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+
 #libraryScreen .bundled-book-meta {
   display: grid;
-  gap: 2px;
+  gap: 3px;
+  min-width: 0;
+}
+
+#libraryScreen .bundled-book-topline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+}
+
+#libraryScreen .bundled-book-kind {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: fit-content;
+  min-height: 1.5rem;
+  padding: 0.1rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  background: color-mix(in srgb, var(--accent), transparent 80%);
+  color: var(--text);
+  border: 1px solid color-mix(in srgb, var(--accent), var(--border) 40%);
+}
+
+#libraryScreen .bundled-book-kind.kind-txt {
+  background: color-mix(in srgb, #c28d2f, transparent 82%);
+  border-color: color-mix(in srgb, #c28d2f, var(--border) 42%);
+}
+
+#libraryScreen .bundled-book-kind.kind-epub {
+  background: color-mix(in srgb, #2a8f71, transparent 82%);
+  border-color: color-mix(in srgb, #2a8f71, var(--border) 42%);
+}
+
+#libraryScreen .bundled-book-kind.kind-html {
+  background: color-mix(in srgb, #2a6aa6, transparent 82%);
+  border-color: color-mix(in srgb, #2a6aa6, var(--border) 42%);
+}
+
+#libraryScreen .bundled-book-kind.kind-zip {
+  background: color-mix(in srgb, #7b4db8, transparent 82%);
+  border-color: color-mix(in srgb, #7b4db8, var(--border) 42%);
+}
+
+#libraryScreen .bundled-book-action {
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 600;
+  white-space: nowrap;
 }
 
 #libraryScreen .bundled-book-title {
   font-weight: 700;
+  font-size: 1rem;
   line-height: 1.35;
 }
 
@@ -185,9 +284,26 @@ select.input option {
   line-height: 1.35;
 }
 
-#libraryScreen .bundled-book-button {
-  width: 100%;
-  justify-content: flex-start;
+#libraryScreen .bundled-book-file {
+  color: color-mix(in srgb, var(--muted), var(--text) 18%);
+  font-size: 0.78rem;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+
+#libraryScreen #bundledBooksList {
+  max-height: min(52dvh, 480px);
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  padding-right: 4px;
+  gap: 10px;
+}
+
+#libraryScreen .library-note {
+  margin-top: 2px;
+  font-size: 0.88rem;
+  color: var(--muted);
+  line-height: 1.4;
 }
 
 @media (min-width: 900px) {
