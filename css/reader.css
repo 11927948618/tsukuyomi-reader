@@ -247,7 +247,7 @@ body.theme-dark .version-badge {
 }
 
 .reader-content .txt-paragraph + .txt-paragraph {
-  margin-block-start: 0.55em;
+  margin-block-start: 1em;
 }
 
 .reader-content .chapter > *:last-child {
