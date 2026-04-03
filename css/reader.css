@@ -234,6 +234,46 @@ body.theme-dark .version-badge {
   scroll-snap-align: start;
 }
 
+.reader-content .chapter {
+  display: block;
+}
+
+.reader-content .chapter > h1,
+.reader-content .chapter > h2,
+.reader-content .chapter > h3 {
+  margin-block: 0 1.4em;
+  font-size: 1.15em;
+  line-height: 1.45;
+}
+
+.reader-content p,
+.reader-content ul,
+.reader-content ol,
+.reader-content blockquote,
+.reader-content pre {
+  margin-block: 0 1.15em;
+}
+
+.reader-content li + li {
+  margin-block-start: 0.45em;
+}
+
+.reader-content blockquote {
+  padding-inline: 0.8em;
+  border-inline-start: 2px solid var(--border);
+  color: color-mix(in srgb, var(--text), var(--muted) 28%);
+}
+
+.reader-content pre {
+  white-space: pre-wrap;
+  word-break: break-word;
+  font: inherit;
+}
+
+.reader-content .chapter > *:last-child {
+  margin-block-end: 0;
+}
+
 .reader-title {
   width: 100%;
   font-size: 17px;
