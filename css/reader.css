@@ -346,6 +346,12 @@ body.mode-scrolly .reader-content {
   border-bottom: 1px solid var(--border);
 }
 
+.settings-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .settings-body {
   display: grid;
   gap: 10px;
@@ -357,18 +363,44 @@ body.mode-scrolly .reader-content {
   touch-action: pan-y;
 }
 
-.settings-footer {
-  padding: 10px 14px calc(12px + env(safe-area-inset-bottom));
-  border-top: 1px solid var(--border);
-  background: var(--panel);
-}
-
-.settings-footer .button {
-  width: 100%;
-}
-
 body.settings-open .tap-zone {
   pointer-events: none;
+}
+
+.settings-group {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--panel), #000 4%);
+  overflow: hidden;
+}
+
+.settings-group > summary {
+  list-style: none;
+  cursor: pointer;
+  padding: 10px 12px;
+  font-size: 13px;
+  font-weight: 700;
+  user-select: none;
+}
+
+.settings-group > summary::-webkit-details-marker {
+  display: none;
+}
+
+.settings-group > summary::after {
+  content: "＋";
+  float: right;
+  color: var(--muted);
+}
+
+.settings-group[open] > summary::after {
+  content: "－";
+}
+
+.settings-group-body {
+  display: grid;
+  gap: 10px;
+  padding: 0 12px 12px;
 }
 
 .settings-panel .field {
@@ -517,19 +549,31 @@ body {
 
   .settings-panel {
     width: min(340px, 96vw);
+    display: block;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-y;
   }
 
   .settings-panel > header {
     padding: 12px 12px 8px;
   }
 
+  .settings-header-actions {
+    gap: 6px;
+  }
+
+  .settings-header-actions .button {
+    min-height: 34px;
+    padding: 6px 10px;
+    font-size: 12px;
+  }
+
   .settings-body {
     padding: 0 12px max(12px, env(safe-area-inset-bottom));
     gap: 8px;
-  }
-
-  .settings-footer {
-    padding: 10px 12px max(10px, env(safe-area-inset-bottom));
+    overflow: visible;
+    overscroll-behavior: auto;
   }
 }
 
@@ -541,9 +585,5 @@ body {
   .settings-body {
     padding: 0 10px max(10px, env(safe-area-inset-bottom));
     gap: 6px;
-  }
-
-  .settings-footer {
-    padding: 8px 10px max(8px, env(safe-area-inset-bottom));
   }
 }

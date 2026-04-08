@@ -41,72 +41,89 @@
   <aside class="settings-panel" id="settingsPanel" aria-hidden="true">
     <header>
       <strong>表示設定</strong>
-      <button class="button ghost" id="closeSettingsBtn">閉じる</button>
+      <div class="settings-header-actions">
+        <button class="button" id="saveSettingsBtn" type="button">設定を保存</button>
+        <button class="button ghost" id="closeSettingsBtn">閉じる</button>
+      </div>
     </header>
 
     <div class="settings-body">
-      <div class="field">
-        <label class="label" for="fontSizeRange">文字サイズ</label>
-        <input id="fontSizeRange" type="range" min="80" max="140" step="1" />
-      </div>
+      <details class="settings-group" open>
+        <summary>文字組みと表示</summary>
+        <div class="settings-group-body">
+          <div class="field">
+            <label class="label" for="fontSizeRange">文字サイズ</label>
+            <input id="fontSizeRange" type="range" min="80" max="140" step="1" />
+          </div>
 
-      <div class="field">
-        <label class="label" for="lineHeightRange">行間</label>
-        <input id="lineHeightRange" type="range" min="1.4" max="2.4" step="0.1" />
-      </div>
+          <div class="field">
+            <label class="label" for="lineHeightRange">行間</label>
+            <input id="lineHeightRange" type="range" min="1.4" max="2.4" step="0.1" />
+          </div>
 
-      <div class="field">
-        <label class="label" for="letterSpacingRange">字間</label>
-        <input id="letterSpacingRange" type="range" min="-0.5" max="1.5" step="0.1" />
-      </div>
+          <div class="field">
+            <label class="label" for="letterSpacingRange">字間</label>
+            <input id="letterSpacingRange" type="range" min="-0.5" max="1.5" step="0.1" />
+          </div>
 
-      <div class="field">
-        <label class="label" for="wrapWidthRange">折り返し位置（ページ幅）</label>
-        <div class="range-with-guide">
-          <input id="wrapWidthRange" type="range" min="60" max="130" step="1" />
-          <span class="range-guide-pin" aria-hidden="true"></span>
+          <div class="field">
+            <label class="label" for="wrapWidthRange">折り返し位置（ページ幅）</label>
+            <div class="range-with-guide">
+              <input id="wrapWidthRange" type="range" min="60" max="130" step="1" />
+              <span class="range-guide-pin" aria-hidden="true"></span>
+            </div>
+            <span class="range-guide-hint">この印が 20字×20行（400字）目安</span>
+          </div>
+
+          <div class="field">
+            <span class="label">原稿用紙プリセット</span>
+            <button class="button ghost" id="applyGenkoPresetBtn" type="button">400字目安を適用</button>
+          </div>
         </div>
-        <span class="range-guide-hint">この印が 20字×20行（400字）目安</span>
-      </div>
+      </details>
 
-      <div class="field">
-        <span class="label">原稿用紙プリセット</span>
-        <button class="button ghost" id="applyGenkoPresetBtn" type="button">400字目安を適用</button>
-      </div>
+      <details class="settings-group" open>
+        <summary>モードとテーマ</summary>
+        <div class="settings-group-body">
+          <div class="field">
+            <label class="label" for="themeSelect">テーマ</label>
+            <select id="themeSelect">
+              <option value="light">Light</option>
+              <option value="dark">Dark</option>
+            </select>
+          </div>
 
-      <div class="field">
-        <label class="label" for="themeSelect">テーマ</label>
-        <select id="themeSelect">
-          <option value="light">Light</option>
-          <option value="dark">Dark</option>
-        </select>
-      </div>
+          <div class="field">
+            <span class="label">表示モード</span>
+            <label><input type="radio" name="displayMode" value="paged" checked /> paged</label>
+            <label><input type="radio" name="displayMode" value="scrollx" /> scrollx</label>
+            <label><input type="radio" name="displayMode" value="scrolly" /> scrolly</label>
+          </div>
 
-      <div class="field">
-        <span class="label">表示モード</span>
-        <label><input type="radio" name="displayMode" value="paged" checked /> paged</label>
-        <label><input type="radio" name="displayMode" value="scrollx" /> scrollx</label>
-        <label><input type="radio" name="displayMode" value="scrolly" /> scrolly</label>
-      </div>
+          <div class="field">
+            <label class="label" for="writingModeSelect">文字組み</label>
+            <select id="writingModeSelect">
+              <option value="auto">auto（本文から判定）</option>
+              <option value="vertical" selected>vertical（縦書き）</option>
+              <option value="horizontal">horizontal（横書き）</option>
+            </select>
+          </div>
 
-      <div class="field">
-        <label class="label" for="writingModeSelect">文字組み</label>
-        <select id="writingModeSelect">
-          <option value="auto">auto（本文から判定）</option>
-          <option value="vertical" selected>vertical（縦書き）</option>
-          <option value="horizontal">horizontal（横書き）</option>
-        </select>
-      </div>
+          <div class="field">
+            <label><input id="wheelPagingCheck" type="checkbox" /> Windowsでホイール上下をページ送りにする</label>
+          </div>
+        </div>
+      </details>
 
-      <div class="field">
-        <label><input id="wheelPagingCheck" type="checkbox" /> Windowsでホイール上下をページ送りにする</label>
-      </div>
-
-      <div class="field">
-        <span class="label">再起動 / 同期</span>
-        <button class="button ghost" id="reloadBtn" type="button">再起動（リロード）</button>
-        <button class="button" id="hardReloadBtn" type="button">強制同期（キャッシュ破棄）</button>
-      </div>
+      <details class="settings-group" open>
+        <summary>再起動と同期</summary>
+        <div class="settings-group-body">
+          <div class="field">
+            <button class="button ghost" id="reloadBtn" type="button">再起動（リロード）</button>
+            <button class="button" id="hardReloadBtn" type="button">強制同期（キャッシュ破棄）</button>
+          </div>
+        </div>
+      </details>
 
       <div class="build-info">
         <div class="build-row">
@@ -122,10 +139,6 @@
           <span id="settingsCommit">-</span>
         </div>
       </div>
-    </div>
-
-    <div class="settings-footer">
-      <button class="button" id="saveSettingsBtn" type="button">設定を保存</button>
     </div>
   </aside>
 </section>
