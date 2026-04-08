@@ -34,6 +34,10 @@ export function initReader({
   const lineHeightRange = qs("#lineHeightRange");
   const letterSpacingRange = qs("#letterSpacingRange");
   const wrapWidthRange = qs("#wrapWidthRange");
+  const fontSizeValue = qs("#fontSizeValue");
+  const lineHeightValue = qs("#lineHeightValue");
+  const letterSpacingValue = qs("#letterSpacingValue");
+  const wrapWidthValue = qs("#wrapWidthValue");
   const themeSelect = qs("#themeSelect");
   const writingModeSelect = qs("#writingModeSelect");
   const wheelPagingCheck = qs("#wheelPagingCheck");
@@ -193,6 +197,9 @@ export function initReader({
   window.addEventListener("resize", applyViewportMetrics);
   window.addEventListener("orientationchange", applyViewportMetrics);
   window.visualViewport?.addEventListener("resize", applyViewportMetrics);
+  window.addEventListener("resize", updateSettingValueLabels);
+  window.addEventListener("orientationchange", updateSettingValueLabels);
+  window.visualViewport?.addEventListener("resize", updateSettingValueLabels);
   window.addEventListener("resize", reflowTopbar);
   window.addEventListener("orientationchange", reflowTopbar);
   window.visualViewport?.addEventListener("resize", reflowTopbar);
@@ -311,6 +318,7 @@ export function initReader({
     displayModeRadios.forEach((radio) => {
       radio.checked = radio.value === displayMode;
     });
+    updateSettingValueLabels();
   }
 
   function applyTheme(theme) {
@@ -375,6 +383,39 @@ export function initReader({
       });
       toggle.dataset.bound = "true";
     });
+  }
+
+  function updateSettingValueLabels() {
+    const baseFontPx = parseFloat(window.getComputedStyle(document.documentElement).fontSize) || 16;
+    const fontPercent = Number(fontSizeRange?.value) || 100;
+    const fontPx = (fontPercent / 100) * baseFontPx;
+    const fontPt = fontPx * 0.75;
+    const lineHeight = Number(lineHeightRange?.value) || 1.8;
+    const lineHeightPx = fontPx * lineHeight;
+    const letterSpacingPx = Number(letterSpacingRange?.value) || 0;
+    const wrapPercent = normalizeWrapWidthPercent(wrapWidthRange?.value);
+    const viewportWidth = getHorizontalPageSize();
+    const wrapPx = Math.round(viewportWidth * (wrapPercent / 100));
+    const mode = normalizeWritingModePreference(writingModeSelect?.value || writingModePreference);
+    const charAdvance =
+      mode === "horizontal"
+        ? Math.max(6, fontPx * 0.95 + letterSpacingPx)
+        : Math.max(6, lineHeightPx);
+    const approxChars = Math.max(1, Math.round(wrapPx / charAdvance));
+
+    if (fontSizeValue) {
+      fontSizeValue.textContent = `${fontPercent}% / ${fontPx.toFixed(1)}px / ${fontPt.toFixed(1)}pt`;
+    }
+    if (lineHeightValue) {
+      lineHeightValue.textContent = `${lineHeight.toFixed(1)} / 約${lineHeightPx.toFixed(1)}px`;
+    }
+    if (letterSpacingValue) {
+      const sign = letterSpacingPx > 0 ? "+" : "";
+      letterSpacingValue.textContent = `${sign}${letterSpacingPx.toFixed(1)}px`;
+    }
+    if (wrapWidthValue) {
+      wrapWidthValue.textContent = `${wrapPercent}% / 約${wrapPx}px / 約${approxChars}字`;
+    }
   }
 
   function getCurrentSettings(patch = {}) {

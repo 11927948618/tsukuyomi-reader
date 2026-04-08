@@ -60,22 +60,34 @@
         </button>
         <div class="settings-group-body" id="settingsTypographyBody">
           <div class="field">
-            <label class="label" for="fontSizeRange">文字サイズ</label>
+            <div class="field-head">
+              <label class="label" for="fontSizeRange">文字サイズ</label>
+              <output class="field-value" id="fontSizeValue" for="fontSizeRange" aria-live="polite">-</output>
+            </div>
             <input id="fontSizeRange" type="range" min="80" max="140" step="1" />
           </div>
 
           <div class="field">
-            <label class="label" for="lineHeightRange">行間</label>
+            <div class="field-head">
+              <label class="label" for="lineHeightRange">行間</label>
+              <output class="field-value" id="lineHeightValue" for="lineHeightRange" aria-live="polite">-</output>
+            </div>
             <input id="lineHeightRange" type="range" min="1.4" max="2.4" step="0.1" />
           </div>
 
           <div class="field">
-            <label class="label" for="letterSpacingRange">字間</label>
+            <div class="field-head">
+              <label class="label" for="letterSpacingRange">字間</label>
+              <output class="field-value" id="letterSpacingValue" for="letterSpacingRange" aria-live="polite">-</output>
+            </div>
             <input id="letterSpacingRange" type="range" min="-0.5" max="1.5" step="0.1" />
           </div>
 
           <div class="field">
-            <label class="label" for="wrapWidthRange">折り返し位置（ページ幅）</label>
+            <div class="field-head">
+              <label class="label" for="wrapWidthRange">折り返し位置（ページ幅）</label>
+              <output class="field-value" id="wrapWidthValue" for="wrapWidthRange" aria-live="polite">-</output>
+            </div>
             <div class="range-with-guide">
               <input id="wrapWidthRange" type="range" min="60" max="130" step="1" />
               <span class="range-guide-pin" aria-hidden="true"></span>
