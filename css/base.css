@@ -147,14 +147,19 @@ select.input option {
 }
 
 #libraryScreen .library-grid {
+  display: grid;
   margin-top: 6px;
   gap: 10px;
-  align-items: start;
+}
+
+#libraryScreen .library-column {
+  display: grid;
+  gap: 10px;
+  align-content: start;
 }
 
 #libraryScreen .card {
   padding: 12px;
-  align-self: start;
 }
 
 #libraryScreen .label {
@@ -306,8 +311,9 @@ select.input option {
 }
 
 @media (min-width: 900px) {
-  .grid.cols-2 {
-    grid-template-columns: 1fr 1fr;
+  #libraryScreen .library-grid {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    align-items: start;
   }
 }
 
@@ -318,6 +324,10 @@ select.input option {
   }
 
   #libraryScreen .library-grid {
+    gap: 8px;
+  }
+
+  #libraryScreen .library-column {
     gap: 8px;
   }
 

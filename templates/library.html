@@ -1,50 +1,54 @@
 <section class="screen" id="libraryScreen">
   <div class="container">
-    <div class="grid cols-2 library-grid">
-      <div class="card library-card-stack library-toolbar-card">
-        <p class="label">設定と同期</p>
-        <button class="button ghost" id="openReaderSettingsBtn" type="button">読書設定を開く</button>
-        <button class="button ghost" id="libraryReloadBtn" type="button">再起動（リロード）</button>
-        <button class="button" id="libraryHardReloadBtn" type="button">強制同期（キャッシュ破棄）</button>
+    <div class="library-grid">
+      <div class="library-column">
+        <div class="card library-card-stack library-toolbar-card">
+          <p class="label">設定と同期</p>
+          <button class="button ghost" id="openReaderSettingsBtn" type="button">読書設定を開く</button>
+          <button class="button ghost" id="libraryReloadBtn" type="button">再起動（リロード）</button>
+          <button class="button" id="libraryHardReloadBtn" type="button">強制同期（キャッシュ破棄）</button>
+        </div>
+
+        <div class="card library-card-stack" data-manual-import>
+          <label class="label" for="txtEncoding">TXT文字コード</label>
+          <select class="input" id="txtEncoding">
+            <option value="auto" selected>自動判別</option>
+            <option value="utf-8">UTF-8</option>
+            <option value="shift_jis">Shift_JIS（CP932）</option>
+          </select>
+
+          <label class="label" for="txtInput">TXT / EPUB読み込み</label>
+          <input class="input" id="txtInput" type="file" accept=".txt,.epub,text/plain,application/epub+zip" />
+        </div>
+
+        <div class="card" data-manual-import>
+          <label class="label" for="htmlInput">HTML読み込み</label>
+          <input class="input" id="htmlInput" type="file" accept=".html,.htm,text/html" />
+        </div>
+
+        <div class="card" data-manual-import>
+          <label class="label" for="zipInput">バックアップZIP読み込み</label>
+          <input class="input" id="zipInput" type="file" accept=".zip,application/zip" />
+        </div>
+
+        <div class="card">
+          <p class="label">ステータス</p>
+          <div id="statusMessage" class="status">待機中</div>
+        </div>
       </div>
 
-      <div class="card library-card-stack" id="bundledBooksCard">
-        <p class="label">同梱書籍</p>
-        <div id="bundledBooksStatus" class="status">同梱書籍を確認中...</div>
-        <button class="button" id="bundledBooksToggleBtn" type="button" aria-expanded="false" aria-controls="bundledBooksList">同梱本一覧を開く</button>
-        <div id="bundledBooksList" class="library-card-stack" hidden></div>
-      </div>
+      <div class="library-column">
+        <div class="card library-card-stack" id="bundledBooksCard">
+          <p class="label">同梱書籍</p>
+          <div id="bundledBooksStatus" class="status">同梱書籍を確認中...</div>
+          <button class="button" id="bundledBooksToggleBtn" type="button" aria-expanded="false" aria-controls="bundledBooksList">同梱本一覧を開く</button>
+          <div id="bundledBooksList" class="library-card-stack" hidden></div>
+        </div>
 
-      <div class="card library-card-stack" data-manual-import>
-        <label class="label" for="txtEncoding">TXT文字コード</label>
-        <select class="input" id="txtEncoding">
-          <option value="auto" selected>自動判別</option>
-          <option value="utf-8">UTF-8</option>
-          <option value="shift_jis">Shift_JIS（CP932）</option>
-        </select>
-
-        <label class="label" for="txtInput">TXT / EPUB読み込み</label>
-        <input class="input" id="txtInput" type="file" accept=".txt,.epub,text/plain,application/epub+zip" />
-      </div>
-
-      <div class="card" data-manual-import>
-        <label class="label" for="htmlInput">HTML読み込み</label>
-        <input class="input" id="htmlInput" type="file" accept=".html,.htm,text/html" />
-      </div>
-
-      <div class="card" data-manual-import>
-        <label class="label" for="zipInput">バックアップZIP読み込み</label>
-        <input class="input" id="zipInput" type="file" accept=".zip,application/zip" />
-      </div>
-
-      <div class="card">
-        <p class="label">バックアップZIPを書き出し</p>
-        <button class="button" id="exportBtn">現在の本をバックアップZIPとして書き出し</button>
-      </div>
-
-      <div class="card">
-        <p class="label">ステータス</p>
-        <div id="statusMessage" class="status">待機中</div>
+        <div class="card">
+          <p class="label">バックアップZIPを書き出し</p>
+          <button class="button" id="exportBtn">現在の本をバックアップZIPとして書き出し</button>
+        </div>
       </div>
     </div>
 
