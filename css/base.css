@@ -147,12 +147,12 @@ select.input option {
 }
 
 #libraryScreen .library-grid {
-  margin-top: 12px;
-  gap: 12px;
+  margin-top: 6px;
+  gap: 10px;
 }
 
 #libraryScreen .card {
-  padding: 14px;
+  padding: 12px;
 }
 
 #libraryScreen .label {
@@ -175,8 +175,12 @@ select.input option {
   gap: 8px;
 }
 
+#libraryScreen .library-toolbar-card {
+  align-content: start;
+}
+
 #libraryScreen #bundledBooksCard {
-  gap: 10px;
+  gap: 8px;
 }
 
 #libraryScreen .bundled-book-button {
@@ -295,19 +299,70 @@ select.input option {
   max-height: min(52dvh, 480px);
   overflow-y: auto;
   overscroll-behavior-y: contain;
-  padding-right: 4px;
+  padding-right: 2px;
   gap: 10px;
-}
-
-#libraryScreen .library-note {
-  margin-top: 2px;
-  font-size: 0.88rem;
-  color: var(--muted);
-  line-height: 1.4;
 }
 
 @media (min-width: 900px) {
   .grid.cols-2 {
     grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 899px) {
+  #libraryScreen .container {
+    width: min(100vw - 16px, 680px);
+    padding: 8px 0 16px;
+  }
+
+  #libraryScreen .library-grid {
+    gap: 8px;
+  }
+
+  #libraryScreen .card {
+    padding: 10px;
+    border-radius: 14px;
+  }
+
+  #libraryScreen .label {
+    font-size: 13px;
+    margin-bottom: 2px;
+  }
+
+  #libraryScreen .status {
+    margin-top: 0;
+    font-size: 13px;
+  }
+
+  #libraryScreen .button {
+    min-height: 38px;
+    padding: 7px 12px;
+  }
+
+  #libraryScreen .bundled-book-button {
+    gap: 10px;
+    padding: 10px 12px;
+  }
+
+  #libraryScreen .bundled-book-title {
+    font-size: 0.96rem;
+    line-height: 1.28;
+  }
+
+  #libraryScreen .bundled-book-note,
+  #libraryScreen .bundled-book-file {
+    font-size: 0.78rem;
+    line-height: 1.22;
+  }
+
+  #libraryScreen .bundled-book-index {
+    min-width: 2rem;
+    min-height: 2rem;
+    font-size: 0.76rem;
+  }
+
+  #libraryScreen #bundledBooksList {
+    max-height: min(46dvh, 360px);
+    gap: 8px;
   }
 }

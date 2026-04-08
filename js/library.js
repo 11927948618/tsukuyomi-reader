@@ -16,6 +16,7 @@ export function initLibrary({ onOpenBook, onExport, getCurrentBook, onOpenReader
   const zipInput = qs("#zipInput");
   const bundledBooksStatus = qs("#bundledBooksStatus");
   const bundledBooksList = qs("#bundledBooksList");
+  const bundledBooksToggleBtn = qs("#bundledBooksToggleBtn");
   const exportBtn = qs("#exportBtn");
   const openReaderSettingsBtn = qs("#openReaderSettingsBtn");
   const libraryReloadBtn = qs("#libraryReloadBtn");
@@ -23,6 +24,7 @@ export function initLibrary({ onOpenBook, onExport, getCurrentBook, onOpenReader
   const statusMessage = qs("#statusMessage");
   const debugDecode = qs("#debugDecode");
   const manualImportCards = Array.from(document.querySelectorAll("[data-manual-import]"));
+  let bundledBooksOpen = false;
 
   const setStatus = (message, type = "") => {
     statusMessage.textContent = message;
@@ -36,12 +38,17 @@ export function initLibrary({ onOpenBook, onExport, getCurrentBook, onOpenReader
 
   exportBtn.disabled = !getCurrentBook();
   setStatus(LIGHT_EDITION_BUNDLED_ONLY ? "同梱書籍を選んでください" : "待機中");
+  setBundledBooksOpen(false);
 
   if (LIGHT_EDITION_BUNDLED_ONLY) {
     manualImportCards.forEach((card) => {
       card.hidden = true;
     });
   }
+
+  bundledBooksToggleBtn?.addEventListener("click", () => {
+    setBundledBooksOpen(!bundledBooksOpen);
+  });
 
   openReaderSettingsBtn?.addEventListener("click", () => {
     onOpenReaderSettings?.();
@@ -151,11 +158,22 @@ export function initLibrary({ onOpenBook, onExport, getCurrentBook, onOpenReader
   void initBundledBooksShelf({
     bundledBooksStatus,
     bundledBooksList,
+    bundledBooksToggleBtn,
     txtEncoding,
     setDebug,
     setStatus,
-    onOpenBook
+    onOpenBook,
+    onAfterOpenBook: () => setBundledBooksOpen(false)
   });
+
+  function setBundledBooksOpen(open) {
+    bundledBooksOpen = Boolean(open);
+    if (bundledBooksList) bundledBooksList.hidden = !bundledBooksOpen;
+    if (bundledBooksToggleBtn) {
+      bundledBooksToggleBtn.setAttribute("aria-expanded", bundledBooksOpen ? "true" : "false");
+      bundledBooksToggleBtn.textContent = bundledBooksOpen ? "同梱本一覧を閉じる" : "同梱本一覧を開く";
+    }
+  }
 }
 
 function countReplacement(text) {
@@ -274,10 +292,12 @@ function normalizeHtmlToBook(htmlText, filename = "") {
 async function initBundledBooksShelf({
   bundledBooksStatus,
   bundledBooksList,
+  bundledBooksToggleBtn,
   txtEncoding,
   setDebug,
   setStatus,
-  onOpenBook
+  onOpenBook,
+  onAfterOpenBook
 }) {
   if (!bundledBooksStatus || !bundledBooksList) return;
 
@@ -288,6 +308,7 @@ async function initBundledBooksShelf({
     if (books.length === 0) {
       bundledBooksStatus.textContent = "book/manifest.json に本が登録されていません";
       bundledBooksStatus.className = "status error";
+      if (bundledBooksToggleBtn) bundledBooksToggleBtn.disabled = true;
       return;
     }
 
@@ -295,11 +316,13 @@ async function initBundledBooksShelf({
       bundledBooksStatus.textContent = `同梱書籍は最大${MAX_BUNDLED_BOOKS}冊までです。book/manifest.json を整理してください`;
       bundledBooksStatus.className = "status error";
       bundledBooksList.innerHTML = "";
+      if (bundledBooksToggleBtn) bundledBooksToggleBtn.disabled = true;
       return;
     }
 
-    bundledBooksStatus.textContent = `${books.length}冊の同梱書籍を利用できます（上限${MAX_BUNDLED_BOOKS}冊）`;
+    bundledBooksStatus.textContent = `${books.length}冊 / 上限${MAX_BUNDLED_BOOKS}冊`;
     bundledBooksStatus.className = "status ok";
+    if (bundledBooksToggleBtn) bundledBooksToggleBtn.disabled = false;
     bundledBooksList.innerHTML = "";
 
     books.forEach((entry, indexValue) => {
@@ -357,6 +380,7 @@ async function initBundledBooksShelf({
           bundledBooksStatus.className = "status ok";
           setStatus("同梱書籍を開きました", "ok");
           onOpenBook(book);
+          onAfterOpenBook?.();
         } catch (err) {
           bundledBooksStatus.textContent = err.message || "同梱書籍の読み込みに失敗しました";
           bundledBooksStatus.className = "status error";
@@ -369,6 +393,7 @@ async function initBundledBooksShelf({
   } catch (err) {
     bundledBooksStatus.textContent = err.message || "同梱書籍の一覧取得に失敗しました";
     bundledBooksStatus.className = "status error";
+    if (bundledBooksToggleBtn) bundledBooksToggleBtn.disabled = true;
   }
 }
 
