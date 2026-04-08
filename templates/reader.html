@@ -8,13 +8,10 @@
       </div>
 
       <div class="topbar-group topbar-group-right">
-        <span id="versionBadge" class="version-badge" aria-hidden="true"></span>
-        <button class="button ghost" id="exportBtn">バックアップZIP保存</button>
         <div class="h-scroll-wrap">
           <input id="hScroll" class="h-scroll" type="range" min="0" value="0" step="1" aria-label="横スクロール" />
           <span id="hScrollPageInfo" class="h-scroll-page-info" aria-live="polite">1 / 1</span>
         </div>
-        <button class="button" id="printBtn">Print</button>
       </div>
     </div>
 
@@ -86,7 +83,10 @@
           <div class="field">
             <div class="field-head">
               <label class="label" for="wrapWidthRange">折り返し位置（ページ幅）</label>
-              <output class="field-value" id="wrapWidthValue" for="wrapWidthRange" aria-live="polite">-</output>
+              <div class="field-meta">
+                <output class="field-value" id="wrapWidthValue" for="wrapWidthRange" aria-live="polite">-</output>
+                <span class="field-badge" id="genkoMatchBadge" aria-live="polite" hidden></span>
+              </div>
             </div>
             <div class="range-with-guide">
               <input id="wrapWidthRange" type="range" min="60" max="130" step="1" />
@@ -151,9 +151,13 @@
           aria-expanded="true"
           aria-controls="settingsReloadBody"
         >
-          再起動と同期
+          再起動と操作
         </button>
         <div class="settings-group-body" id="settingsReloadBody">
+          <div class="field">
+            <button class="button ghost" id="exportBtn" type="button">バックアップZIP保存</button>
+            <button class="button ghost" id="printBtn" type="button">印刷</button>
+          </div>
           <div class="field">
             <button class="button ghost" id="reloadBtn" type="button">再起動（リロード）</button>
             <button class="button" id="hardReloadBtn" type="button">強制同期（キャッシュ破棄）</button>

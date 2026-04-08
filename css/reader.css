@@ -90,38 +90,13 @@ body.topbar-mobile-wrap .h-scroll {
   width: 100%;
 }
 
-body.topbar-mobile-wrap .topbar-group-right .version-badge {
-  display: none;
-}
-
 body.topbar-mobile-wrap .topbar-group-right .button {
   flex: 0 1 auto;
   min-width: 0;
 }
 
-body.topbar-mobile-wrap #exportBtn {
-  max-width: 48vw;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.version-badge {
-  font-size: 11px;
-  opacity: 0.65;
-  padding: 4px 8px;
-  border-radius: 999px;
-  border: 1px solid rgba(0, 0, 0, 0.12);
-  white-space: nowrap;
-  pointer-events: none;
-}
-
-body.theme-dark .version-badge {
-  border-color: rgba(255, 255, 255, 0.18);
-}
-
 .h-scroll {
-  width: min(360px, 40vw);
+  width: min(440px, 52vw);
   vertical-align: middle;
 }
 
@@ -419,12 +394,68 @@ body.settings-open .tap-zone {
   gap: 10px;
 }
 
+.field-meta {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  min-width: 0;
+}
+
 .field-value {
   font-size: 12px;
   line-height: 1.2;
   color: var(--muted);
   text-align: right;
   white-space: nowrap;
+}
+
+.field-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.4rem;
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  font-size: 11px;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.field-badge.exact {
+  color: #155f28;
+  background: color-mix(in srgb, #3faf5c, transparent 82%);
+  border-color: color-mix(in srgb, #3faf5c, var(--border) 45%);
+}
+
+.field-badge.near {
+  color: #7a5a0b;
+  background: color-mix(in srgb, #d9a22c, transparent 82%);
+  border-color: color-mix(in srgb, #d9a22c, var(--border) 45%);
+}
+
+.field-badge.off {
+  color: var(--muted);
+  background: color-mix(in srgb, var(--panel), #000 10%);
+}
+
+.field-badge.flash {
+  animation: genko-badge-flash 0.7s ease;
+}
+
+@keyframes genko-badge-flash {
+  0% {
+    transform: scale(0.94);
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent), transparent 100%);
+  }
+  45% {
+    transform: scale(1.06);
+    box-shadow: 0 0 0 8px color-mix(in srgb, var(--accent), transparent 82%);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent), transparent 100%);
+  }
 }
 
 .range-with-guide {

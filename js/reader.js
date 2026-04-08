@@ -38,6 +38,7 @@ export function initReader({
   const lineHeightValue = qs("#lineHeightValue");
   const letterSpacingValue = qs("#letterSpacingValue");
   const wrapWidthValue = qs("#wrapWidthValue");
+  const genkoMatchBadge = qs("#genkoMatchBadge");
   const themeSelect = qs("#themeSelect");
   const writingModeSelect = qs("#writingModeSelect");
   const wheelPagingCheck = qs("#wheelPagingCheck");
@@ -342,6 +343,7 @@ export function initReader({
     });
     applyGenkoPresetBtn?.addEventListener("click", () => {
       updateSettings(buildGenkoPresetFromCurrent());
+      flashGenkoMatchBadge();
       applyGenkoPresetBtn.textContent = "適用しました";
       window.setTimeout(() => {
         if (applyGenkoPresetBtn) applyGenkoPresetBtn.textContent = "400字目安を適用";
@@ -395,13 +397,18 @@ export function initReader({
     const letterSpacingPx = Number(letterSpacingRange?.value) || 0;
     const wrapPercent = normalizeWrapWidthPercent(wrapWidthRange?.value);
     const viewportWidth = getHorizontalPageSize();
+    const viewportHeight = getVerticalPageSize();
     const wrapPx = Math.round(viewportWidth * (wrapPercent / 100));
     const mode = normalizeWritingModePreference(writingModeSelect?.value || writingModePreference);
-    const charAdvance =
+    const inlineAdvance = Math.max(6, fontPx * 0.95 + letterSpacingPx);
+    const approxCharsPerLine =
       mode === "horizontal"
-        ? Math.max(6, fontPx * 0.95 + letterSpacingPx)
-        : Math.max(6, lineHeightPx);
-    const approxChars = Math.max(1, Math.round(wrapPx / charAdvance));
+        ? Math.max(1, Math.round(wrapPx / inlineAdvance))
+        : Math.max(1, Math.round(viewportHeight / inlineAdvance));
+    const approxLinesPerPage =
+      mode === "horizontal"
+        ? Math.max(1, Math.round(viewportHeight / lineHeightPx))
+        : Math.max(1, Math.round(wrapPx / lineHeightPx));
 
     if (fontSizeValue) {
       fontSizeValue.textContent = `${fontPercent}% / ${fontPx.toFixed(1)}px / ${fontPt.toFixed(1)}pt`;
@@ -414,8 +421,48 @@ export function initReader({
       letterSpacingValue.textContent = `${sign}${letterSpacingPx.toFixed(1)}px`;
     }
     if (wrapWidthValue) {
-      wrapWidthValue.textContent = `${wrapPercent}% / 約${wrapPx}px / 約${approxChars}字`;
+      wrapWidthValue.textContent =
+        mode === "horizontal"
+          ? `${wrapPercent}% / 約${wrapPx}px / 約${approxCharsPerLine}字×${approxLinesPerPage}行`
+          : `${wrapPercent}% / 約${wrapPx}px / 約${approxCharsPerLine}字×${approxLinesPerPage}列`;
     }
+    updateGenkoMatchBadge(approxCharsPerLine, approxLinesPerPage);
+  }
+
+  function updateGenkoMatchBadge(charsPerLine, linesPerPage) {
+    if (!genkoMatchBadge) return;
+
+    const charsDelta = Math.abs(charsPerLine - 20);
+    const linesDelta = Math.abs(linesPerPage - 20);
+    const totalCells = charsPerLine * linesPerPage;
+
+    let text = "";
+    let tone = "off";
+    if (charsDelta <= 1 && linesDelta <= 1) {
+      text = "400字目安";
+      tone = "exact";
+    } else if (charsDelta <= 3 && linesDelta <= 3) {
+      text = "ほぼ400字";
+      tone = "near";
+    } else if (totalCells > 400) {
+      text = "やや広め";
+    } else {
+      text = "やや狭め";
+    }
+
+    genkoMatchBadge.hidden = false;
+    genkoMatchBadge.className = `field-badge ${tone}`;
+    genkoMatchBadge.textContent = text;
+  }
+
+  function flashGenkoMatchBadge() {
+    if (!genkoMatchBadge) return;
+    genkoMatchBadge.classList.remove("flash");
+    void genkoMatchBadge.offsetWidth;
+    genkoMatchBadge.classList.add("flash");
+    window.setTimeout(() => {
+      genkoMatchBadge?.classList.remove("flash");
+    }, 750);
   }
 
   function getCurrentSettings(patch = {}) {
