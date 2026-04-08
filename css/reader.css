@@ -374,26 +374,26 @@ body.settings-open .tap-zone {
   overflow: hidden;
 }
 
-.settings-group > summary {
-  list-style: none;
+.settings-group-toggle {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: var(--text);
   cursor: pointer;
   padding: 10px 12px;
   font-size: 13px;
   font-weight: 700;
+  text-align: left;
   user-select: none;
 }
 
-.settings-group > summary::-webkit-details-marker {
-  display: none;
-}
-
-.settings-group > summary::after {
+.settings-group-toggle::after {
   content: "＋";
   float: right;
   color: var(--muted);
 }
 
-.settings-group[open] > summary::after {
+.settings-group.open .settings-group-toggle::after {
   content: "－";
 }
 
@@ -401,6 +401,10 @@ body.settings-open .tap-zone {
   display: grid;
   gap: 10px;
   padding: 0 12px 12px;
+}
+
+.settings-group:not(.open) .settings-group-body {
+  display: none;
 }
 
 .settings-panel .field {

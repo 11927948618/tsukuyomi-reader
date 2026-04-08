@@ -179,6 +179,7 @@ export function initReader({
   applyPageWidth();
   applySettings(settings);
   bindSettingsEvents();
+  bindSettingsGroupToggles();
   applyProgress(progress, refreshHScroll);
   bindProgressTracking();
   bindTopEdgeRevealTap(tapZone);
@@ -351,6 +352,28 @@ export function initReader({
         if (!radio.checked) return;
         updateSettings({ displayMode: normalizeDisplayMode(radio.value) });
       });
+    });
+  }
+
+  function bindSettingsGroupToggles() {
+    const groups = Array.from(settingsPanel?.querySelectorAll("[data-settings-group]") || []);
+    groups.forEach((group) => {
+      const toggle = group.querySelector("[data-settings-group-toggle]");
+      const body = group.querySelector(".settings-group-body");
+      if (!toggle || !body || toggle.dataset.bound === "true") return;
+
+      const syncGroupState = () => {
+        const isOpen = group.classList.contains("open");
+        toggle.setAttribute("aria-expanded", String(isOpen));
+        body.hidden = !isOpen;
+      };
+
+      syncGroupState();
+      toggle.addEventListener("click", () => {
+        group.classList.toggle("open");
+        syncGroupState();
+      });
+      toggle.dataset.bound = "true";
     });
   }
 

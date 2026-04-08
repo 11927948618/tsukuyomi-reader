@@ -48,9 +48,17 @@
     </header>
 
     <div class="settings-body">
-      <details class="settings-group" open>
-        <summary>文字組みと表示</summary>
-        <div class="settings-group-body">
+      <section class="settings-group open" data-settings-group>
+        <button
+          class="settings-group-toggle"
+          type="button"
+          data-settings-group-toggle
+          aria-expanded="true"
+          aria-controls="settingsTypographyBody"
+        >
+          文字組みと表示
+        </button>
+        <div class="settings-group-body" id="settingsTypographyBody">
           <div class="field">
             <label class="label" for="fontSizeRange">文字サイズ</label>
             <input id="fontSizeRange" type="range" min="80" max="140" step="1" />
@@ -80,11 +88,19 @@
             <button class="button ghost" id="applyGenkoPresetBtn" type="button">400字目安を適用</button>
           </div>
         </div>
-      </details>
+      </section>
 
-      <details class="settings-group" open>
-        <summary>モードとテーマ</summary>
-        <div class="settings-group-body">
+      <section class="settings-group open" data-settings-group>
+        <button
+          class="settings-group-toggle"
+          type="button"
+          data-settings-group-toggle
+          aria-expanded="true"
+          aria-controls="settingsThemeBody"
+        >
+          モードとテーマ
+        </button>
+        <div class="settings-group-body" id="settingsThemeBody">
           <div class="field">
             <label class="label" for="themeSelect">テーマ</label>
             <select id="themeSelect">
@@ -113,17 +129,25 @@
             <label><input id="wheelPagingCheck" type="checkbox" /> Windowsでホイール上下をページ送りにする</label>
           </div>
         </div>
-      </details>
+      </section>
 
-      <details class="settings-group" open>
-        <summary>再起動と同期</summary>
-        <div class="settings-group-body">
+      <section class="settings-group open" data-settings-group>
+        <button
+          class="settings-group-toggle"
+          type="button"
+          data-settings-group-toggle
+          aria-expanded="true"
+          aria-controls="settingsReloadBody"
+        >
+          再起動と同期
+        </button>
+        <div class="settings-group-body" id="settingsReloadBody">
           <div class="field">
             <button class="button ghost" id="reloadBtn" type="button">再起動（リロード）</button>
             <button class="button" id="hardReloadBtn" type="button">強制同期（キャッシュ破棄）</button>
           </div>
         </div>
-      </details>
+      </section>
 
       <div class="build-info">
         <div class="build-row">
