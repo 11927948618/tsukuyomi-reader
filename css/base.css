@@ -149,10 +149,12 @@ select.input option {
 #libraryScreen .library-grid {
   margin-top: 6px;
   gap: 10px;
+  align-items: start;
 }
 
 #libraryScreen .card {
   padding: 12px;
+  align-self: start;
 }
 
 #libraryScreen .label {
