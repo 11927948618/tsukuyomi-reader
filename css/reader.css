@@ -618,10 +618,8 @@ body {
 
   .settings-panel {
     width: min(340px, 96vw);
-    display: block;
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
-    touch-action: pan-y;
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr);
   }
 
   .settings-panel > header {
@@ -641,8 +639,10 @@ body {
   .settings-body {
     padding: 0 12px max(12px, env(safe-area-inset-bottom));
     gap: 8px;
-    overflow: visible;
-    overscroll-behavior: auto;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
   }
 
   .field-meta {
