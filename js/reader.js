@@ -18,6 +18,7 @@ export function initReader({
   const closeSettingsBtn = qs("#closeSettingsBtn");
   const saveSettingsBtn = qs("#saveSettingsBtn");
   const settingsPanel = qs("#settingsPanel");
+  const settingsBody = settingsPanel?.querySelector(".settings-body") || null;
   const tocBtn = qs("#tocBtn");
   const tocPanel = qs("#tocPanel");
   const closeTocBtn = qs("#closeTocBtn");
@@ -185,6 +186,8 @@ export function initReader({
   applySettings(settings);
   bindSettingsEvents();
   bindSettingsGroupToggles();
+  bindPanelWheelScroll(settingsPanel, settingsBody);
+  bindPanelWheelScroll(tocPanel, tocPanel);
   applyProgress(progress, refreshHScroll);
   bindProgressTracking();
   bindTopEdgeRevealTap(tapZone);
@@ -385,6 +388,29 @@ export function initReader({
       });
       toggle.dataset.bound = "true";
     });
+  }
+
+  function bindPanelWheelScroll(panelEl, scrollEl) {
+    if (!panelEl || !scrollEl) return;
+    panelEl.addEventListener(
+      "wheel",
+      (event) => {
+        if (!panelEl.classList.contains("open")) return;
+        const maxTop = Math.max(0, scrollEl.scrollHeight - scrollEl.clientHeight);
+        if (maxTop <= 0) return;
+
+        const delta = Math.abs(event.deltaY) >= Math.abs(event.deltaX) ? event.deltaY : event.deltaX;
+        if (Math.abs(delta) < 1) return;
+
+        const nextTop = clamp(scrollEl.scrollTop + delta, 0, maxTop);
+        if (nextTop === scrollEl.scrollTop) return;
+
+        scrollEl.scrollTop = nextTop;
+        event.preventDefault();
+        event.stopPropagation();
+      },
+      { passive: false }
+    );
   }
 
   function updateSettingValueLabels() {
