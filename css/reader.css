@@ -310,7 +310,7 @@ body.mode-scrolly .reader-content {
   transition: transform 0.2s ease;
   z-index: 950;
   display: grid;
-  grid-template-rows: auto 1fr auto;
+  grid-template-rows: auto minmax(0, 1fr);
   overflow: hidden;
 }
 
@@ -340,6 +340,7 @@ body.mode-scrolly .reader-content {
   display: grid;
   gap: 8px;
   align-content: start;
+  min-height: 0;
   padding: 0 14px calc(20px + env(safe-area-inset-bottom));
   overflow: auto;
   overscroll-behavior: contain;
@@ -364,8 +365,8 @@ body.settings-open .tap-zone {
   background: transparent;
   color: var(--text);
   cursor: pointer;
-  padding: 10px 12px;
-  font-size: 13px;
+  padding: 8px 12px;
+  font-size: 12px;
   font-weight: 700;
   text-align: left;
   user-select: none;
