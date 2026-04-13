@@ -137,9 +137,9 @@ body.topbar-mobile-wrap .topbar-group-right .button {
   transform: translateX(100%);
   transition: transform 0.12s ease;
   overflow: auto;
-  padding: 12px;
+  padding: 10px;
   display: grid;
-  gap: 12px;
+  gap: 8px;
 }
 
 .toc-panel.open {
@@ -150,12 +150,18 @@ body.topbar-mobile-wrap .topbar-group-right .button {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 8px;
+}
+
+.toc-panel .panel-header strong {
+  font-size: 13px;
+  line-height: 1.2;
 }
 
 .toc-panel ul {
   list-style: none;
   display: grid;
-  gap: 8px;
+  gap: 5px;
 }
 
 .toc-panel ul button {
@@ -164,9 +170,11 @@ body.topbar-mobile-wrap .topbar-group-right .button {
   background: transparent;
   color: var(--text);
   border: 1px solid transparent;
-  padding: 8px 10px;
-  border-radius: 10px;
+  padding: 6px 8px;
+  border-radius: 8px;
   cursor: pointer;
+  font-size: 13px;
+  line-height: 1.3;
 }
 
 .toc-panel ul button:hover {
@@ -221,7 +229,8 @@ body.topbar-mobile-wrap .topbar-group-right .button {
   line-height: 1.45;
 }
 
-.reader-content .txt-paragraph {
+.reader-content .txt-paragraph,
+.reader-content .txt-line {
   margin: 0;
 }
 
@@ -329,7 +338,7 @@ body.mode-scrolly .reader-content {
 
 .settings-body {
   display: grid;
-  gap: 10px;
+  gap: 8px;
   align-content: start;
   padding: 0 14px calc(20px + env(safe-area-inset-bottom));
   overflow: auto;
@@ -374,8 +383,8 @@ body.settings-open .tap-zone {
 
 .settings-group-body {
   display: grid;
-  gap: 10px;
-  padding: 0 12px 12px;
+  gap: 8px;
+  padding: 0 12px 10px;
 }
 
 .settings-group:not(.open) .settings-group-body {
@@ -384,14 +393,20 @@ body.settings-open .tap-zone {
 
 .settings-panel .field {
   display: grid;
-  gap: 4px;
+  gap: 2px;
 }
 
 .field-head {
   display: flex;
-  align-items: baseline;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 10px;
+  flex-wrap: wrap;
+}
+
+.field-head .label {
+  flex: 1 1 8rem;
+  min-width: 0;
 }
 
 .field-meta {
@@ -399,15 +414,18 @@ body.settings-open .tap-zone {
   align-items: center;
   justify-content: flex-end;
   gap: 8px;
+  flex: 1 1 100%;
   min-width: 0;
 }
 
 .field-value {
   font-size: 12px;
-  line-height: 1.2;
+  line-height: 1.15;
   color: var(--muted);
   text-align: right;
-  white-space: nowrap;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  min-width: 0;
 }
 
 .field-badge {
@@ -491,7 +509,7 @@ body.settings-open .tap-zone {
 .range-guide-hint {
   font-size: 11px;
   color: var(--muted);
-  line-height: 1.2;
+  line-height: 1.1;
 }
 
 .settings-panel input[type="range"] {
@@ -624,6 +642,14 @@ body {
     gap: 8px;
     overflow: visible;
     overscroll-behavior: auto;
+  }
+
+  .field-meta {
+    justify-content: flex-start;
+  }
+
+  .field-value {
+    text-align: left;
   }
 }
 

@@ -4,23 +4,14 @@ export function normalizeTxtToBook(text, filename = "") {
   const lines = text.replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n");
   const chapters = [];
   let current = null;
-  let paragraphLines = [];
   let chapterIndex = 0;
   let pendingBlankLines = 0;
-
-  const flushParagraph = () => {
-    if (!current) return;
-    if (paragraphLines.length === 0) return;
-    const raw = paragraphLines.join("\n");
-    const escaped = escapeHtml(raw);
-    const rubyApplied = escaped.replace(/｜(.+?)《(.+?)》/g, "<ruby>$1<rt>$2</rt></ruby>");
-    const withBreaks = rubyApplied.replace(/\n/g, "<br>");
-    current.blocks.push({ type: "paragraph", html: withBreaks });
-    paragraphLines = [];
+  const normalizeLineHtml = (line) => {
+    const escaped = escapeHtml(line);
+    return escaped.replace(/｜(.+?)《(.+?)》/g, "<ruby>$1<rt>$2</rt></ruby>");
   };
 
   const startChapter = (title) => {
-    flushParagraph();
     pendingBlankLines = 0;
     chapterIndex += 1;
     current = {
@@ -42,7 +33,6 @@ export function normalizeTxtToBook(text, filename = "") {
     }
 
     if (line.trim() === "") {
-      flushParagraph();
       if (current.blocks.length > 0) {
         pendingBlankLines += 1;
       }
@@ -54,10 +44,8 @@ export function normalizeTxtToBook(text, filename = "") {
       pendingBlankLines = 0;
     }
 
-    paragraphLines.push(line);
+    current.blocks.push({ type: "line", html: normalizeLineHtml(line) });
   }
-
-  flushParagraph();
 
   if (chapters.length === 0) {
     startChapter("本文");
@@ -74,7 +62,7 @@ export function normalizeTxtToBook(text, filename = "") {
       if (block.type === "gap") {
         return `<div class="txt-gap" aria-hidden="true" style="--gap-lines:${Math.max(1, Number(block.count) || 1)}"></div>`;
       }
-      return `<p class="txt-paragraph">${block.html}</p>`;
+      return `<div class="txt-line">${block.html}</div>`;
     }).join("\n");
     return `\n<section class=\"chapter\" data-chapter=\"${chapterId}\" id=\"${chapterId}\">\n  <h1>${escapeHtml(ch.title)}</h1>\n  ${body || ""}\n</section>`;
   }).join("\n");
