@@ -11,7 +11,7 @@ const BLOCKED_SELECTORS = [
   "button",
   "textarea",
   "select",
-  "link[rel='stylesheet']"
+  "link[rel~='stylesheet']"
 ].join(",");
 
 export async function normalizeEpubToBook(file) {
@@ -43,6 +43,14 @@ export async function normalizeEpubToBook(file) {
     const chapterText = await readTextFromZip(zip, chapterPath);
     const chapterDoc = parseHtml(chapterText);
     const chapterWritingMode = detectChapterWritingMode(chapterText, chapterDoc);
+    const chapterCss = await buildChapterCss(
+      chapterDoc,
+      chapterPath,
+      `chapter-${String(chapters.length + 1).padStart(3, "0")}`,
+      zip,
+      opfInfo.mediaTypeByPath,
+      blobUrlCache
+    );
     if (chapterWritingMode) {
       chapterWritingModeHints.push(chapterWritingMode);
     }
@@ -54,20 +62,35 @@ export async function normalizeEpubToBook(file) {
     const chapterTitle = safeText(extractChapterTitle(chapterDoc), fallbackTitle);
 
     const section = document.createElement("section");
-    section.className = "chapter";
+    section.className = "chapter epub-html";
     section.setAttribute("id", chapterId);
     section.setAttribute("data-chapter", chapterId);
+    section.setAttribute("data-epub-scope", chapterId);
 
     const h1 = document.createElement("h1");
     h1.textContent = chapterTitle;
+    copyPresentationAttributes(chapterDoc.documentElement, section);
+
+    if (chapterCss) {
+      const styleEl = document.createElement("style");
+      styleEl.setAttribute("data-epub-style", chapterId);
+      styleEl.textContent = chapterCss;
+      section.appendChild(styleEl);
+    }
+
     section.appendChild(h1);
 
     const body = chapterDoc.body || chapterDoc.documentElement;
+    const contentRoot = document.createElement("div");
+    contentRoot.className = "epub-body";
+    copyPresentationAttributes(body, contentRoot);
+
     if (body) {
       while (body.firstChild) {
-        section.appendChild(body.firstChild);
+        contentRoot.appendChild(body.firstChild);
       }
     }
+    section.appendChild(contentRoot);
 
     chapters.push({
       id: chapterId,
@@ -386,6 +409,342 @@ function sanitizeChapter(doc) {
   });
 }
 
+async function buildChapterCss(doc, chapterPath, chapterId, zip, mediaTypeByPath, blobUrlCache) {
+  const scopeSelector = `[data-epub-scope="${cssEscape(chapterId)}"]`;
+  const blocks = [];
+
+  for (const styleEl of Array.from(doc.querySelectorAll("style"))) {
+    const rawCss = String(styleEl.textContent || "");
+    if (!rawCss.trim()) continue;
+    const rewritten = await rewriteCssText(rawCss, chapterPath, zip, mediaTypeByPath, blobUrlCache, new Set([normalizePath(chapterPath)]));
+    const scoped = scopeCssText(rewritten, scopeSelector);
+    if (scoped.trim()) blocks.push(scoped);
+  }
+
+  for (const linkEl of Array.from(doc.querySelectorAll("link[rel~='stylesheet'][href]"))) {
+    const href = String(linkEl.getAttribute("href") || "").trim();
+    if (!href) continue;
+    const cssText = await loadCssAssetText(href, chapterPath, zip, mediaTypeByPath, blobUrlCache, new Set());
+    const scoped = scopeCssText(cssText, scopeSelector);
+    if (scoped.trim()) blocks.push(scoped);
+  }
+
+  return blocks.join("\n\n");
+}
+
+async function loadCssAssetText(rawHref, basePath, zip, mediaTypeByPath, blobUrlCache, visited) {
+  const raw = String(rawHref || "").trim();
+  if (!raw || raw.startsWith("#")) return "";
+  if (/^[a-z][a-z0-9+.-]*:/i.test(raw) || raw.startsWith("//")) return "";
+
+  const pathOnly = raw.split("#")[0].split("?")[0];
+  if (!pathOnly) return "";
+  const resolved = normalizePath(resolvePath(dirname(basePath), pathOnly));
+  if (!resolved || visited.has(resolved)) return "";
+  visited.add(resolved);
+
+  const found = findZipEntryPath(zip, resolved);
+  if (!found) return "";
+
+  const cssText = await zip.file(found).async("string");
+  return rewriteCssText(cssText, resolved, zip, mediaTypeByPath, blobUrlCache, visited);
+}
+
+async function rewriteCssText(cssText, cssBasePath, zip, mediaTypeByPath, blobUrlCache, visited) {
+  let output = String(cssText || "");
+  output = await inlineCssImports(output, cssBasePath, zip, mediaTypeByPath, blobUrlCache, visited);
+  output = await rewriteCssUrls(output, cssBasePath, zip, mediaTypeByPath, blobUrlCache);
+  return output;
+}
+
+async function inlineCssImports(cssText, cssBasePath, zip, mediaTypeByPath, blobUrlCache, visited) {
+  const source = String(cssText || "");
+  const pattern = /@import\s+(?:url\(\s*)?["']?([^"'()]+)["']?\s*\)?[^;]*;/gi;
+  let out = "";
+  let lastIndex = 0;
+  let match;
+
+  while ((match = pattern.exec(source))) {
+    out += source.slice(lastIndex, match.index);
+    const importHref = String(match[1] || "").trim();
+    const importedCss = await loadCssAssetText(importHref, cssBasePath, zip, mediaTypeByPath, blobUrlCache, visited);
+    out += importedCss ? `${importedCss}\n` : "";
+    lastIndex = pattern.lastIndex;
+  }
+
+  out += source.slice(lastIndex);
+  return out;
+}
+
+async function rewriteCssUrls(cssText, cssBasePath, zip, mediaTypeByPath, blobUrlCache) {
+  const source = String(cssText || "");
+  const pattern = /url\(\s*(["']?)([^"')]+)\1\s*\)/gi;
+  let out = "";
+  let lastIndex = 0;
+  let match;
+
+  while ((match = pattern.exec(source))) {
+    out += source.slice(lastIndex, match.index);
+    const quote = match[1] || "";
+    const rawUrl = String(match[2] || "").trim();
+
+    if (!rawUrl || rawUrl.startsWith("data:") || rawUrl.startsWith("#")) {
+      out += match[0];
+    } else {
+      const rewritten = await toBlobUrl(rawUrl, cssBasePath, zip, mediaTypeByPath, blobUrlCache);
+      out += rewritten ? `url(${quote}${rewritten}${quote})` : match[0];
+    }
+
+    lastIndex = pattern.lastIndex;
+  }
+
+  out += source.slice(lastIndex);
+  return out;
+}
+
+function scopeCssText(cssText, scopeSelector) {
+  return transformCssRules(String(cssText || ""), scopeSelector);
+}
+
+function transformCssRules(cssText, scopeSelector) {
+  let out = "";
+  let cursor = 0;
+
+  while (cursor < cssText.length) {
+    const nextBrace = findNextTopLevelBrace(cssText, cursor);
+    if (nextBrace < 0) {
+      out += cssText.slice(cursor);
+      break;
+    }
+
+    const rawSelector = cssText.slice(cursor, nextBrace);
+    const closeBrace = findMatchingBrace(cssText, nextBrace);
+    if (closeBrace < 0) {
+      out += cssText.slice(cursor);
+      break;
+    }
+
+    const selectorText = rawSelector.trim();
+    const blockText = cssText.slice(nextBrace + 1, closeBrace);
+    const leading = rawSelector.slice(0, rawSelector.indexOf(selectorText));
+
+    if (!selectorText) {
+      out += cssText.slice(cursor, closeBrace + 1);
+      cursor = closeBrace + 1;
+      continue;
+    }
+
+    if (selectorText.startsWith("@")) {
+      if (/^@(media|supports|document|layer)\b/i.test(selectorText)) {
+        out += `${leading}${selectorText}{${transformCssRules(blockText, scopeSelector)}}`;
+      } else {
+        out += `${leading}${selectorText}{${blockText}}`;
+      }
+    } else {
+      out += `${leading}${scopeSelectorList(selectorText, scopeSelector)}{${blockText}}`;
+    }
+
+    cursor = closeBrace + 1;
+  }
+
+  return out;
+}
+
+function findNextTopLevelBrace(text, startIndex) {
+  let depth = 0;
+  let quote = "";
+  let inComment = false;
+
+  for (let i = startIndex; i < text.length; i += 1) {
+    const char = text[i];
+    const next = text[i + 1];
+
+    if (inComment) {
+      if (char === "*" && next === "/") {
+        inComment = false;
+        i += 1;
+      }
+      continue;
+    }
+
+    if (!quote && char === "/" && next === "*") {
+      inComment = true;
+      i += 1;
+      continue;
+    }
+
+    if (quote) {
+      if (char === "\\" && next) {
+        i += 1;
+        continue;
+      }
+      if (char === quote) quote = "";
+      continue;
+    }
+
+    if (char === "'" || char === "\"") {
+      quote = char;
+      continue;
+    }
+
+    if (char === "(" || char === "[") {
+      depth += 1;
+      continue;
+    }
+
+    if ((char === ")" || char === "]") && depth > 0) {
+      depth -= 1;
+      continue;
+    }
+
+    if (char === "{" && depth === 0) return i;
+  }
+
+  return -1;
+}
+
+function findMatchingBrace(text, openIndex) {
+  let depth = 1;
+  let quote = "";
+  let inComment = false;
+
+  for (let i = openIndex + 1; i < text.length; i += 1) {
+    const char = text[i];
+    const next = text[i + 1];
+
+    if (inComment) {
+      if (char === "*" && next === "/") {
+        inComment = false;
+        i += 1;
+      }
+      continue;
+    }
+
+    if (!quote && char === "/" && next === "*") {
+      inComment = true;
+      i += 1;
+      continue;
+    }
+
+    if (quote) {
+      if (char === "\\" && next) {
+        i += 1;
+        continue;
+      }
+      if (char === quote) quote = "";
+      continue;
+    }
+
+    if (char === "'" || char === "\"") {
+      quote = char;
+      continue;
+    }
+
+    if (char === "{") {
+      depth += 1;
+      continue;
+    }
+
+    if (char === "}") {
+      depth -= 1;
+      if (depth === 0) return i;
+    }
+  }
+
+  return -1;
+}
+
+function scopeSelectorList(selectorText, scopeSelector) {
+  return splitCssSelectors(selectorText)
+    .map((selector) => {
+      const trimmed = selector.trim();
+      if (!trimmed) return "";
+      const normalized = trimmed
+        .replace(/\bhtml\b/gi, ".epub-html")
+        .replace(/\bbody\b/gi, ".epub-body")
+        .replace(/\:root\b/gi, ".epub-html");
+      return `${scopeSelector} ${normalized}`;
+    })
+    .filter(Boolean)
+    .join(", ");
+}
+
+function splitCssSelectors(selectorText) {
+  const selectors = [];
+  let depth = 0;
+  let quote = "";
+  let current = "";
+
+  for (let i = 0; i < selectorText.length; i += 1) {
+    const char = selectorText[i];
+    const next = selectorText[i + 1];
+
+    if (quote) {
+      current += char;
+      if (char === "\\" && next) {
+        current += next;
+        i += 1;
+        continue;
+      }
+      if (char === quote) quote = "";
+      continue;
+    }
+
+    if (char === "'" || char === "\"") {
+      quote = char;
+      current += char;
+      continue;
+    }
+
+    if (char === "(" || char === "[") {
+      depth += 1;
+      current += char;
+      continue;
+    }
+
+    if ((char === ")" || char === "]") && depth > 0) {
+      depth -= 1;
+      current += char;
+      continue;
+    }
+
+    if (char === "," && depth === 0) {
+      selectors.push(current);
+      current = "";
+      continue;
+    }
+
+    current += char;
+  }
+
+  if (current) selectors.push(current);
+  return selectors;
+}
+
+function copyPresentationAttributes(fromEl, toEl) {
+  if (!fromEl || !toEl) return;
+
+  const classNames = String(fromEl.getAttribute("class") || "")
+    .split(/\s+/)
+    .map((name) => name.trim())
+    .filter(Boolean);
+  if (classNames.length > 0) {
+    toEl.classList.add(...classNames);
+  }
+
+  for (const attrName of ["dir", "lang", "xml:lang"]) {
+    const value = fromEl.getAttribute(attrName);
+    if (value) toEl.setAttribute(attrName, value);
+  }
+}
+
+function cssEscape(value) {
+  if (typeof CSS !== "undefined" && typeof CSS.escape === "function") {
+    return CSS.escape(String(value || ""));
+  }
+  return String(value || "").replace(/[^a-zA-Z0-9_-]/g, "\\$&");
+}
+
 async function rewriteChapterAssets(doc, chapterPath, zip, mediaTypeByPath, blobUrlCache) {
   const body = doc.body || doc.documentElement;
   if (!body) return;
@@ -574,5 +933,10 @@ function guessMimeType(path) {
   if (ext === "svg") return "image/svg+xml";
   if (ext === "avif") return "image/avif";
   if (ext === "bmp") return "image/bmp";
+  if (ext === "woff") return "font/woff";
+  if (ext === "woff2") return "font/woff2";
+  if (ext === "ttf") return "font/ttf";
+  if (ext === "otf") return "font/otf";
+  if (ext === "eot") return "application/vnd.ms-fontobject";
   return "";
 }
