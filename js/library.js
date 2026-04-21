@@ -313,14 +313,14 @@ async function initBundledBooksShelf({
     }
 
     if (books.length > MAX_BUNDLED_BOOKS) {
-      bundledBooksStatus.textContent = `同梱書籍は最大${MAX_BUNDLED_BOOKS}冊までです。book/manifest.json を整理してください`;
+      bundledBooksStatus.textContent = "同梱書籍が多すぎます。book/manifest.json を整理してください";
       bundledBooksStatus.className = "status error";
       bundledBooksList.innerHTML = "";
       if (bundledBooksToggleBtn) bundledBooksToggleBtn.disabled = true;
       return;
     }
 
-    bundledBooksStatus.textContent = `${books.length}冊 / 上限${MAX_BUNDLED_BOOKS}冊`;
+    bundledBooksStatus.textContent = `${books.length}冊`;
     bundledBooksStatus.className = "status ok";
     if (bundledBooksToggleBtn) bundledBooksToggleBtn.disabled = false;
     bundledBooksList.innerHTML = "";
@@ -408,7 +408,7 @@ async function loadBundledBookManifest() {
   }
   const books = Array.isArray(manifest?.books) ? manifest.books : [];
   if (books.length > MAX_BUNDLED_BOOKS) {
-    throw new Error(`同梱書籍は最大${MAX_BUNDLED_BOOKS}冊までです`);
+    throw new Error("同梱書籍が多すぎます");
   }
   return manifest;
 }

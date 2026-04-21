@@ -201,6 +201,7 @@ body.topbar-mobile-wrap .topbar-group-right .button {
   font-size: calc(var(--font-size) * 1%);
   line-height: var(--line-height);
   letter-spacing: var(--letter-spacing);
+  font-family: var(--reader-font-family, system-ui, -apple-system, "Segoe UI", sans-serif);
 }
 
 .reader-content.force-vertical {

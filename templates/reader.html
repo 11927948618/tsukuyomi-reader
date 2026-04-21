@@ -4,6 +4,7 @@
       <div class="topbar-group topbar-group-left">
         <button class="button ghost" id="backBtn">Library</button>
         <button class="button ghost" id="tocBtn">章</button>
+        <button class="button ghost" id="helpBtn">使い方</button>
         <button class="button ghost" id="settingsBtn">設定</button>
       </div>
 
@@ -62,6 +63,15 @@
               <output class="field-value" id="fontSizeValue" for="fontSizeRange" aria-live="polite">-</output>
             </div>
             <input id="fontSizeRange" type="range" min="80" max="140" step="1" />
+          </div>
+
+          <div class="field">
+            <label class="label" for="fontFamilySelect">本文フォント</label>
+            <select id="fontFamilySelect">
+              <option value="system">system（端末標準）</option>
+              <option value="mincho">明朝</option>
+              <option value="gothic">ゴシック</option>
+            </select>
           </div>
 
           <div class="field">

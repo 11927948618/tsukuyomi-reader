@@ -8,6 +8,7 @@ const LIGHT_EDITION_BUNDLED_ONLY = true;
 
 const DEFAULT_SETTINGS = {
   fontSize: 100,
+  fontFamilyPreference: "system",
   lineHeight: 1.8,
   letterSpacing: 0,
   wrapWidthPercent: 100,
@@ -32,7 +33,8 @@ const appState = {
   currentBookId: null,
   settings: { ...DEFAULT_SETTINGS },
   progress: { ...DEFAULT_PROGRESS },
-  openSettingsOnReader: false
+  openSettingsOnReader: false,
+  helpReturnScreen: "library"
 };
 
 async function loadTemplate(name) {
@@ -46,6 +48,7 @@ async function render(screen) {
   if (screen === "library") {
     await loadTemplate("library");
     applyTheme(appState.settings.theme);
+    document.getElementById("openHelpBtn")?.addEventListener("click", () => openHelp("library"));
     initLibrary({
       onOpenBook: (book) => {
         applyBook(book);
@@ -80,6 +83,7 @@ async function render(screen) {
   if (screen === "reader") {
     await loadTemplate("reader");
     applyTheme(appState.settings.theme);
+    document.getElementById("helpBtn")?.addEventListener("click", () => openHelp("reader"));
     initReader({
       book: appState.currentBook,
       settings: appState.settings,
@@ -103,7 +107,30 @@ async function render(screen) {
     appState.openSettingsOnReader = false;
     persistLastOpened();
     queueVersionBadge();
+    return;
   }
+
+  if (screen === "help") {
+    await loadTemplate("help");
+    applyTheme(appState.settings.theme);
+    initHelpScreen();
+  }
+}
+
+function openHelp(returnScreen = "library") {
+  appState.helpReturnScreen = returnScreen === "reader" ? "reader" : "library";
+  render("help");
+}
+
+function initHelpScreen() {
+  const helpBackBtn = document.getElementById("helpBackBtn");
+  if (!helpBackBtn) return;
+
+  const returnScreen = appState.helpReturnScreen === "reader" ? "reader" : "library";
+  helpBackBtn.textContent = returnScreen === "reader" ? "Reader に戻る" : "Library に戻る";
+  helpBackBtn.addEventListener("click", () => {
+    render(returnScreen);
+  });
 }
 
 function applyBook(book) {
@@ -226,6 +253,7 @@ function saveSettings(bookId, settings) {
   if (!bookId) return;
   const payload = {
     fontSize: Number(settings.fontSize) || 100,
+    fontFamilyPreference: settings.fontFamilyPreference || "system",
     lineHeight: Number(settings.lineHeight) || 1.8,
     letterSpacing: Number(settings.letterSpacing) || 0,
     wrapWidthPercent: Number(settings.wrapWidthPercent) || 100,

@@ -32,6 +32,7 @@ export function initReader({
   const hScroll = qs("#hScroll");
   const hScrollPageInfo = qs("#hScrollPageInfo");
   const fontSizeRange = qs("#fontSizeRange");
+  const fontFamilySelect = qs("#fontFamilySelect");
   const lineHeightRange = qs("#lineHeightRange");
   const letterSpacingRange = qs("#letterSpacingRange");
   const wrapWidthRange = qs("#wrapWidthRange");
@@ -299,6 +300,10 @@ export function initReader({
     if (!nextSettings) return;
 
     document.documentElement.style.setProperty("--font-size", Number(nextSettings.fontSize) || 100);
+    document.documentElement.style.setProperty(
+      "--reader-font-family",
+      resolveReaderFontFamily(normalizeFontFamilyPreference(nextSettings.fontFamilyPreference))
+    );
     document.documentElement.style.setProperty("--line-height", Number(nextSettings.lineHeight) || 1.8);
     document.documentElement.style.setProperty("--letter-spacing", `${Number(nextSettings.letterSpacing) || 0}px`);
     applyTheme(nextSettings.theme || "light");
@@ -313,6 +318,9 @@ export function initReader({
     applyDisplayMode(displayMode, { tapInScroll });
 
     fontSizeRange.value = String(nextSettings.fontSize ?? 100);
+    if (fontFamilySelect) {
+      fontFamilySelect.value = normalizeFontFamilyPreference(nextSettings.fontFamilyPreference);
+    }
     lineHeightRange.value = String(nextSettings.lineHeight ?? 1.8);
     letterSpacingRange.value = String(nextSettings.letterSpacing ?? 0);
     if (wrapWidthRange) wrapWidthRange.value = String(wrapWidthPercent);
@@ -332,6 +340,9 @@ export function initReader({
 
   function bindSettingsEvents() {
     fontSizeRange.addEventListener("input", () => updateSettings({ fontSize: Number(fontSizeRange.value) }));
+    fontFamilySelect?.addEventListener("change", () => {
+      updateSettings({ fontFamilyPreference: normalizeFontFamilyPreference(fontFamilySelect.value) });
+    });
     lineHeightRange.addEventListener("input", () => updateSettings({ lineHeight: Number(lineHeightRange.value) }));
     letterSpacingRange.addEventListener("input", () => updateSettings({ letterSpacing: Number(letterSpacingRange.value) }));
     wrapWidthRange?.addEventListener("input", () => {
@@ -494,6 +505,7 @@ export function initReader({
   function getCurrentSettings(patch = {}) {
     return {
       fontSize: Number(fontSizeRange.value) || 100,
+      fontFamilyPreference: normalizeFontFamilyPreference(fontFamilySelect?.value),
       lineHeight: Number(lineHeightRange.value) || 1.8,
       letterSpacing: Number(letterSpacingRange.value) || 0,
       wrapWidthPercent: normalizeWrapWidthPercent(wrapWidthRange?.value),
@@ -913,6 +925,38 @@ export function initReader({
     }
     refreshHScroll?.();
   }
+}
+
+function normalizeFontFamilyPreference(value) {
+  const normalized = String(value || "").toLowerCase();
+  if (normalized === "mincho" || normalized === "gothic") return normalized;
+  return "system";
+}
+
+function resolveReaderFontFamily(preference) {
+  if (preference === "mincho") {
+    return [
+      '"BIZ UDPMincho"',
+      '"Hiragino Mincho ProN"',
+      '"Yu Mincho"',
+      '"Noto Serif JP"',
+      '"Noto Serif CJK JP"',
+      "serif"
+    ].join(", ");
+  }
+
+  if (preference === "gothic") {
+    return [
+      '"BIZ UDPGothic"',
+      '"Hiragino Sans"',
+      '"Yu Gothic"',
+      '"Noto Sans JP"',
+      '"Noto Sans CJK JP"',
+      "sans-serif"
+    ].join(", ");
+  }
+
+  return ['system-ui', '-apple-system', '"Segoe UI"', 'sans-serif'].join(", ");
 }
 
 function throttle(fn, wait) {

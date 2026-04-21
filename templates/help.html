@@ -1,0 +1,87 @@
+<section class="screen" id="helpScreen">
+  <div class="container help-container">
+    <div class="card help-header">
+      <div class="help-header-copy">
+        <p class="label">内部ヘルプ</p>
+        <h1>Tsukuyomi Reader の使い方</h1>
+        <p class="help-summary">
+          同梱書籍を開いて読むための基本操作と、読書設定・バックアップ・EPUB 読み込み時の挙動をまとめています。
+        </p>
+      </div>
+      <div class="help-header-actions">
+        <button class="button ghost" id="helpBackBtn" type="button">戻る</button>
+      </div>
+    </div>
+
+    <div class="help-layout">
+      <div class="card help-card">
+        <p class="label">はじめに</p>
+        <ul class="help-list">
+          <li>Library 画面では、同梱本一覧から本を開きます。</li>
+          <li>ライト版では、外部ファイルの自動復元は同梱書籍に限定されます。</li>
+          <li>TXT / EPUB / HTML / バックアップ ZIP の手動読み込み導線は、現在のライト版では通常非表示です。</li>
+        </ul>
+      </div>
+
+      <div class="card help-card">
+        <p class="label">本を開く</p>
+        <ul class="help-list">
+          <li>「同梱本一覧を開く」を押すと、配布物に含まれている本の一覧が表示されます。</li>
+          <li>本カードの「開く」を押すと Reader 画面へ移動します。</li>
+          <li>TXT を手動で読むときは文字コードを「自動判別 / UTF-8 / Shift_JIS」から選べます。</li>
+          <li>EPUB は spine・nav・ncx を見て本文と目次を整形します。</li>
+          <li>EPUB の縦横指定は、本文側の記述と OPF の進行方向から可能な範囲で初期判定します。</li>
+        </ul>
+      </div>
+
+      <div class="card help-card">
+        <p class="label">Reader の基本操作</p>
+        <ul class="help-list">
+          <li>上部の「Library」で一覧に戻ります。</li>
+          <li>「章」で目次を開き、章単位で移動できます。</li>
+          <li>中央タップで上部 UI の表示を切り替えます。</li>
+          <li>左右タップでページ移動します。表示モードが scrolly の場合は上下送りになります。</li>
+          <li>Windows では、設定でホイールをページ送りに切り替えられます。</li>
+        </ul>
+      </div>
+
+      <div class="card help-card">
+        <p class="label">表示設定</p>
+        <ul class="help-list">
+          <li>文字サイズ、行間、字間、折り返し幅、テーマを調整できます。</li>
+          <li>本文フォントは `system / 明朝 / ゴシック` を切り替えられます。</li>
+          <li>文字組みは `vertical / horizontal / auto` から選べます。</li>
+          <li>「400字目安を適用」は、20字×20行に近い見え方へ寄せるプリセットです。</li>
+          <li>「設定を保存」で本ごとの表示設定を保存します。</li>
+        </ul>
+      </div>
+
+      <div class="card help-card">
+        <p class="label">バックアップと復元</p>
+        <ul class="help-list">
+          <li>Library 画面の「現在の本をバックアップZIPとして書き出し」で、本文 HTML と進捗・設定を保存できます。</li>
+          <li>バックアップ ZIP を読み込むと、保存時点の設定や進捗も復元対象になります。</li>
+          <li>前回開いていた本は、現在のライト版では同梱書籍に限ってキャッシュからの復元を試みます。</li>
+        </ul>
+      </div>
+
+      <div class="card help-card">
+        <p class="label">再同期まわり</p>
+        <ul class="help-list">
+          <li>「再起動（リロード）」は通常の画面再読み込みです。</li>
+          <li>「強制同期（キャッシュ破棄）」は Service Worker と関連キャッシュを削除してから再読み込みします。</li>
+          <li>配布物を更新したのに古い表示が残る場合は、強制同期を使ってください。</li>
+        </ul>
+      </div>
+
+      <div class="card help-card">
+        <p class="label">注意点</p>
+        <ul class="help-list">
+          <li>本文は現在、全文をまとめて DOM に展開します。</li>
+          <li>非常に大きい書籍では、初回描画やスクロールが重くなることがあります。</li>
+          <li>EPUB の CSS は安全性と表示安定性のために一部整理しているので、元の見た目を完全再現するものではありません。</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>

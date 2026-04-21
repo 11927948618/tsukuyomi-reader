@@ -65,6 +65,7 @@ export async function exportZipFromBook(book, options = {}) {
 
   const settings = options.settings || {
     fontSize: 100,
+    fontFamilyPreference: "system",
     lineHeight: 1.8,
     letterSpacing: 0,
     theme: "light"
@@ -85,6 +86,7 @@ export async function exportZipFromBook(book, options = {}) {
     },
     settings: {
       fontSize: Number(settings.fontSize) || 100,
+      fontFamilyPreference: settings.fontFamilyPreference || "system",
       lineHeight: Number(settings.lineHeight) || 1.8,
       letterSpacing: Number(settings.letterSpacing) || 0,
       wrapWidthPercent: Number(settings.wrapWidthPercent) || 100,

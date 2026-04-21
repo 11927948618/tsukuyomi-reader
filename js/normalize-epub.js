@@ -33,6 +33,7 @@ export async function normalizeEpubToBook(file) {
 
   const chapters = [];
   const chapterPathToId = new Map();
+  const chapterWritingModeHints = [];
 
   for (let i = 0; i < opfInfo.spine.length; i += 1) {
     const item = opfInfo.spine[i];
@@ -41,6 +42,10 @@ export async function normalizeEpubToBook(file) {
     const chapterPath = normalizePath(resolvePath(opfDir, item.href));
     const chapterText = await readTextFromZip(zip, chapterPath);
     const chapterDoc = parseHtml(chapterText);
+    const chapterWritingMode = detectChapterWritingMode(chapterText, chapterDoc);
+    if (chapterWritingMode) {
+      chapterWritingModeHints.push(chapterWritingMode);
+    }
     sanitizeChapter(chapterDoc);
     await rewriteChapterAssets(chapterDoc, chapterPath, zip, opfInfo.mediaTypeByPath, blobUrlCache);
 
@@ -95,12 +100,17 @@ export async function normalizeEpubToBook(file) {
   const titleFallback = filenameStem(file?.name || "") || "Untitled";
   const title = safeText(opfInfo.title, titleFallback);
   const html = chapters.map((chapter) => chapter.section.outerHTML).join("\n");
+  const writingModePreference = resolveEpubWritingModePreference(
+    chapterWritingModeHints,
+    opfInfo.pageProgressionDirection
+  );
 
   return {
     title,
     html,
     toc,
-    meta: null
+    settings: writingModePreference ? { writingModePreference } : null,
+    meta: writingModePreference ? { writingModeHint: writingModePreference } : null
   };
 }
 
@@ -178,8 +188,97 @@ function parseOpf(opfDoc, opfDir) {
 
   const titleNode = metadataTitles[0] || null;
   const title = titleNode ? titleNode.textContent || "" : "";
+  const pageProgressionDirection = normalizePageProgressionDirection(
+    spineNode ? spineNode.getAttribute("page-progression-direction") : ""
+  );
 
-  return { title, manifest, spine, navPath, ncxPath, mediaTypeByPath };
+  return { title, manifest, spine, navPath, ncxPath, mediaTypeByPath, pageProgressionDirection };
+}
+
+function detectChapterWritingMode(chapterText, chapterDoc) {
+  const textHint = detectWritingModeFromText(chapterText);
+  if (textHint) return textHint;
+
+  const roots = [chapterDoc.documentElement, chapterDoc.body].filter(Boolean);
+  for (const root of roots) {
+    const attrHint = detectWritingModeFromElement(root);
+    if (attrHint) return attrHint;
+  }
+
+  return null;
+}
+
+function detectWritingModeFromText(text) {
+  const source = String(text || "");
+  if (!source) return null;
+
+  let vertical = 0;
+  let horizontal = 0;
+  const pattern = /(writing-mode|-\w+-writing-mode)\s*:\s*([^;"'}\s]+)/gi;
+  let match;
+
+  while ((match = pattern.exec(source))) {
+    const hint = mapWritingModeValue(match[2]);
+    if (hint === "vertical") vertical += 1;
+    if (hint === "horizontal") horizontal += 1;
+  }
+
+  if (vertical === horizontal) return null;
+  return vertical > horizontal ? "vertical" : "horizontal";
+}
+
+function detectWritingModeFromElement(el) {
+  if (!el) return null;
+
+  const styleAttr = el.getAttribute("style") || "";
+  const fromStyle = detectWritingModeFromText(styleAttr);
+  if (fromStyle) return fromStyle;
+
+  const dir = String(el.getAttribute("dir") || "").toLowerCase();
+  if (dir === "rtl") return "vertical";
+  if (dir === "ltr") return "horizontal";
+  return null;
+}
+
+function mapWritingModeValue(value) {
+  const normalized = String(value || "").trim().toLowerCase();
+  if (!normalized) return null;
+
+  if (
+    normalized.includes("vertical") ||
+    normalized === "tb-rl" ||
+    normalized === "tb-lr" ||
+    normalized === "rl-tb"
+  ) {
+    return "vertical";
+  }
+
+  if (
+    normalized.includes("horizontal") ||
+    normalized === "lr-tb"
+  ) {
+    return "horizontal";
+  }
+
+  return null;
+}
+
+function normalizePageProgressionDirection(value) {
+  const normalized = String(value || "").trim().toLowerCase();
+  if (normalized === "rtl" || normalized === "ltr") return normalized;
+  return "";
+}
+
+function resolveEpubWritingModePreference(chapterHints, pageProgressionDirection) {
+  const verticalCount = chapterHints.filter((hint) => hint === "vertical").length;
+  const horizontalCount = chapterHints.filter((hint) => hint === "horizontal").length;
+
+  if (verticalCount > horizontalCount) return "vertical";
+  if (horizontalCount > verticalCount) return "horizontal";
+
+  if (pageProgressionDirection === "rtl") return "vertical";
+  if (pageProgressionDirection === "ltr") return "horizontal";
+  return null;
 }
 
 async function buildTocFromNav(zip, navPath, chapterPathToId) {

@@ -21,7 +21,8 @@ const STATIC_ASSETS = [
   "./js/storage.js",
   "./js/utils.js",
   "./templates/library.html",
-  "./templates/reader.html"
+  "./templates/reader.html",
+  "./templates/help.html"
 ];
 
 // Light edition keeps bundled-book restrictions at the library boundary.
