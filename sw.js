@@ -20,6 +20,7 @@ const STATIC_ASSETS = [
   "./js/normalize-epub.js",
   "./js/storage.js",
   "./js/utils.js",
+  "./vendor/jszip.min.js",
   "./templates/library.html",
   "./templates/reader.html",
   "./templates/help.html"
