@@ -1,4 +1,5 @@
 import { escapeHtml, safeText } from "./utils.js";
+import { normalizeAozoraInlineHtml } from "./normalize-aozora.js";
 
 export function normalizeTxtToBook(text, filename = "") {
   const lines = text.replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n");
@@ -6,12 +7,7 @@ export function normalizeTxtToBook(text, filename = "") {
   let current = null;
   let chapterIndex = 0;
   let pendingBlankLines = 0;
-  const normalizeLineHtml = (line) => {
-    const escaped = escapeHtml(line);
-    return escaped
-      .replace(/｜(.+?)《(.+?)》/g, "<ruby>$1<rt>$2</rt></ruby>")
-      .replace(/[…‥―—]+/g, (value) => `<span class="jp-tate-upright">${value}</span>`);
-  };
+  const normalizeLineHtml = (line) => normalizeAozoraInlineHtml(line);
 
   const startChapter = (title) => {
     pendingBlankLines = 0;

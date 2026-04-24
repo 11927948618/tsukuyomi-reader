@@ -1,5 +1,7 @@
 import { safeText } from "./utils.js";
 
+import { hasAozoraInlineMarkup, normalizeAozoraInlineHtml } from "./normalize-aozora.js";
+
 const BLOCKED_SELECTORS = [
   "script",
   "style",
@@ -56,6 +58,7 @@ export async function normalizeEpubToBook(file) {
     }
     sanitizeChapter(chapterDoc);
     await rewriteChapterAssets(chapterDoc, chapterPath, zip, opfInfo.mediaTypeByPath, blobUrlCache);
+    normalizeAozoraTextNodes(chapterDoc.body || chapterDoc.documentElement, chapterDoc);
 
     const chapterId = `chapter-${String(chapters.length + 1).padStart(3, "0")}`;
     const fallbackTitle = filenameStem(item.href) || `章${chapters.length + 1}`;
@@ -383,6 +386,33 @@ function rewriteChapterLinks(section, currentPath, chapterPathToId) {
     a.removeAttribute("target");
     a.removeAttribute("download");
     a.setAttribute("rel", "nofollow");
+  }
+}
+
+function normalizeAozoraTextNodes(root, doc) {
+  if (!root || !doc) return;
+
+  const nodes = [];
+  const walker = doc.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+    acceptNode(node) {
+      const parent = node.parentElement;
+      const tagName = parent?.tagName?.toLowerCase() || "";
+      if (!parent) return NodeFilter.FILTER_REJECT;
+      if (["ruby", "rt", "rp", "script", "style"].includes(tagName)) {
+        return NodeFilter.FILTER_REJECT;
+      }
+      return hasAozoraInlineMarkup(node.nodeValue) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT;
+    }
+  });
+
+  while (walker.nextNode()) {
+    nodes.push(walker.currentNode);
+  }
+
+  for (const node of nodes) {
+    const template = doc.createElement("template");
+    template.innerHTML = normalizeAozoraInlineHtml(node.nodeValue || "");
+    node.replaceWith(...Array.from(template.content.childNodes));
   }
 }
 
