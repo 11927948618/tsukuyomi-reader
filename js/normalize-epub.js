@@ -509,31 +509,52 @@ function splitBrHeavyParagraphs(root, doc) {
   const paragraphs = Array.from(root.querySelectorAll("p"));
 
   for (const p of paragraphs) {
-    const children = Array.from(p.childNodes);
-    const breakCount = children.filter((node) => node.nodeType === Node.ELEMENT_NODE && node.nodeName === "BR").length;
+    const html = String(p.innerHTML || "");
+    const breakCount = (html.match(/<br\s*\/?>/gi) || []).length;
     if (breakCount === 0) continue;
 
-    const fragments = [];
-    let current = [];
-    for (const child of children) {
-      if (child.nodeType === Node.ELEMENT_NODE && child.nodeName === "BR") {
-        fragments.push(current);
-        current = [];
+    const rawParts = html.split(/<br\s*\/?>/i);
+    const logicalParagraphs = [];
+    let currentParts = [];
+
+    const flushCurrent = () => {
+      if (currentParts.length === 0) return;
+      logicalParagraphs.push(currentParts.join(""));
+      currentParts = [];
+    };
+
+    for (const rawPart of rawParts) {
+      const part = String(rawPart || "");
+      const text = extractHtmlText(part, doc);
+      const compact = compactText(text);
+
+      if (!compact) {
+        flushCurrent();
         continue;
       }
-      current.push(child);
+
+      if (currentParts.length === 0) {
+        currentParts.push(part);
+        continue;
+      }
+
+      if (shouldStartNewAozoraParagraph(text)) {
+        flushCurrent();
+        currentParts.push(part);
+        continue;
+      }
+
+      currentParts.push(part);
     }
-    fragments.push(current);
+    flushCurrent();
 
     const replacement = doc.createDocumentFragment();
-    for (const part of fragments) {
+    for (const part of logicalParagraphs) {
       const nextP = doc.createElement("p");
       for (const attr of Array.from(p.attributes || [])) {
         nextP.setAttribute(attr.name, attr.value);
       }
-      for (const node of part) {
-        nextP.appendChild(node);
-      }
+      nextP.innerHTML = part;
 
       if (!compactText(nextP.textContent) && !nextP.querySelector("img, svg, ruby, span")) {
         continue;
@@ -565,6 +586,19 @@ function markAozoraColophon(root) {
 
 function compactText(value) {
   return String(value || "").replace(/\s+/gu, "");
+}
+
+function extractHtmlText(html, doc) {
+  const template = doc.createElement("template");
+  template.innerHTML = String(html || "");
+  return template.content.textContent || "";
+}
+
+function shouldStartNewAozoraParagraph(text) {
+  const source = String(text || "");
+  if (!source) return false;
+
+  return /^(　|「|『|（|〈|《|【|〔|［＃|［|［＊|[一二三四五六七八九十]+、|[0-9０-９]+[、.]|＊|底本：|親本：|入力：|校正：|青空文庫作成ファイル：)/u.test(source);
 }
 
 function mapHrefToChapter(href, basePath, chapterPathToId) {
