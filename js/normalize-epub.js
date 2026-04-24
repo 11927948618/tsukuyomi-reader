@@ -401,7 +401,7 @@ function normalizeAozoraTextNodes(root, doc) {
       if (["ruby", "rt", "rp", "script", "style"].includes(tagName)) {
         return NodeFilter.FILTER_REJECT;
       }
-      return hasAozoraInlineMarkup(node.nodeValue, { includeTateUpright: false })
+      return hasAozoraInlineMarkup(node.nodeValue, { includeEllipsis: true, includeDash: false })
         ? NodeFilter.FILTER_ACCEPT
         : NodeFilter.FILTER_REJECT;
     }
@@ -413,7 +413,7 @@ function normalizeAozoraTextNodes(root, doc) {
 
   for (const node of nodes) {
     const template = doc.createElement("template");
-    template.innerHTML = normalizeAozoraInlineHtml(node.nodeValue || "", { wrapTateUpright: false });
+    template.innerHTML = normalizeAozoraInlineHtml(node.nodeValue || "", { wrapEllipsis: true, wrapDash: false });
     node.replaceWith(...Array.from(template.content.childNodes));
   }
 }

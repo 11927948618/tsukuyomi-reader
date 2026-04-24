@@ -880,9 +880,22 @@ export function initReader({
           if (target.closest("#settingsPanel, #tocPanel")) return;
         }
         if (displayMode === "scrolly") return;
+        const axisDelta = Math.abs(event.deltaY) >= Math.abs(event.deltaX) ? event.deltaY : event.deltaX;
+        if (Math.abs(axisDelta) < 1) return;
+        if (displayMode === "paged") {
+          if (wheelLock) {
+            event.preventDefault();
+            return;
+          }
+          wheelLock = true;
+          window.setTimeout(() => {
+            wheelLock = false;
+          }, 160);
+          stepHorizontalPage(axisDelta > 0 ? 1 : -1, "auto");
+          event.preventDefault();
+          return;
+        }
         if (isWindows && wheelPaging) {
-          const axisDelta = Math.abs(event.deltaY) >= Math.abs(event.deltaX) ? event.deltaY : event.deltaX;
-          if (Math.abs(axisDelta) < 1) return;
           if (wheelLock) {
             event.preventDefault();
             return;
