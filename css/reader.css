@@ -214,6 +214,15 @@ body.topbar-mobile-wrap .topbar-group-right .button {
   text-orientation: mixed;
 }
 
+.reader-content ruby {
+  ruby-position: over;
+}
+
+.reader-content rt {
+  font-size: 0.52em;
+  line-height: 1;
+}
+
 .reader-content > * {
   scroll-snap-align: start;
 }
