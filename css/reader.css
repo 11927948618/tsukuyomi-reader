@@ -207,6 +207,11 @@ body.topbar-mobile-wrap .topbar-group-right .button {
 .reader-content.force-vertical {
   writing-mode: vertical-rl;
   text-orientation: mixed;
+  line-break: strict;
+  word-break: normal;
+  overflow-wrap: normal;
+  -moz-font-feature-settings: "vert" 1;
+  font-feature-settings: "vert" 1;
 }
 
 .reader-content.force-horizontal {

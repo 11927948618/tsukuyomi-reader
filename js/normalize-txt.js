@@ -6,20 +6,12 @@ export function normalizeTxtToBook(text, filename = "") {
   let current = null;
   let chapterIndex = 0;
   let pendingBlankLines = 0;
-  let paragraphLines = [];
   const normalizeLineHtml = (line) => {
     const escaped = escapeHtml(line);
     return escaped.replace(/｜(.+?)《(.+?)》/g, "<ruby>$1<rt>$2</rt></ruby>");
   };
 
-  const flushParagraph = () => {
-    if (!current || paragraphLines.length === 0) return;
-    current.blocks.push({ type: "paragraph", html: paragraphLines.join("") });
-    paragraphLines = [];
-  };
-
   const startChapter = (title) => {
-    flushParagraph();
     pendingBlankLines = 0;
     chapterIndex += 1;
     current = {
@@ -41,7 +33,6 @@ export function normalizeTxtToBook(text, filename = "") {
     }
 
     if (line.trim() === "") {
-      flushParagraph();
       if (current.blocks.length > 0) {
         pendingBlankLines += 1;
       }
@@ -53,14 +44,12 @@ export function normalizeTxtToBook(text, filename = "") {
       pendingBlankLines = 0;
     }
 
-    paragraphLines.push(normalizeLineHtml(line.replace(/[ \t]+$/g, "")));
+    current.blocks.push({ type: "line", html: normalizeLineHtml(line) });
   }
 
   if (chapters.length === 0) {
     startChapter("本文");
   }
-
-  flushParagraph();
 
   const toc = chapters.map((ch, idx) => {
     const chapterId = `chapter-${String(idx + 1).padStart(3, "0")}`;
@@ -73,7 +62,7 @@ export function normalizeTxtToBook(text, filename = "") {
       if (block.type === "gap") {
         return `<div class="txt-gap" aria-hidden="true" style="--gap-lines:${Math.max(1, Number(block.count) || 1)}"></div>`;
       }
-      return `<p class="txt-paragraph">${block.html}</p>`;
+      return `<div class="txt-line">${block.html}</div>`;
     }).join("\n");
     return `\n<section class=\"chapter\" data-chapter=\"${chapterId}\" id=\"${chapterId}\">\n  <h1>${escapeHtml(ch.title)}</h1>\n  ${body || ""}\n</section>`;
   }).join("\n");
