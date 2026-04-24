@@ -77,17 +77,21 @@ export function initReader({
   };
   const stepHorizontalPage = (stepCount, behavior = "auto") => {
     const pageSize = getHorizontalPageSize();
+    const maxLeft = getMaxLeft(scrollContainer);
     const logical = toLogicalLeft(scrollContainer, scrollContainer.scrollLeft, pageDirection);
-    const epsilon = Math.max(1, pageSize * 0.02);
+    const totalPages = Math.max(1, Math.floor(maxLeft / pageSize) + 1);
+    const currentPage = clamp(Math.round(logical / pageSize), 0, totalPages - 1);
+    const targetPage = clamp(currentPage + stepCount, 0, totalPages - 1);
+    let targetLogical = clamp(targetPage * pageSize, 0, maxLeft);
 
-    let pageIndex;
-    if (stepCount > 0) {
-      pageIndex = Math.floor((logical + epsilon) / pageSize) + stepCount;
-    } else {
-      pageIndex = Math.ceil((logical - epsilon) / pageSize) + stepCount;
+    // Ensure the last partial page is still reachable by tap paging.
+    if (stepCount > 0 && targetLogical <= logical + 1 && logical < maxLeft) {
+      targetLogical = maxLeft;
+    }
+    if (stepCount < 0 && targetLogical >= logical - 1 && logical > 0) {
+      targetLogical = 0;
     }
 
-    const targetLogical = clamp(pageIndex * pageSize, 0, getMaxLeft(scrollContainer));
     scrollToLogicalLeft(targetLogical, behavior);
   };
   const applyPageWidth = () => {
@@ -728,7 +732,7 @@ export function initReader({
         }
       };
 
-      const advanceOnRight = detectPageDirection() !== "rtl";
+      const advanceOnRight = pageDirection !== "rtl";
 
       if (x > w * 0.66) {
         if (advanceOnRight) advance();
