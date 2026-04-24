@@ -44,6 +44,7 @@ export async function normalizeEpubToBook(file) {
     const chapterPath = normalizePath(resolvePath(opfDir, item.href));
     const chapterText = await readTextFromZip(zip, chapterPath);
     const chapterDoc = parseHtml(chapterText);
+    const aozoraLike = detectAozoraLikeChapter(chapterText, chapterDoc);
     const chapterWritingMode = detectChapterWritingMode(chapterText, chapterDoc);
     const chapterCss = await buildChapterCss(
       chapterDoc,
@@ -59,6 +60,9 @@ export async function normalizeEpubToBook(file) {
     sanitizeChapter(chapterDoc);
     await rewriteChapterAssets(chapterDoc, chapterPath, zip, opfInfo.mediaTypeByPath, blobUrlCache);
     normalizeAozoraTextNodes(chapterDoc.body || chapterDoc.documentElement, chapterDoc);
+    if (aozoraLike) {
+      normalizeAozoraLikeChapter(chapterDoc);
+    }
 
     const chapterId = `chapter-${String(chapters.length + 1).padStart(3, "0")}`;
     const fallbackTitle = filenameStem(item.href) || `章${chapters.length + 1}`;
@@ -307,6 +311,32 @@ function resolveEpubWritingModePreference(chapterHints, pageProgressionDirection
   return null;
 }
 
+function detectAozoraLikeChapter(chapterText, chapterDoc) {
+  const source = String(chapterText || "");
+  if (!source) return false;
+
+  let score = 0;
+  if (/青空文庫|【テキスト中に現れる記号について】|［＃|底本：|入力：|校正：/u.test(source)) {
+    score += 3;
+  }
+  if ((source.match(/《/g) || []).length >= 3) {
+    score += 2;
+  }
+  if ((source.match(/<br\s*\/?>/gi) || []).length >= 10) {
+    score += 1;
+  }
+
+  const body = chapterDoc.body || chapterDoc.documentElement;
+  const denseBreakParagraph = Array.from(body?.querySelectorAll("p") || []).some(
+    (p) => Array.from(p.childNodes).filter((node) => node.nodeType === Node.ELEMENT_NODE && node.nodeName === "BR").length >= 2
+  );
+  if (denseBreakParagraph) {
+    score += 1;
+  }
+
+  return score >= 3;
+}
+
 async function buildTocFromNav(zip, navPath, chapterPathToId) {
   if (!navPath) return [];
 
@@ -401,7 +431,7 @@ function normalizeAozoraTextNodes(root, doc) {
       if (["ruby", "rt", "rp", "script", "style"].includes(tagName)) {
         return NodeFilter.FILTER_REJECT;
       }
-      return hasAozoraInlineMarkup(node.nodeValue, { includeEllipsis: true, includeDash: false })
+      return hasAozoraInlineMarkup(node.nodeValue, { includeEllipsis: true, includeDash: true })
         ? NodeFilter.FILTER_ACCEPT
         : NodeFilter.FILTER_REJECT;
     }
@@ -413,9 +443,128 @@ function normalizeAozoraTextNodes(root, doc) {
 
   for (const node of nodes) {
     const template = doc.createElement("template");
-    template.innerHTML = normalizeAozoraInlineHtml(node.nodeValue || "", { wrapEllipsis: true, wrapDash: false });
+    template.innerHTML = normalizeAozoraInlineHtml(node.nodeValue || "", { wrapEllipsis: true, wrapDash: true });
     node.replaceWith(...Array.from(template.content.childNodes));
   }
+}
+
+function normalizeAozoraLikeChapter(doc) {
+  const body = doc.body || doc.documentElement;
+  if (!body) return;
+
+  removeAozoraGuideParagraphs(body);
+  stripAozoraEditorialNotes(body, doc);
+  splitBrHeavyParagraphs(body, doc);
+  markAozoraColophon(body);
+}
+
+function removeAozoraGuideParagraphs(root) {
+  for (const p of Array.from(root.querySelectorAll("p"))) {
+    const text = compactText(p.textContent);
+    if (!text) continue;
+    if (/【テキスト中に現れる記号について】/u.test(text)) {
+      p.remove();
+      continue;
+    }
+    if (/^《》：ルビ/u.test(text) || /^｜：ルビ/u.test(text) || /^［＃］：入力者注/u.test(text)) {
+      p.remove();
+      continue;
+    }
+    if (/^[\-\u2014\u2015]{20,}$/u.test(text)) {
+      p.remove();
+    }
+  }
+}
+
+function stripAozoraEditorialNotes(root, doc) {
+  const nodes = [];
+  const walker = doc.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+    acceptNode(node) {
+      const parent = node.parentElement;
+      const tagName = parent?.tagName?.toLowerCase() || "";
+      if (!parent) return NodeFilter.FILTER_REJECT;
+      if (["ruby", "rt", "rp", "script", "style"].includes(tagName)) {
+        return NodeFilter.FILTER_REJECT;
+      }
+      return /［＃[^］]+］|〔[^〕]*(?:空白|原稿|なし)[^〕]*〕/u.test(node.nodeValue || "")
+        ? NodeFilter.FILTER_ACCEPT
+        : NodeFilter.FILTER_REJECT;
+    }
+  });
+
+  while (walker.nextNode()) {
+    nodes.push(walker.currentNode);
+  }
+
+  for (const node of nodes) {
+    const nextValue = String(node.nodeValue || "")
+      .replace(/［＃[^］]+］/gu, "")
+      .replace(/〔[^〕]*(?:空白|原稿|なし)[^〕]*〕/gu, "");
+    if (nextValue === node.nodeValue) continue;
+    node.nodeValue = nextValue;
+  }
+}
+
+function splitBrHeavyParagraphs(root, doc) {
+  const paragraphs = Array.from(root.querySelectorAll("p"));
+
+  for (const p of paragraphs) {
+    const children = Array.from(p.childNodes);
+    const breakCount = children.filter((node) => node.nodeType === Node.ELEMENT_NODE && node.nodeName === "BR").length;
+    if (breakCount === 0) continue;
+
+    const fragments = [];
+    let current = [];
+    for (const child of children) {
+      if (child.nodeType === Node.ELEMENT_NODE && child.nodeName === "BR") {
+        fragments.push(current);
+        current = [];
+        continue;
+      }
+      current.push(child);
+    }
+    fragments.push(current);
+
+    const replacement = doc.createDocumentFragment();
+    for (const part of fragments) {
+      const nextP = doc.createElement("p");
+      for (const attr of Array.from(p.attributes || [])) {
+        nextP.setAttribute(attr.name, attr.value);
+      }
+      for (const node of part) {
+        nextP.appendChild(node);
+      }
+
+      if (!compactText(nextP.textContent) && !nextP.querySelector("img, svg, ruby, span")) {
+        continue;
+      }
+      replacement.appendChild(nextP);
+    }
+
+    if (replacement.childNodes.length > 0) {
+      p.replaceWith(replacement);
+    } else {
+      p.remove();
+    }
+  }
+}
+
+function markAozoraColophon(root) {
+  let inColophon = false;
+  for (const p of Array.from(root.querySelectorAll("p"))) {
+    const text = compactText(p.textContent);
+    if (!text) continue;
+    if (/^(底本：|親本：|入力：|校正：|青空文庫作成ファイル：)/u.test(text)) {
+      inColophon = true;
+    }
+    if (inColophon) {
+      p.classList.add("epub-colophon");
+    }
+  }
+}
+
+function compactText(value) {
+  return String(value || "").replace(/\s+/gu, "");
 }
 
 function mapHrefToChapter(href, basePath, chapterPathToId) {
