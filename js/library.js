@@ -66,6 +66,8 @@ export function initLibrary({ onOpenBook, onExport, getCurrentBook, onOpenReader
         const regs = await navigator.serviceWorker.getRegistrations();
         await Promise.all(regs.map((reg) => reg.unregister()));
       }
+      localStorage.removeItem("tsukiyomi:lastOpened");
+      localStorage.removeItem("tsukiyomi:lastBookCache");
     } finally {
       location.reload();
     }

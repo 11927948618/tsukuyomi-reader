@@ -401,7 +401,9 @@ function normalizeAozoraTextNodes(root, doc) {
       if (["ruby", "rt", "rp", "script", "style"].includes(tagName)) {
         return NodeFilter.FILTER_REJECT;
       }
-      return hasAozoraInlineMarkup(node.nodeValue) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT;
+      return hasAozoraInlineMarkup(node.nodeValue, { includeTateUpright: false })
+        ? NodeFilter.FILTER_ACCEPT
+        : NodeFilter.FILTER_REJECT;
     }
   });
 
@@ -411,7 +413,7 @@ function normalizeAozoraTextNodes(root, doc) {
 
   for (const node of nodes) {
     const template = doc.createElement("template");
-    template.innerHTML = normalizeAozoraInlineHtml(node.nodeValue || "");
+    template.innerHTML = normalizeAozoraInlineHtml(node.nodeValue || "", { wrapTateUpright: false });
     node.replaceWith(...Array.from(template.content.childNodes));
   }
 }
