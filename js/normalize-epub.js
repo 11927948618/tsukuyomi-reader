@@ -519,7 +519,7 @@ function splitBrHeavyParagraphs(root, doc) {
 
     const flushCurrent = () => {
       if (currentParts.length === 0) return;
-      logicalParagraphs.push(currentParts.join(""));
+      logicalParagraphs.push(currentParts.join("<br />"));
       currentParts = [];
     };
 
