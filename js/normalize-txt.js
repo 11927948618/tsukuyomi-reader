@@ -10,7 +10,7 @@ export function normalizeTxtToBook(text, filename = "") {
     const escaped = escapeHtml(line);
     return escaped
       .replace(/｜(.+?)《(.+?)》/g, "<ruby>$1<rt>$2</rt></ruby>")
-      .replace(/[…‥]+/g, (value) => `<span class="jp-ellipsis">${value}</span>`);
+      .replace(/[…‥―—]+/g, (value) => `<span class="jp-tate-upright">${value}</span>`);
   };
 
   const startChapter = (title) => {
