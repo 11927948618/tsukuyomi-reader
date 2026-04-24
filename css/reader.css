@@ -228,6 +228,10 @@ body.topbar-mobile-wrap .topbar-group-right .button {
   line-height: 1;
 }
 
+.reader-content.force-vertical .jp-ellipsis {
+  text-orientation: upright;
+}
+
 .reader-content > * {
   scroll-snap-align: start;
 }

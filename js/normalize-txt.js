@@ -8,7 +8,9 @@ export function normalizeTxtToBook(text, filename = "") {
   let pendingBlankLines = 0;
   const normalizeLineHtml = (line) => {
     const escaped = escapeHtml(line);
-    return escaped.replace(/｜(.+?)《(.+?)》/g, "<ruby>$1<rt>$2</rt></ruby>");
+    return escaped
+      .replace(/｜(.+?)《(.+?)》/g, "<ruby>$1<rt>$2</rt></ruby>")
+      .replace(/[…‥]+/g, (value) => `<span class="jp-ellipsis">${value}</span>`);
   };
 
   const startChapter = (title) => {
