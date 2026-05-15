@@ -1,7 +1,7 @@
 {
   "name": "Tsukuyomi Reader",
   "short_name": "Tsukuyomi",
-  "description": "同梱書籍を縦書き中心で読むための PWA リーダー",
+  "description": "公開作品を縦書き中心で読むための PWA リーダー",
   "lang": "ja",
   "id": "./",
   "scope": "./",

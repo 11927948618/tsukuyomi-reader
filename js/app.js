@@ -230,7 +230,7 @@ async function tryRestoreLastBook() {
   if (!cached || !cached.html || !Array.isArray(cached.toc)) return false;
 
   const restoreSourceType = await resolveRestoreSourceType(cached);
-  if (!canRestoreCachedSource(restoreSourceType)) {
+  if (!(await canRestoreCachedSource(restoreSourceType, cached))) {
     appState.startupMessage = "立ち読み用では外部書籍の自動復元を無効にしています";
     return false;
   }
@@ -409,27 +409,64 @@ async function resolveRestoreSourceType(cached) {
   return sourceType || "cache";
 }
 
-function canRestoreCachedSource(sourceType) {
+async function canRestoreCachedSource(sourceType, cached) {
   if (appState.siteConfig?.allowLocalImport !== false) return true;
-  return sourceType === "manifest" || sourceType === "bundled";
+  if (sourceType !== "manifest" && sourceType !== "bundled") return false;
+  return isCachedBookStillPublished(cached);
 }
 
 async function loadManifestBookTitles() {
+  const books = await loadPublishedManifestBooks();
+  return new Set(
+    books
+      .map((entry) => String(entry?.title || "").trim())
+      .filter(Boolean)
+  );
+}
+
+async function isCachedBookStillPublished(cached) {
+  const books = await loadPublishedManifestBooks();
+  if (books.length === 0) return false;
+
+  const sourceData = cached?.sourceData && typeof cached.sourceData === "object" ? cached.sourceData : {};
+  const cachedId = String(sourceData.id || "").trim();
+  const cachedPath = normalizeManifestPath(sourceData.path || "");
+  const cachedTitle = String(cached?.title || "").trim();
+
+  return books.some((entry) => {
+    const entryId = String(entry?.id || "").trim();
+    if (cachedId && entryId && cachedId === entryId) return true;
+
+    const entryPath = normalizeManifestPath(entry?.path || "");
+    if (cachedPath && entryPath && cachedPath === entryPath) return true;
+
+    const entryTitle = String(entry?.title || "").trim();
+    return Boolean(cachedTitle && entryTitle && cachedTitle === entryTitle);
+  });
+}
+
+async function loadPublishedManifestBooks() {
   try {
     const manifestPath = appState.siteConfig?.booksManifest || DEFAULT_SITE_CONFIG.booksManifest;
-    const res = await fetch(manifestPath, { cache: "no-store" });
-    if (!res.ok) return new Set();
+    let res = await fetch(manifestPath, { cache: "no-store" });
+    if (res.status === 404 && manifestPath !== DEFAULT_SITE_CONFIG.booksManifest) {
+      res = await fetch(DEFAULT_SITE_CONFIG.booksManifest, { cache: "no-store" });
+    }
+    if (!res.ok) return [];
     const manifest = await res.json();
     const books = Array.isArray(manifest) ? manifest : Array.isArray(manifest?.books) ? manifest.books : [];
-    return new Set(
-      books
-        .filter((entry) => entry?.published === true)
-        .map((entry) => String(entry?.title || "").trim())
-        .filter(Boolean)
-    );
+    return books.filter((entry) => entry?.published === true);
   } catch (err) {
-    return new Set();
+    return [];
   }
+}
+
+function normalizeManifestPath(path) {
+  return String(path || "")
+    .trim()
+    .replace(/^https?:\/\/[^/]+/i, "")
+    .replace(/^\.?\//, "/")
+    .replace(/\/+/g, "/");
 }
 
 async function bootstrap() {

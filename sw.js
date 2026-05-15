@@ -1,4 +1,4 @@
-const CACHE_NAME = "tsukuyomi-reader-v0.1.47";
+const CACHE_NAME = "tsukuyomi-reader-v0.1.48";
 const STATIC_ASSETS = [
   "./",
   "./index.html",
@@ -37,6 +37,8 @@ async function cacheManifestBooks(cache) {
     const config = configRes.ok ? await configRes.json() : {};
     const manifestPath = config.booksManifest || "./books/manifest.json";
     let res = await fetch(manifestPath, { cache: "no-store" });
+    const manifestUrl = new URL(manifestPath, self.location.origin);
+    if (res.ok && manifestUrl.pathname.startsWith("/api/")) return;
     if (res.status === 404 && manifestPath !== "./books/manifest.json") {
       res = await fetch("./books/manifest.json", { cache: "no-store" });
     }
@@ -108,13 +110,19 @@ self.addEventListener("fetch", (event) => {
   const req = event.request;
   if (req.method !== "GET") return;
   const url = new URL(req.url);
+  const isSameOrigin = url.origin === self.location.origin;
+  const isApiRequest = isSameOrigin && url.pathname.startsWith("/api/");
   const isBookAsset = url.pathname.includes("/book/") || url.pathname.includes("/books/");
   const isHtmlRequest =
     req.mode === "navigate" ||
     req.destination === "document" ||
     url.pathname.endsWith(".html") ||
     url.pathname.endsWith("/");
-  const isSameOrigin = url.origin === self.location.origin;
+
+  if (isApiRequest) {
+    event.respondWith(fetch(req, { cache: "no-store" }));
+    return;
+  }
 
   if (isBookAsset) {
     event.respondWith(

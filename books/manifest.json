@@ -3,10 +3,10 @@
     "id": "sample",
     "title": "サンプル作品",
     "author": "hal the juggernaut",
-    "description": "立ち読み用の短い紹介文。",
-    "format": "epub",
-    "path": "./books/works/sample.epub",
-    "cover": "./books/covers/sample.jpg",
+    "description": "ローカル起動確認用の短いTXTサンプル。",
+    "format": "txt",
+    "path": "./books/works/sample.txt",
+    "cover": "",
     "published": true,
     "updatedAt": "2026-05-15"
   }
