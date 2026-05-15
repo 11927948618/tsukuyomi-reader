@@ -343,3 +343,10 @@ Root directory: 空欄
 - この修正をcommit/pushしてCloudflareへ反映する。
 - CloudflareでR2 bucket bindingを追加する。
 - Cloudflareで管理トークン環境変数を追加する。
+
+### 追記
+
+- commit: `07397cf fix distribution mode deploy settings`
+- `main` へpush済み。
+- Cloudflare Pages公開側で `js/version.js` が `APP_VERSION = "0.1.49"` を返すことを確認。
+- UI非表示の保険修正は公開環境へ反映済み。
