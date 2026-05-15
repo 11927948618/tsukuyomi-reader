@@ -350,3 +350,53 @@ Root directory: 空欄
 - `main` へpush済み。
 - Cloudflare Pages公開側で `js/version.js` が `APP_VERSION = "0.1.49"` を返すことを確認。
 - UI非表示の保険修正は公開環境へ反映済み。
+
+## 2026-05-15 R2利用方針
+
+### 判断
+
+- Cloudflare R2は無料枠つきの従量課金。
+- Standard storageの無料枠は、月10GB保存、Class A操作100万回、Class B操作1000万回。
+- 無料枠を超えた分は後払いで課金される。
+- 立ち読み用の小規模運用では無料枠内に収まる想定。
+- Surface Goなど別環境から管理画面で更新しやすくするため、R2利用で進める。
+
+### 次にやること
+
+- Cloudflare R2の初回画面で `Add R2 subscription to my account` を押す。
+- R2 bucket `tsukuyomi-reader-books` を作成する。
+- Pagesプロジェクト `tsukuyomi-reader-tachiyomi` にR2 bindingを追加する。
+- `TSUKUYOMI_ADMIN_TOKEN` を設定する。
+- 再デプロイ後、`/api/books` が `[]` を返すことを確認する。
+
+## 2026-05-15 R2 binding後のデプロイ成功
+
+### 発生状況
+
+- Cloudflare Pagesの再デプロイが成功。
+- デプロイログで以下を確認。
+  - `Found Functions directory at /functions. Uploading.`
+  - `Compiled Worker successfully`
+  - `Found _routes.json in output directory. Uploading.`
+  - `Success: Assets published!`
+  - `Success: Your site was deployed!`
+
+### 確認結果
+
+- `https://tsukuyomi-reader-tachiyomi.pages.dev/api/books`
+  - HTTP 200
+  - レスポンス: `[]`
+- `https://tsukuyomi-reader-tachiyomi.pages.dev/js/version.js`
+  - `APP_VERSION = "0.1.49"`
+
+### 判断
+
+- Pages本体、Functions、R2 bindingは正常。
+- 作品未登録のため、読者画面の作品一覧は空で正しい。
+
+### 次にやること
+
+- 管理画面で `TSUKUYOMI_ADMIN_TOKEN` を入力して保存する。
+- TXTまたはEPUB作品を1件登録する。
+- `公開する` をONにして保存する。
+- 読者画面に作品が表示され、読めることを確認する。

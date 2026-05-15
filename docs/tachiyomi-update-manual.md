@@ -127,6 +127,8 @@ https://tsukuyomi-reader-tachiyomi.pages.dev/
 
 Web管理メニューを使う場合は、Cloudflare Pages Functions と R2 を使います。
 
+R2は無料枠つきの従量課金です。Standard storageの場合、毎月10GB保存、Class A操作100万回、Class B操作1000万回までは無料です。無料枠を超えた分は後払いで課金されます。立ち読み用の小規模運用なら通常は無料枠内に収まる想定ですが、絶対に課金を発生させたくない場合はR2を使わず、`books/` 配下をGitHubへpushする静的ファイル運用にします。
+
 やることは大きく5つです。
 
 1. R2バケットを作る
@@ -136,6 +138,8 @@ Web管理メニューを使う場合は、Cloudflare Pages Functions と R2 を�
 5. `/admin.html` から作品を登録する
 
 1. Cloudflare R2でバケットを作成します。
+
+R2の初回画面で `Add R2 subscription to my account` が出た場合は、料金表示を確認した上で押します。表示上の `Total Due Now` が `$0.00` なら、その時点での請求はありません。
 
 例:
 
