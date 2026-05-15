@@ -12,6 +12,14 @@ https://tsukuyomi-reader-tachiyomi.pages.dev/
 
 Cloudflare Pagesでまだ作成していない場合は、このURLになるように `tsukuyomi-reader-tachiyomi` プロジェクトを作成します。
 
+管理メニューのURLは以下です。
+
+```text
+https://tsukuyomi-reader-tachiyomi.pages.dev/admin.html
+```
+
+管理メニューは検索エンジンに出さない想定ですが、URLを知っているだけで操作できる設計にはしません。Cloudflare Pagesの環境変数 `TSUKUYOMI_ADMIN_TOKEN` と、管理画面で入力する管理トークンが一致した場合だけ操作できます。
+
 ## 立ち読みモードの概要
 
 立ち読みモードでは、読者はサイト上の作品一覧から作品を選んで読みます。
@@ -23,13 +31,19 @@ Cloudflare Pagesでまだ作成していない場合は、このURLになるよ�
 - `config/site-config.json`
   - サイト全体の動作モードを切り替える設定です。
 - `books/manifest.json`
-  - 立ち読み用に表示する作品一覧です。
+  - 管理API未設定時のフォールバック用作品一覧です。
 - `books/works/`
-  - 配布するEPUBを置く場所です。
+  - 管理API未設定時のフォールバック用EPUB置き場です。
 - `books/covers/`
-  - 作品カードに表示する表紙画像を置く場所です。
+  - 管理API未設定時のフォールバック用表紙画像置き場です。
+- `admin.html`
+  - 作品をアップロードし、公開/非公開を切り替える管理画面です。
+- `functions/api/`
+  - Cloudflare Pages Functions の管理APIです。
+- Cloudflare R2
+  - 管理画面からアップロードしたEPUBと表紙画像、作品メタ情報を保存します。
 - `update_books.bat`
-  - Surface Goなどで、`books/` 配下だけをcommit/pushするための簡易バッチです。
+  - APIを使わない場合に、`books/` 配下だけをcommit/pushするための予備バッチです。
 
 ## モード切替
 
@@ -45,7 +59,7 @@ Cloudflare Pagesでまだ作成していない場合は、このURLになるよ�
   "showVersion": true,
   "showCopyright": true,
   "copyright": "© 2026 hal the juggernaut. All rights reserved.",
-  "booksManifest": "./books/manifest.json"
+  "booksManifest": "/api/books"
 }
 ```
 
@@ -65,7 +79,83 @@ Cloudflare Pagesでまだ作成していない場合は、このURLになるよ�
 }
 ```
 
-## 作品を追加する
+## Cloudflare側の初期設定
+
+Web管理メニューを使う場合は、Cloudflare Pages Functions と R2 を使います。
+
+1. Cloudflare R2でバケットを作成します。
+
+例:
+
+```text
+tsukuyomi-reader-books
+```
+
+2. Cloudflare Pagesの立ち読み用プロジェクトを開きます。
+
+```text
+tsukuyomi-reader-tachiyomi
+```
+
+3. `Settings > Bindings` でR2 bucket bindingを追加します。
+
+設定値:
+
+```text
+Variable name: TSUKUYOMI_BOOKS_BUCKET
+R2 bucket: tsukuyomi-reader-books
+```
+
+4. `Settings > Environment variables` に管理トークンを追加します。
+
+```text
+TSUKUYOMI_ADMIN_TOKEN=十分に長いランダム文字列
+```
+
+5. 再デプロイします。
+
+`wrangler.example.toml` は設定例です。実際のプロジェクトでWranglerを使う場合は、必要に応じて `wrangler.toml` にコピーして使います。
+
+## 管理メニューで作品を更新する
+
+Surface Goなど、開発環境とは完全に別の端末では、この方法を基本運用にします。
+
+1. 管理メニューを開きます。
+
+```text
+https://tsukuyomi-reader-tachiyomi.pages.dev/admin.html
+```
+
+2. 管理トークンを入力して「保存」を押します。
+
+管理トークンはブラウザのlocalStorageに保存されます。共有PCや不特定多数が触れる端末では保存しないでください。
+
+3. 作品を追加または差し替えます。
+
+入力項目:
+
+- 作品ID
+- タイトル
+- 作者
+- 紹介文
+- 更新日
+- EPUB
+- 表紙画像
+- 公開する / 非公開
+
+初回登録ではEPUBが必須です。既存作品の説明文や公開状態だけを変える場合、EPUBと表紙画像は選ばなくてかまいません。
+
+4. 「保存」を押します。
+
+保存後、読者向けの作品一覧API `/api/books` に反映されます。
+
+5. 公開停止する場合は、作品一覧の「公開停止」を押します。
+
+非公開にした作品は読者画面の作品一覧から消え、本文と表紙の公開APIからも取得できなくなります。
+
+## ファイル直置きで作品を追加する
+
+この方法は、Cloudflare R2管理APIを使わない場合の予備手順です。通常は管理メニューから更新します。
 
 1. EPUBを `books/works/` に置きます。
 
@@ -153,13 +243,15 @@ http://127.0.0.1:8000/
 
 ## Surface Goで作品だけ更新する
 
-Surface Goでは原則として以下だけを更新します。
+管理メニューを使う場合、Surface Go側でGit操作は不要です。
+
+APIを使わない予備運用では、Surface Goで以下だけを更新します。
 
 - `books/manifest.json`
 - `books/works/*.epub`
 - `books/covers/*`
 
-更新後、`update_books.bat` を実行します。
+予備運用でファイル直置き更新をした場合のみ、`update_books.bat` を実行します。
 
 バッチは `books/` 配下の変更だけを表示し、確認後に以下を実行します。
 
@@ -187,20 +279,28 @@ Cloudflare Pagesでは2つのプロジェクトを作り、それぞれ監視ブ
 
 作品一覧が出ない場合:
 
-- `config/site-config.json` の `booksManifest` が `./books/manifest.json` になっているか確認します。
-- `books/manifest.json` がJSONとして壊れていないか確認します。
+- `config/site-config.json` の `booksManifest` が `/api/books` になっているか確認します。
+- Cloudflare Pages Functions がデプロイされているか確認します。
+- R2 bucket binding `TSUKUYOMI_BOOKS_BUCKET` が設定されているか確認します。
+- API未設定のローカル確認では、フォールバック用の `books/manifest.json` がJSONとして壊れていないか確認します。
 - 作品の `published` が `true` になっているか確認します。
 
 「読む」で失敗する場合:
 
-- `path` のEPUBが実際に存在するか確認します。
-- ファイル名の全角、空白、大文字小文字が一致しているか確認します。
+- 管理画面の作品一覧で対象作品が公開中になっているか確認します。
+- R2にEPUBが保存されているか確認します。
 - ローカル確認時は、ファイルを直接開かずHTTPサーバー経由で開きます。
 
 表紙が出ない場合:
 
-- `cover` の画像パスが実際のファイルと一致しているか確認します。
+- 管理画面で表紙画像を選んで保存済みか確認します。
 - 画像形式はまず `jpg` / `png` を使います。
+
+管理メニューで認証に失敗する場合:
+
+- Cloudflareの環境変数 `TSUKUYOMI_ADMIN_TOKEN` と入力値が一致しているか確認します。
+- 環境変数を追加したあとに再デプロイしたか確認します。
+- 管理トークンの前後に空白が入っていないか確認します。
 
 更新したのに古い内容が出る場合:
 

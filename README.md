@@ -29,11 +29,15 @@
   - Service Worker による静的アセットのキャッシュ
 - 立ち読みモード
   - `config/site-config.json` による開発版 / 配布版の切替
-  - `books/manifest.json` からの作品一覧表示
+  - `/api/books` または `books/manifest.json` からの作品一覧表示
   - manifest経由のEPUB fetch
   - ローカル読込 / ZIP書き出しの非表示
   - 通常コピー、右クリック、ドラッグ保存の抑制
   - copyright表示
+- 管理メニュー
+  - `admin.html` から作品アップロード
+  - Cloudflare Pages Functions + R2 によるEPUB/表紙保存
+  - 管理APIから公開 / 非公開を切替
 
 ## マニュアル
 
@@ -67,12 +71,14 @@
 - 汎用版では `allowLocalImport` / `allowExport` を有効に戻し、外部ファイル読み込みやZIP保存を使います
 
 ## 立ち読みモードメモ
-- 作品一覧は `books/manifest.json` で管理します
+- Web管理を使う場合、作品一覧は `/api/books` から取得します
+- API未設定時は `books/manifest.json` にフォールバックします
 - `published: true` の作品だけがLibraryに表示されます
 - EPUBはmanifestの `path` からfetchし、既存のEPUB正規化処理へ渡します
 - 配布用ではローカルファイル読込とバックアップZIP保存を非表示にします
 - 配布用では通常コピー、右クリック、ドラッグ保存を抑制します
-- Surface Goなどで作品だけ更新する場合は `update_books.bat` を使います
+- Surface Goなどの別環境では、原則として `admin.html` の管理メニューから更新します
+- `update_books.bat` はAPIを使わない予備運用向けです
 
 ## 今後の候補
 - 大容量書籍向けの分割描画

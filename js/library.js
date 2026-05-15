@@ -445,6 +445,9 @@ async function initBundledBooksShelf({
 
 async function loadBundledBookManifest(manifestPath) {
   const res = await fetch(manifestPath, { cache: "no-store" });
+  if (res.status === 404 && manifestPath !== DEFAULT_SITE_CONFIG.booksManifest) {
+    return loadBundledBookManifest(DEFAULT_SITE_CONFIG.booksManifest);
+  }
   if (!res.ok) {
     throw new Error(`${manifestPath} を読み込めません`);
   }

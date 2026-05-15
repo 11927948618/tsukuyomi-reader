@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex,nofollow" />
+  <title>TsukuyomiReader 管理メニュー</title>
+  <link rel="stylesheet" href="./css/reset.css" />
+  <link rel="stylesheet" href="./css/base.css" />
+  <link rel="stylesheet" href="./css/admin.css" />
+</head>
+<body class="theme-light">
+  <main class="admin-shell">
+    <header class="admin-header">
+      <div>
+        <p class="label">Distribution Admin</p>
+        <h1>TsukuyomiReader 管理メニュー</h1>
+      </div>
+      <a class="button ghost" href="./">読者画面</a>
+    </header>
+
+    <section class="card admin-card">
+      <h2>認証</h2>
+      <label class="label" for="adminToken">管理トークン</label>
+      <div class="admin-token-row">
+        <input class="input" id="adminToken" type="password" autocomplete="current-password" />
+        <button class="button ghost" id="saveTokenBtn" type="button">保存</button>
+        <button class="button ghost" id="clearTokenBtn" type="button">消去</button>
+      </div>
+      <p class="admin-note">Cloudflare Pages の環境変数 `TSUKUYOMI_ADMIN_TOKEN` と同じ値を入力します。</p>
+    </section>
+
+    <section class="admin-layout">
+      <form class="card admin-card admin-form" id="bookForm">
+        <h2>作品を追加・差し替え</h2>
+
+        <div class="field">
+          <label class="label" for="bookId">作品ID</label>
+          <input class="input" id="bookId" name="id" type="text" placeholder="空ならタイトルから自動作成" />
+        </div>
+
+        <div class="field">
+          <label class="label" for="bookTitle">タイトル</label>
+          <input class="input" id="bookTitle" name="title" type="text" required />
+        </div>
+
+        <div class="field">
+          <label class="label" for="bookAuthor">作者</label>
+          <input class="input" id="bookAuthor" name="author" type="text" value="hal the juggernaut" />
+        </div>
+
+        <div class="field">
+          <label class="label" for="bookDescription">紹介文</label>
+          <textarea class="input" id="bookDescription" name="description" rows="4"></textarea>
+        </div>
+
+        <div class="field">
+          <label class="label" for="updatedAt">更新日</label>
+          <input class="input" id="updatedAt" name="updatedAt" type="date" />
+        </div>
+
+        <div class="field">
+          <label class="label" for="epubFile">EPUB</label>
+          <input class="input" id="epubFile" name="epub" type="file" accept=".epub,application/epub+zip" />
+        </div>
+
+        <div class="field">
+          <label class="label" for="coverFile">表紙画像</label>
+          <input class="input" id="coverFile" name="cover" type="file" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" />
+        </div>
+
+        <label class="admin-check">
+          <input id="publishedCheck" name="published" type="checkbox" checked />
+          公開する
+        </label>
+
+        <div class="admin-actions">
+          <button class="button" type="submit">保存</button>
+          <button class="button ghost" id="resetFormBtn" type="button">入力をクリア</button>
+        </div>
+      </form>
+
+      <section class="card admin-card">
+        <div class="admin-list-head">
+          <h2>作品一覧</h2>
+          <button class="button ghost" id="reloadBooksBtn" type="button">再読込</button>
+        </div>
+        <div id="adminStatus" class="status">待機中</div>
+        <div class="admin-book-list" id="adminBookList"></div>
+      </section>
+    </section>
+  </main>
+
+  <script type="module" src="./js/admin.js"></script>
+</body>
+</html>

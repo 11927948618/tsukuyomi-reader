@@ -7,5 +7,5 @@
   "showVersion": true,
   "showCopyright": true,
   "copyright": "© 2026 hal the juggernaut. All rights reserved.",
-  "booksManifest": "./books/manifest.json"
+  "booksManifest": "/api/books"
 }

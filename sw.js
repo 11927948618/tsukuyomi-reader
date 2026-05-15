@@ -1,7 +1,8 @@
-const CACHE_NAME = "tsukuyomi-reader-v0.1.46";
+const CACHE_NAME = "tsukuyomi-reader-v0.1.47";
 const STATIC_ASSETS = [
   "./",
   "./index.html",
+  "./admin.html",
   "./manifest.json",
   "./sw.js",
   "./README.md",
@@ -12,9 +13,11 @@ const STATIC_ASSETS = [
   "./assets/icons/icon-maskable.svg",
   "./css/reset.css",
   "./css/base.css",
+  "./css/admin.css",
   "./css/vertical.css",
   "./css/reader.css",
   "./js/app.js",
+  "./js/admin.js",
   "./js/version.js",
   "./js/library.js",
   "./js/reader.js",
@@ -33,7 +36,10 @@ async function cacheManifestBooks(cache) {
     const configRes = await fetch("./config/site-config.json", { cache: "no-store" });
     const config = configRes.ok ? await configRes.json() : {};
     const manifestPath = config.booksManifest || "./books/manifest.json";
-    const res = await fetch(manifestPath, { cache: "no-store" });
+    let res = await fetch(manifestPath, { cache: "no-store" });
+    if (res.status === 404 && manifestPath !== "./books/manifest.json") {
+      res = await fetch("./books/manifest.json", { cache: "no-store" });
+    }
     if (!res.ok) return;
     const manifest = await res.json();
     const books = Array.isArray(manifest) ? manifest : Array.isArray(manifest?.books) ? manifest.books : [];
