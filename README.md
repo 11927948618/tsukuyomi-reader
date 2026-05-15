@@ -27,6 +27,18 @@
   - 前回の本のキャッシュ復元
 - PWA
   - Service Worker による静的アセットのキャッシュ
+- 立ち読みモード
+  - `config/site-config.json` による開発版 / 配布版の切替
+  - `books/manifest.json` からの作品一覧表示
+  - manifest経由のEPUB fetch
+  - ローカル読込 / ZIP書き出しの非表示
+  - 通常コピー、右クリック、ドラッグ保存の抑制
+  - copyright表示
+
+## マニュアル
+
+- [立ち読みモード 更新側マニュアル](docs/tachiyomi-update-manual.md)
+- [立ち読みモード 読者向けマニュアル](docs/tachiyomi-reader-manual.md)
 
 ## ディレクトリ
 - `index.html`
@@ -49,21 +61,18 @@
 - JSZip は配布物に同梱しています
 
 ## 正式リリース前の方針
-- まずはライト版として、同梱した書籍だけを確実に読める構成へ寄せる案が有力です
-- 現在は `book/` フォルダと `book/manifest.json` を使い、配布物に含める `TXT` / `EPUB` を固定で読む形へ寄せています
-- 汎用版ではこの制約を外し、外部ファイル読み込みや配布方式を整理して再拡張します
+- 開発版と立ち読み用配布版を `config/site-config.json` で切り替えます
+- 立ち読み用では `books/manifest.json` に登録された公開作品だけを表示します
+- 作品データは `books/works/`、表紙画像は `books/covers/` に置きます
+- 汎用版では `allowLocalImport` / `allowExport` を有効に戻し、外部ファイル読み込みやZIP保存を使います
 
-## ライト版メモ
-- 同梱書籍の一覧は `book/manifest.json` で管理します
-- 実ファイルは `book/` 直下またはその配下に置けます
-- ライト版の同梱上限は `6冊` とします
-- ライト版の制約は主に `js/library.js` に閉じ込めています
-- 汎用版へ戻すときは `LIGHT_EDITION_BUNDLED_ONLY` と `book/manifest.json` の導線を外す想定です
-- `book/` に本を追加したら `node ./scripts/generate-book-manifest.mjs` で manifest を再生成できます
-- ダブルクリック用に `UpdateBookManifest.bat` も用意しています
-- `TsukuyomiReader.bat` 起動時も、先に manifest 更新を試みます
-- 既存の `title` / `description` は、同じ相対パスの本であれば再生成時も引き継ぎます
-- ライト版では、前回キャッシュの自動復元も同梱書籍に限定します
+## 立ち読みモードメモ
+- 作品一覧は `books/manifest.json` で管理します
+- `published: true` の作品だけがLibraryに表示されます
+- EPUBはmanifestの `path` からfetchし、既存のEPUB正規化処理へ渡します
+- 配布用ではローカルファイル読込とバックアップZIP保存を非表示にします
+- 配布用では通常コピー、右クリック、ドラッグ保存を抑制します
+- Surface Goなどで作品だけ更新する場合は `update_books.bat` を使います
 
 ## 今後の候補
 - 大容量書籍向けの分割描画
