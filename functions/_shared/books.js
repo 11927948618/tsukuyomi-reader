@@ -105,6 +105,7 @@ export function extFromFile(file, fallback = "") {
 export function contentTypeForExt(ext) {
   const normalized = String(ext || "").toLowerCase();
   if (normalized === "epub") return "application/epub+zip";
+  if (normalized === "txt") return "text/plain; charset=utf-8";
   if (normalized === "jpg" || normalized === "jpeg") return "image/jpeg";
   if (normalized === "png") return "image/png";
   if (normalized === "webp") return "image/webp";

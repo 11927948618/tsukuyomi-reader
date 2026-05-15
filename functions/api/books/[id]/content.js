@@ -1,4 +1,4 @@
-import { getBucket, error, readCatalog, serveR2Object } from "../../../_shared/books.js";
+import { getBucket, error, readCatalog, serveR2Object, contentTypeForExt } from "../../../_shared/books.js";
 
 export async function onRequestGet(context) {
   const bucket = getBucket(context.env);
@@ -10,5 +10,6 @@ export async function onRequestGet(context) {
   if (!book || !book.contentKey) return error("作品が見つかりません", 404);
 
   const object = await bucket.get(book.contentKey);
-  return serveR2Object(object, "application/epub+zip");
+  const ext = book.contentKey.split(".").pop() || book.format || "";
+  return serveR2Object(object, contentTypeForExt(ext));
 }

@@ -46,17 +46,19 @@ export async function onRequestPost(context) {
   const books = Array.isArray(catalog.books) ? catalog.books : [];
   const current = books.find((entry) => entry.id === id) || {};
 
-  const epub = form.get("epub");
+  const bookFile = form.get("bookFile");
   const cover = form.get("cover");
   let contentKey = current.contentKey || "";
   let coverKey = current.coverKey || "";
+  let format = current.format || "epub";
 
-  if (epub && typeof epub.arrayBuffer === "function" && epub.size > 0) {
-    const ext = extFromFile(epub, "epub");
-    if (ext !== "epub") return error("EPUBファイルを選択してください");
-    contentKey = `works/${id}-${nowCompact}.epub`;
-    await bucket.put(contentKey, await epub.arrayBuffer(), {
-      httpMetadata: { contentType: "application/epub+zip" }
+  if (bookFile && typeof bookFile.arrayBuffer === "function" && bookFile.size > 0) {
+    const ext = extFromFile(bookFile, "epub");
+    if (!["epub", "txt"].includes(ext)) return error("本文ファイルはEPUBまたはTXTを選択してください");
+    format = ext;
+    contentKey = `works/${id}-${nowCompact}.${ext}`;
+    await bucket.put(contentKey, await bookFile.arrayBuffer(), {
+      httpMetadata: { contentType: contentTypeForExt(ext) }
     });
   }
 
@@ -71,7 +73,7 @@ export async function onRequestPost(context) {
     });
   }
 
-  if (!contentKey) return error("初回登録ではEPUBが必須です");
+  if (!contentKey) return error("初回登録では本文ファイルが必須です");
 
   const nextBook = {
     ...current,
@@ -79,7 +81,7 @@ export async function onRequestPost(context) {
     title,
     author: safeText(form.get("author"), "hal the juggernaut"),
     description: safeText(form.get("description"), ""),
-    format: "epub",
+    format,
     contentKey,
     coverKey,
     published: boolValue(form.get("published")),

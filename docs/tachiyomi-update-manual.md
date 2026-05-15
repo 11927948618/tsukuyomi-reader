@@ -41,7 +41,7 @@ https://tsukuyomi-reader-tachiyomi.pages.dev/admin.html
 - `functions/api/`
   - Cloudflare Pages Functions の管理APIです。
 - Cloudflare R2
-  - 管理画面からアップロードしたEPUBと表紙画像、作品メタ情報を保存します。
+  - 管理画面からアップロードした本文ファイル、表紙画像、作品メタ情報を保存します。
 - `update_books.bat`
   - APIを使わない場合に、`books/` 配下だけをcommit/pushするための予備バッチです。
 
@@ -83,6 +83,14 @@ https://tsukuyomi-reader-tachiyomi.pages.dev/admin.html
 
 Web管理メニューを使う場合は、Cloudflare Pages Functions と R2 を使います。
 
+やることは大きく5つです。
+
+1. R2バケットを作る
+2. 立ち読み用PagesプロジェクトにR2を紐づける
+3. 管理トークンを環境変数に入れる
+4. 再デプロイする
+5. `/admin.html` から作品を登録する
+
 1. Cloudflare R2でバケットを作成します。
 
 例:
@@ -116,6 +124,40 @@ TSUKUYOMI_ADMIN_TOKEN=十分に長いランダム文字列
 
 `wrangler.example.toml` は設定例です。実際のプロジェクトでWranglerを使う場合は、必要に応じて `wrangler.toml` にコピーして使います。
 
+## 具体的な初回作業
+
+初回だけ、開発環境側で以下を行います。
+
+1. `config/site-config.json` が `/api/books` を見ていることを確認します。
+
+```json
+"booksManifest": "/api/books"
+```
+
+2. 変更をGitHubへpushします。
+
+Cloudflare PagesがGitHub連携されていれば、このpushで自動デプロイされます。
+
+3. Cloudflare PagesのデプロイログでFunctionsが認識されていることを確認します。
+
+`functions/api/books` と `functions/api/admin/books` が配置されていれば、読者向けAPIと管理APIが使えます。
+
+4. 管理メニューを開きます。
+
+```text
+https://tsukuyomi-reader-tachiyomi.pages.dev/admin.html
+```
+
+5. `TSUKUYOMI_ADMIN_TOKEN` と同じ管理トークンを入力し、「保存」を押します。
+
+6. タイトル、作者、紹介文、本文ファイル、表紙画像を入力して保存します。
+
+7. 読者画面を開き、作品一覧に表示されることを確認します。
+
+```text
+https://tsukuyomi-reader-tachiyomi.pages.dev/
+```
+
 ## 管理メニューで作品を更新する
 
 Surface Goなど、開発環境とは完全に別の端末では、この方法を基本運用にします。
@@ -139,11 +181,11 @@ https://tsukuyomi-reader-tachiyomi.pages.dev/admin.html
 - 作者
 - 紹介文
 - 更新日
-- EPUB
+- 本文ファイル
 - 表紙画像
 - 公開する / 非公開
 
-初回登録ではEPUBが必須です。既存作品の説明文や公開状態だけを変える場合、EPUBと表紙画像は選ばなくてかまいません。
+本文ファイルは `EPUB` または `TXT` を選択できます。初回登録では本文ファイルが必須です。既存作品の説明文や公開状態だけを変える場合、本文ファイルと表紙画像は選ばなくてかまいません。
 
 4. 「保存」を押します。
 
@@ -157,12 +199,13 @@ https://tsukuyomi-reader-tachiyomi.pages.dev/admin.html
 
 この方法は、Cloudflare R2管理APIを使わない場合の予備手順です。通常は管理メニューから更新します。
 
-1. EPUBを `books/works/` に置きます。
+1. EPUBまたはTXTを `books/works/` に置きます。
 
 例:
 
 ```text
 books/works/namida.epub
+books/works/namida.txt
 ```
 
 2. 表紙画像を `books/covers/` に置きます。
@@ -190,6 +233,22 @@ books/covers/namida.jpg
 ```
 
 `published` が `true` の作品だけが一覧に表示されます。
+
+TXTを登録する場合は、`format` と `path` を以下のようにします。
+
+```json
+{
+  "id": "namida-txt",
+  "title": "なみだの行方 TXT版",
+  "author": "hal the juggernaut",
+  "description": "TXTから読む立ち読み版。",
+  "format": "txt",
+  "path": "./books/works/namida.txt",
+  "cover": "./books/covers/namida.jpg",
+  "published": true,
+  "updatedAt": "2026-05-15"
+}
+```
 
 ## 作品を差し替える
 
@@ -249,6 +308,7 @@ APIを使わない予備運用では、Surface Goで以下だけを更新しま�
 
 - `books/manifest.json`
 - `books/works/*.epub`
+- `books/works/*.txt`
 - `books/covers/*`
 
 予備運用でファイル直置き更新をした場合のみ、`update_books.bat` を実行します。
@@ -288,7 +348,7 @@ Cloudflare Pagesでは2つのプロジェクトを作り、それぞれ監視ブ
 「読む」で失敗する場合:
 
 - 管理画面の作品一覧で対象作品が公開中になっているか確認します。
-- R2にEPUBが保存されているか確認します。
+- R2に本文ファイルが保存されているか確認します。
 - ローカル確認時は、ファイルを直接開かずHTTPサーバー経由で開きます。
 
 表紙が出ない場合:

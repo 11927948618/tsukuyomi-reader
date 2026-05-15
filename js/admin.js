@@ -159,7 +159,7 @@ function fillForm(book) {
   bookForm.elements.description.value = book.description || "";
   bookForm.elements.updatedAt.value = book.updatedAt || new Date().toISOString().slice(0, 10);
   document.getElementById("publishedCheck").checked = book.published === true;
-  setStatus("編集内容をフォームに読み込みました。EPUB/表紙は必要な場合だけ選択してください。");
+  setStatus("編集内容をフォームに読み込みました。本文ファイル/表紙は必要な場合だけ選択してください。");
 }
 
 function resetForm() {
