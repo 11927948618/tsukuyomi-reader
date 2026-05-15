@@ -16,6 +16,8 @@ const BLOCKED_SELECTORS = [
   "link[rel~='stylesheet']"
 ].join(",");
 
+const PRESERVE_EPUB_CSS = false;
+
 export async function normalizeEpubToBook(file) {
   if (typeof JSZip === "undefined") {
     throw new Error("JSZipが見つかりません");
@@ -46,14 +48,17 @@ export async function normalizeEpubToBook(file) {
     const chapterDoc = parseHtml(chapterText);
     const aozoraLike = detectAozoraLikeChapter(chapterText, chapterDoc);
     const chapterWritingMode = detectChapterWritingMode(chapterText, chapterDoc);
-    const chapterCss = await buildChapterCss(
-      chapterDoc,
-      chapterPath,
-      `chapter-${String(chapters.length + 1).padStart(3, "0")}`,
-      zip,
-      opfInfo.mediaTypeByPath,
-      blobUrlCache
-    );
+    const chapterId = `chapter-${String(chapters.length + 1).padStart(3, "0")}`;
+    const chapterCss = PRESERVE_EPUB_CSS
+      ? await buildChapterCss(
+        chapterDoc,
+        chapterPath,
+        chapterId,
+        zip,
+        opfInfo.mediaTypeByPath,
+        blobUrlCache
+      )
+      : "";
     if (chapterWritingMode) {
       chapterWritingModeHints.push(chapterWritingMode);
     }
@@ -64,9 +69,10 @@ export async function normalizeEpubToBook(file) {
       normalizeAozoraLikeChapter(chapterDoc);
     }
 
-    const chapterId = `chapter-${String(chapters.length + 1).padStart(3, "0")}`;
     const fallbackTitle = filenameStem(item.href) || `章${chapters.length + 1}`;
     const chapterTitle = safeText(extractChapterTitle(chapterDoc), fallbackTitle);
+    const body = chapterDoc.body || chapterDoc.documentElement;
+    const hasBodyHeading = hasVisibleHeading(body);
 
     const section = document.createElement("section");
     section.className = "chapter epub-html";
@@ -76,7 +82,7 @@ export async function normalizeEpubToBook(file) {
 
     const h1 = document.createElement("h1");
     h1.textContent = chapterTitle;
-    copyPresentationAttributes(chapterDoc.documentElement, section);
+    copyLanguageOnly(chapterDoc.documentElement, section);
 
     if (chapterCss) {
       const styleEl = document.createElement("style");
@@ -85,12 +91,13 @@ export async function normalizeEpubToBook(file) {
       section.appendChild(styleEl);
     }
 
-    section.appendChild(h1);
+    if (!hasBodyHeading) {
+      section.appendChild(h1);
+    }
 
-    const body = chapterDoc.body || chapterDoc.documentElement;
     const contentRoot = document.createElement("div");
     contentRoot.className = "epub-body";
-    copyPresentationAttributes(body, contentRoot);
+    copyLanguageOnly(body, contentRoot);
 
     if (body) {
       while (body.firstChild) {
@@ -512,6 +519,7 @@ function splitBrHeavyParagraphs(root, doc) {
     const html = String(p.innerHTML || "");
     const breakCount = (html.match(/<br\s*\/?>/gi) || []).length;
     if (breakCount === 0) continue;
+    const heavyBreaks = breakCount >= 3;
 
     const rawParts = html.split(/<br\s*\/?>/i);
     const logicalParagraphs = [];
@@ -519,7 +527,7 @@ function splitBrHeavyParagraphs(root, doc) {
 
     const flushCurrent = () => {
       if (currentParts.length === 0) return;
-      logicalParagraphs.push(currentParts.join("<br />"));
+      logicalParagraphs.push(currentParts.join(heavyBreaks ? "" : "<br />"));
       currentParts = [];
     };
 
@@ -617,7 +625,13 @@ function sanitizeChapter(doc) {
   doc.querySelectorAll(BLOCKED_SELECTORS).forEach((el) => el.remove());
   doc.querySelectorAll("*").forEach((el) => {
     for (const attr of Array.from(el.attributes || [])) {
-      if (/^on/i.test(attr.name)) {
+      const name = attr.name.toLowerCase();
+      if (/^on/i.test(name)) {
+        el.removeAttribute(attr.name);
+        continue;
+      }
+
+      if (["style", "class", "width", "height", "align", "dir"].includes(name)) {
         el.removeAttribute(attr.name);
       }
     }
@@ -936,18 +950,10 @@ function splitCssSelectors(selectorText) {
   return selectors;
 }
 
-function copyPresentationAttributes(fromEl, toEl) {
+function copyLanguageOnly(fromEl, toEl) {
   if (!fromEl || !toEl) return;
 
-  const classNames = String(fromEl.getAttribute("class") || "")
-    .split(/\s+/)
-    .map((name) => name.trim())
-    .filter(Boolean);
-  if (classNames.length > 0) {
-    toEl.classList.add(...classNames);
-  }
-
-  for (const attrName of ["dir", "lang", "xml:lang"]) {
+  for (const attrName of ["lang", "xml:lang"]) {
     const value = fromEl.getAttribute(attrName);
     if (value) toEl.setAttribute(attrName, value);
   }
@@ -1039,6 +1045,13 @@ async function toBlobUrl(rawUrl, chapterPath, zip, mediaTypeByPath, blobUrlCache
 function extractChapterTitle(doc) {
   const heading = doc.querySelector("h1, h2, h3, title");
   return heading ? heading.textContent || "" : "";
+}
+
+function hasVisibleHeading(root) {
+  if (!root) return false;
+  return Array.from(root.querySelectorAll("h1, h2, h3")).some((heading) =>
+    Boolean(compactText(heading.textContent))
+  );
 }
 
 function parseXml(text, label) {

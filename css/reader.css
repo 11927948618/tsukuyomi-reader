@@ -250,6 +250,36 @@ body.distribution-mode .reader-content img {
   display: block;
 }
 
+.reader-content .epub-html,
+.reader-content .epub-body {
+  writing-mode: inherit;
+  text-orientation: inherit;
+  direction: inherit;
+  margin: 0;
+  padding: 0;
+  width: auto;
+  height: auto;
+  max-width: none;
+  max-height: none;
+}
+
+.reader-content .epub-body p,
+.reader-content .epub-body div,
+.reader-content .epub-body section {
+  margin: 0;
+  padding: 0;
+  writing-mode: inherit;
+  text-orientation: inherit;
+}
+
+.reader-content .epub-body p {
+  margin-block-end: 1.2em;
+}
+
+.reader-content .epub-body br {
+  display: block;
+}
+
 .reader-content .chapter > h1,
 .reader-content .chapter > h2,
 .reader-content .chapter > h3 {

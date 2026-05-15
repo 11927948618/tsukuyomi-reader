@@ -400,3 +400,62 @@ Root directory: 空欄
 - TXTまたはEPUB作品を1件登録する。
 - `公開する` をONにして保存する。
 - 読者画面に作品が表示され、読めることを確認する。
+
+## 2026-05-15 作品登録後の公開確認
+
+### 確認結果
+
+- 読者画面に作品カードが1件表示された。
+- 表示内容:
+  - title: `銀河鉄道の夜`
+  - author: `宮沢賢治`
+  - format: `epub`
+  - updatedAt: `2026-05-15`
+- `/api/books` は以下の作品を返す。
+  - id: `test000`
+  - path: `/api/books/test000/content`
+- `/api/books/test000/content`
+  - HTTP 200
+  - `Content-Type: application/epub+zip`
+  - `Content-Length: 41437`
+
+### 判断
+
+- 管理画面からの作品登録、R2保存、公開manifest反映、本文配信APIは正常。
+- 次は読者画面の「読む」でReaderへ遷移し、EPUB本文が表示されるか確認する。
+
+## 2026-05-15 EPUB Reader安全モード修正
+
+### 発生状況
+
+- 登録したEPUB「銀河鉄道の夜」をReaderで開くと、本文は表示されるが、EPUB側のCSSやhtml/body由来の組版指定がReader側の縦書き・段組みと衝突している。
+- 現象:
+  - 縦書き本文のページ化が不安定。
+  - EPUB内の `writing-mode`、余白、ページ分割指定などがReaderの `.reader-content.force-vertical` と競合する。
+
+### 対応
+
+- `js/normalize-epub.js`
+  - `PRESERVE_EPUB_CSS = false` を追加し、EPUB内CSSのReader挿入を停止。
+  - `copyPresentationAttributes()` をやめ、html/bodyからは `lang` / `xml:lang` だけコピーする `copyLanguageOnly()` に変更。
+  - `sanitizeChapter()` で `style` / `class` / `width` / `height` / `align` / `dir` とイベント属性を除去。
+  - EPUB本文先頭に `h1` / `h2` / `h3` がある場合、normalize側の追加 `h1` を挿入しない。
+  - brが3個以上ある青空系の巨大段落は、brをReaderへ持ち込まず論理段落として結合・分割するよう調整。
+- `css/reader.css`
+  - `.epub-html` / `.epub-body` がReader側の `writing-mode` / `text-orientation` / `direction` を継承するCSSを追加。
+  - EPUB本文内の `p` / `div` / `section` の余白・組版指定をReader基準にリセット。
+- `js/version.js` / `sw.js`
+  - キャッシュ更新用に `0.1.50` へ更新。
+
+### 検証
+
+- `node --check js/normalize-epub.js`: OK
+- `node --check js/app.js`: OK
+- `node --check js/library.js`: OK
+- `node --check sw.js`: OK
+
+### 次にやること
+
+- 修正をcommit/pushしてCloudflare Pagesへ反映する。
+- 公開側で `v0.1.50` になったことを確認する。
+- 読者画面で「銀河鉄道の夜」を開き、Readerの縦書き・ページ送りに従って表示されるか実機確認する。
