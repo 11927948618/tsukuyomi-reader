@@ -6,6 +6,8 @@ Cloudflare側で以下が完了していることを確認します。
 
 - 立ち読み用Pagesプロジェクトがある
   - `tsukuyomi-reader-tachiyomi`
+- `https://tsukuyomi-reader-tachiyomi.pages.dev/` が `DNS_PROBE_FINISHED_NXDOMAIN` になる場合は、Pagesプロジェクトが未作成
+  - 先に `tachiyomi-update-manual.md` の「Pagesプロジェクトを作成する」を実施する
 - 公開URLが開ける
   - `https://tsukuyomi-reader-tachiyomi.pages.dev/`
 - 管理URLが開ける

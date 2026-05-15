@@ -4,13 +4,15 @@
 
 ## 立ち読み専用URL
 
-立ち読み用の公開URLは以下です。
+立ち読み用の公開URLは、Cloudflare Pagesでプロジェクトを作成したあとに有効になります。
+
+予定URL:
 
 ```text
 https://tsukuyomi-reader-tachiyomi.pages.dev/
 ```
 
-Cloudflare Pagesでまだ作成していない場合は、このURLになるように `tsukuyomi-reader-tachiyomi` プロジェクトを作成します。
+このURLで `DNS_PROBE_FINISHED_NXDOMAIN` が出る場合、`tsukuyomi-reader-tachiyomi` というPagesプロジェクトがまだ作成されていません。Cloudflare Pagesでまだ作成していない場合は、このURLになるように `tsukuyomi-reader-tachiyomi` プロジェクトを作成します。
 
 管理メニューのURLは以下です。
 
@@ -19,6 +21,61 @@ https://tsukuyomi-reader-tachiyomi.pages.dev/admin.html
 ```
 
 管理メニューは検索エンジンに出さない想定ですが、URLを知っているだけで操作できる設計にはしません。Cloudflare Pagesの環境変数 `TSUKUYOMI_ADMIN_TOKEN` と、管理画面で入力する管理トークンが一致した場合だけ操作できます。
+
+## Pagesプロジェクトを作成する
+
+`DNS_PROBE_FINISHED_NXDOMAIN` が出ている場合は、この手順から始めます。
+
+1. Cloudflare Dashboardを開きます。
+2. `Workers & Pages` を開きます。
+3. `Create application` を押します。
+4. `Pages` を選びます。
+5. GitHubリポジトリを接続します。
+6. Project name を以下にします。
+
+```text
+tsukuyomi-reader-tachiyomi
+```
+
+7. ブランチを選びます。
+
+初期確認だけなら、現在コードが入っているブランチを選びます。ブランチ分離する場合は、あとで `tachiyomi` ブランチを作って、このPagesプロジェクトの監視ブランチを `tachiyomi` にします。
+
+8. ビルド設定を入れます。
+
+リポジトリ直下に `tsukuyomi-reader/` フォルダがある構成なら、Cloudflare Pagesの `Root directory` を以下にします。
+
+```text
+tsukuyomi-reader
+```
+
+その場合の設定:
+
+```text
+Framework preset: None
+Build command: 空欄
+Build output directory: .
+```
+
+もしCloudflare側に `Root directory` 欄がない場合は、次の設定にします。
+
+```text
+Framework preset: None
+Build command: 空欄
+Build output directory: tsukuyomi-reader
+```
+
+ただし、Pages Functionsを使うためには `functions/` がPagesのプロジェクトルートから見える必要があります。可能なら `Root directory: tsukuyomi-reader` を使う構成を優先してください。
+
+9. `Save and Deploy` を押します。
+
+デプロイ完了後、Cloudflareが表示する `*.pages.dev` のURLを確認します。Project nameを `tsukuyomi-reader-tachiyomi` にできていれば、以下が開けるようになります。
+
+```text
+https://tsukuyomi-reader-tachiyomi.pages.dev/
+```
+
+別のURLになった場合は、このマニュアルとチェックリストのURLを実際のURLに置き換えてください。
 
 ## 立ち読みモードの概要
 

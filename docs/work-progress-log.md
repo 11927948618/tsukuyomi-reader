@@ -147,3 +147,54 @@
 - 実R2 bindingでEPUB/TXT/表紙が保存・取得できること。
 - Surface Go / Android / iPhoneでReader表示とコピー抑制が期待通り動くこと。
 - iOS SafariでService Worker更新と強制同期の挙動が許容範囲か確認すること。
+
+## 2026-05-15 Pages URL未作成の確認
+
+### 発生状況
+
+- `https://tsukuyomi-reader-tachiyomi.pages.dev/` にアクセスすると、Edgeで `DNS_PROBE_FINISHED_NXDOMAIN` が表示された。
+
+### 判断
+
+- アプリ本体の起動エラーではなく、Cloudflare Pagesプロジェクト `tsukuyomi-reader-tachiyomi` がまだ作成されていない状態。
+- `*.pages.dev` のホスト名は、Pagesプロジェクト作成・初回デプロイ後に有効になる。
+
+### 対応
+
+- `docs/tachiyomi-update-manual.md` に「Pagesプロジェクトを作成する」手順を追加。
+- `docs/tachiyomi-device-checklist.md` に、NXDOMAIN時はPagesプロジェクト未作成として扱う注意を追加。
+
+### 次にやること
+
+- Cloudflare Dashboardで `tsukuyomi-reader-tachiyomi` Pagesプロジェクトを作成する。
+- 初回デプロイ後に公開URLと管理URLが開けるか確認する。
+- その後、R2 bindingと管理トークンを設定して管理画面/API確認へ進む。
+
+## 2026-05-15 Cloudflare Pages 初回ビルド失敗
+
+### 発生状況
+
+- Cloudflare Pagesの初回デプロイで `Build failed`。
+- ログ:
+  - `No build command specified. Skipping build step.`
+  - `Validating asset output directory`
+  - `Error: Output directory "tsukuyomi-reader" not found.`
+
+### 判断
+
+- コードの問題ではなく、Cloudflare Pagesのビルド設定ミス。
+- `Root directory` に `tsukuyomi-reader` を指定している状態で、`Build output directory` も `tsukuyomi-reader` になっている可能性が高い。
+- この場合、Cloudflareは `tsukuyomi-reader/tsukuyomi-reader` を探すため失敗する。
+
+### 対応方針
+
+Cloudflare Pagesの設定を以下に修正する。
+
+```text
+Root directory: tsukuyomi-reader
+Framework preset: None
+Build command: 空欄
+Build output directory: .
+```
+
+修正後、`Retry deployment` ではなく、必要なら `Check your build settings` から設定を直して再デプロイする。
