@@ -48,6 +48,15 @@ body.theme-dark {
   flex-direction: column;
 }
 
+[hidden] {
+  display: none !important;
+}
+
+body.site-mode-distribution [data-manual-import],
+body.site-mode-distribution [data-export-control] {
+  display: none !important;
+}
+
 .container {
   width: min(1100px, 92vw);
   margin: 0 auto;

@@ -43,29 +43,16 @@ tsukuyomi-reader-tachiyomi
 
 8. ビルド設定を入れます。
 
-リポジトリ直下に `tsukuyomi-reader/` フォルダがある構成なら、Cloudflare Pagesの `Root directory` を以下にします。
-
-```text
-tsukuyomi-reader
-```
-
-その場合の設定:
+現在のGitHubリポジトリは、リポジトリ直下がそのままアプリ本体です。そのため、Cloudflare Pagesの `Root directory` は空欄にします。
 
 ```text
 Framework preset: None
 Build command: 空欄
 Build output directory: .
+Root directory: 空欄
 ```
 
-もしCloudflare側に `Root directory` 欄がない場合は、次の設定にします。
-
-```text
-Framework preset: None
-Build command: 空欄
-Build output directory: tsukuyomi-reader
-```
-
-ただし、Pages Functionsを使うためには `functions/` がPagesのプロジェクトルートから見える必要があります。可能なら `Root directory: tsukuyomi-reader` を使う構成を優先してください。
+この状態なら、`index.html` と `functions/` がどちらもPagesのプロジェクトルートから見えます。`Root directory` に `tsukuyomi-reader` を入れると、Cloudflareが存在しないサブフォルダを探して `Output directory "tsukuyomi-reader" not found.` で失敗します。
 
 9. `Save and Deploy` を押します。
 

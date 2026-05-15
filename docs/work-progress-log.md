@@ -183,18 +183,163 @@
 ### 判断
 
 - コードの問題ではなく、Cloudflare Pagesのビルド設定ミス。
-- `Root directory` に `tsukuyomi-reader` を指定している状態で、`Build output directory` も `tsukuyomi-reader` になっている可能性が高い。
-- この場合、Cloudflareは `tsukuyomi-reader/tsukuyomi-reader` を探すため失敗する。
+- 当初は作業フォルダ構成から `Root directory: tsukuyomi-reader` と判断していたが、ローカル確認の結果、`.git` は `tsukuyomi-reader/` 内にある。
+- つまりGitHubリポジトリ直下がすでにアプリ本体であり、Cloudflare Pagesの `Root directory` は空欄が正しい。
+- `Root directory` に `tsukuyomi-reader` を指定すると、Cloudflareが存在しないサブフォルダを探して失敗する。
 
 ### 対応方針
 
 Cloudflare Pagesの設定を以下に修正する。
 
 ```text
-Root directory: tsukuyomi-reader
+Root directory: 空欄
 Framework preset: None
 Build command: 空欄
 Build output directory: .
 ```
 
 修正後、`Retry deployment` ではなく、必要なら `Check your build settings` から設定を直して再デプロイする。
+
+## 2026-05-15 Cloudflare Pages 設定修正後も旧設定で失敗
+
+### 発生状況
+
+- 再デプロイログでも以下が出た。
+  - `Error: Output directory "tsukuyomi-reader" not found.`
+  - `No functions dir at /functions found. Skipping.`
+- ローカルのGit確認結果:
+  - 現在ブランチ: `main`
+  - 最新コミット: `32aa9e2 backup 2026/05/15 10:37:43.89`
+  - CloudflareログのHEADも同じ `32aa9e2`
+
+### 判断
+
+- GitHubへ接続しているコミット自体はCloudflareが取得できている。
+- 失敗原因は引き続きCloudflare Pagesのビルド設定。
+- `Build output directory: .` でも、`Root directory: tsukuyomi-reader` が入っていると、最終的な出力先は `tsukuyomi-reader` として扱われる。
+- 現在のGitHubリポジトリ直下には `index.html`、`functions/`、`js/` などが直接存在するため、`Root directory` は空欄にする。
+
+### 次にやること
+
+- `Settings > Build > Build configuration` で `Root directory` を空欄にし、`Build output directory: .` を保存する。
+- `Deployments` に戻り、新しい時刻のデプロイを作成または再実行する。
+- 新しいログで `Build output: .` 相当になっているか確認する。
+
+### 追記
+
+- Cloudflare Pagesの `Build configuration` は保存済み。
+- 保存時点の設定:
+
+```text
+Framework preset: None
+Build command: 空欄
+Build output directory: .
+Root directory: tsukuyomi-reader
+```
+
+- ただし、この時点の `Root directory: tsukuyomi-reader` は誤り。正しくは空欄。
+
+## 2026-05-15 Cloudflare Pages Root directory誤指定の判明
+
+### 発生状況
+
+- 再デプロイでも以下が継続。
+  - `Error: Output directory "tsukuyomi-reader" not found.`
+  - `No functions dir at /functions found. Skipping.`
+- ローカルの実体確認:
+  - `C:\Users\karak\VSCode\TsukuyomiReader\tsukuyomi-reader` 内に `.git` がある。
+  - 同じ階層に `index.html`、`admin.html`、`functions/` がある。
+
+### 判断
+
+- GitHubリポジトリ直下がすでにアプリ本体。
+- Cloudflare Pagesで `Root directory: tsukuyomi-reader` を指定してはいけない。
+- 正しい設定は以下。
+
+```text
+Framework preset: None
+Build command: 空欄
+Build output directory: .
+Root directory: 空欄
+```
+
+### 次にやること
+
+- `Settings > Build > Build configuration` を開く。
+- `Root directory (advanced)` の `Path` を空欄にする。
+- `Build output directory` は `.` のままにする。
+- 保存後、`Deployments` から新しいデプロイを実行する。
+
+## 2026-05-15 Cloudflare Pages Root directory修正後
+
+### 発生状況
+
+- `Root directory` を空欄にして再デプロイした。
+- 新しいログで以下が出た。
+  - `Found Functions directory at /functions. Uploading.`
+  - `Compiled Worker successfully`
+  - `Validating asset output directory`
+
+### 判断
+
+- `Root directory` の誤指定は解消。
+- Cloudflare Pagesが `functions/` を認識できている。
+- 次は `Validating asset output directory` の後に、静的ファイルのアップロードとデプロイ完了まで進むか確認する。
+
+### 次にやること
+
+- デプロイログの最終行まで確認する。
+- 成功した場合:
+  - `https://tsukuyomi-reader-tachiyomi.pages.dev/`
+  - `https://tsukuyomi-reader-tachiyomi.pages.dev/admin.html`
+  を開く。
+- 失敗した場合は、`Validating asset output directory` 以降のエラー行を確認する。
+
+## 2026-05-15 Pages公開後の初回画面確認
+
+### 確認結果
+
+- `https://tsukuyomi-reader-tachiyomi.pages.dev/` が開いた。
+- `https://tsukuyomi-reader-tachiyomi.pages.dev/admin` が開いた。
+- 公開画面で `/api/books を読み込めません` が表示された。
+- 管理画面は表示されるが、作品一覧は管理トークン未入力状態。
+- 公開画面にローカルファイル読込UIが残って見えている。
+
+### 調査結果
+
+- `https://tsukuyomi-reader-tachiyomi.pages.dev/config/site-config.json` は `distribution` と `allowLocalImport: false` を返している。
+- `https://tsukuyomi-reader-tachiyomi.pages.dev/api/books` はHTTP 500で、本文は以下。
+
+```json
+{"error":"R2 bucket binding が未設定です"}
+```
+
+### 判断
+
+- Pages本体とFunctionsのデプロイは成功している。
+- `/api/books` 失敗の原因はCloudflare側のR2 binding未設定。
+- 作品登録・公開には、次に `TSUKUYOMI_BOOKS_BUCKET` と `TSUKUYOMI_ADMIN_TOKEN` の設定が必要。
+- ローカル読込UIが残る件は、JS側の非表示処理だけでなくCSS側にも保険を追加する。
+
+### 対応
+
+- `css/base.css` に以下の保険を追加。
+  - `[hidden] { display: none !important; }`
+  - `body.site-mode-distribution [data-manual-import]` の強制非表示
+  - `body.site-mode-distribution [data-export-control]` の強制非表示
+- キャッシュ更新のため以下を更新。
+  - `js/version.js`: `0.1.49`
+  - `sw.js`: cache name `tsukuyomi-reader-v0.1.49`
+
+### 検証
+
+- `node --check js/app.js`: OK
+- `node --check js/library.js`: OK
+- `node --check sw.js`: OK
+- `node --check js/version.js`: OK
+
+### 次にやること
+
+- この修正をcommit/pushしてCloudflareへ反映する。
+- CloudflareでR2 bucket bindingを追加する。
+- Cloudflareで管理トークン環境変数を追加する。
