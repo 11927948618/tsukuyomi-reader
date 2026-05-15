@@ -1,0 +1,11 @@
+{
+  "mode": "distribution",
+  "siteName": "TsukuyomiReader 立ち読み用",
+  "allowLocalImport": false,
+  "allowExport": false,
+  "disableCopy": true,
+  "showVersion": true,
+  "showCopyright": true,
+  "copyright": "© 2026 hal the juggernaut. All rights reserved.",
+  "booksManifest": "./books/manifest.json"
+}

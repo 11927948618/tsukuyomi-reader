@@ -31,6 +31,7 @@
     <div class="reader-viewport" id="readerViewport">
       <article class="reader-content" id="bookContent"></article>
     </div>
+    <footer class="copyright-footer reader-copyright"></footer>
   </div>
 
   <div class="tap-zone" id="tapZone"></div>
@@ -165,7 +166,7 @@
         </button>
         <div class="settings-group-body" id="settingsReloadBody">
           <div class="field">
-            <button class="button ghost" id="exportBtn" type="button">バックアップZIP保存</button>
+            <button class="button ghost" id="exportBtn" type="button" data-export-control>バックアップZIP保存</button>
             <button class="button ghost" id="printBtn" type="button">印刷</button>
           </div>
           <div class="field">
@@ -189,6 +190,7 @@
           <span id="settingsCommit">-</span>
         </div>
       </div>
+      <div class="copyright-footer settings-copyright"></div>
     </div>
   </aside>
 </section>

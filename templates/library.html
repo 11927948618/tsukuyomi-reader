@@ -1,5 +1,13 @@
 <section class="screen" id="libraryScreen">
   <div class="container">
+    <header class="library-header">
+      <div>
+        <p class="label">Library</p>
+        <h1 id="librarySiteName">TsukuyomiReader</h1>
+      </div>
+      <span class="version-badge" id="versionBadge" data-version-info></span>
+    </header>
+
     <div class="library-grid">
       <div class="library-column">
         <div class="card library-card-stack library-toolbar-card">
@@ -40,13 +48,13 @@
 
       <div class="library-column">
         <div class="card library-card-stack" id="bundledBooksCard">
-          <p class="label">同梱書籍</p>
-          <div id="bundledBooksStatus" class="status">同梱書籍を確認中...</div>
-          <button class="button" id="bundledBooksToggleBtn" type="button" aria-expanded="false" aria-controls="bundledBooksList">同梱本一覧を開く</button>
+          <p class="label">作品一覧</p>
+          <div id="bundledBooksStatus" class="status">作品一覧を確認中...</div>
+          <button class="button" id="bundledBooksToggleBtn" type="button" aria-expanded="false" aria-controls="bundledBooksList">作品一覧を開く</button>
           <div id="bundledBooksList" class="library-card-stack" hidden></div>
         </div>
 
-        <div class="card">
+        <div class="card" data-export-control>
           <p class="label">バックアップZIPを書き出し</p>
           <button class="button" id="exportBtn">現在の本をバックアップZIPとして書き出し</button>
         </div>
@@ -54,5 +62,6 @@
     </div>
 
     <pre id="debugDecode" hidden style="white-space:pre-wrap; border:1px solid #ddd; padding:8px; max-height:30vh; overflow:auto;"></pre>
+    <footer class="copyright-footer" id="copyrightFooter"></footer>
   </div>
 </section>

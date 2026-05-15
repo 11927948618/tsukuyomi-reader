@@ -198,6 +198,32 @@ select.input option {
   padding: 16px 0 24px;
 }
 
+#libraryScreen .library-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+
+#libraryScreen .library-header h1 {
+  margin: 0;
+  font-size: 1.45rem;
+  line-height: 1.2;
+}
+
+.version-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.6rem;
+  padding: 0.12rem 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
 #libraryScreen {
   min-height: 100dvh;
   overflow-y: auto;
@@ -251,6 +277,75 @@ select.input option {
 
 #libraryScreen #bundledBooksCard {
   gap: 8px;
+}
+
+#libraryScreen .book-card {
+  display: grid;
+  grid-template-columns: minmax(80px, 0.32fr) minmax(0, 1fr);
+  gap: 12px;
+  align-items: stretch;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--panel), #000 4%);
+}
+
+#libraryScreen .book-cover {
+  min-width: 0;
+  aspect-ratio: 2 / 3;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--panel), #000 10%);
+}
+
+#libraryScreen .book-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  -webkit-user-drag: none;
+}
+
+#libraryScreen .book-cover-placeholder {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  padding: 8px;
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.3;
+  text-align: center;
+}
+
+#libraryScreen .book-info {
+  display: grid;
+  gap: 7px;
+  align-content: start;
+  min-width: 0;
+}
+
+#libraryScreen .book-title {
+  margin: 0;
+  font-size: 1.05rem;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+
+#libraryScreen .book-author,
+#libraryScreen .book-description,
+#libraryScreen .book-updated {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.88rem;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+#libraryScreen .book-read-button {
+  justify-self: start;
+  min-width: 6rem;
 }
 
 #libraryScreen .bundled-book-button {
@@ -385,6 +480,17 @@ select.input option {
   gap: 10px;
 }
 
+.copyright-footer {
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.4;
+}
+
+#libraryScreen .copyright-footer {
+  margin-top: 14px;
+  text-align: center;
+}
+
 @media (min-width: 900px) {
   #libraryScreen .library-grid {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
@@ -421,6 +527,15 @@ select.input option {
     padding: 8px 0 16px;
   }
 
+  #libraryScreen .library-header {
+    align-items: flex-start;
+    margin-bottom: 8px;
+  }
+
+  #libraryScreen .library-header h1 {
+    font-size: 1.18rem;
+  }
+
   #libraryScreen .library-grid {
     gap: 8px;
   }
@@ -447,6 +562,24 @@ select.input option {
   #libraryScreen .button {
     min-height: 38px;
     padding: 7px 12px;
+  }
+
+  #libraryScreen .book-card {
+    grid-template-columns: 82px minmax(0, 1fr);
+    gap: 10px;
+    padding: 10px;
+    border-radius: 10px;
+  }
+
+  #libraryScreen .book-title {
+    font-size: 0.98rem;
+  }
+
+  #libraryScreen .book-author,
+  #libraryScreen .book-description,
+  #libraryScreen .book-updated {
+    font-size: 0.78rem;
+    line-height: 1.28;
   }
 
   #libraryScreen .bundled-book-button {

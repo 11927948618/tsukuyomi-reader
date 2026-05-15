@@ -4,6 +4,7 @@ export function initReader({
   book,
   settings,
   progress,
+  siteConfig = null,
   openSettingsOnStart = false,
   onBack,
   onExport,
@@ -14,6 +15,7 @@ export function initReader({
   const backBtn = qs("#backBtn");
   const printBtn = qs("#printBtn");
   const exportBtn = qs("#exportBtn");
+  const exportControls = Array.from(document.querySelectorAll("[data-export-control]"));
   const settingsBtn = qs("#settingsBtn");
   const closeSettingsBtn = qs("#closeSettingsBtn");
   const saveSettingsBtn = qs("#saveSettingsBtn");
@@ -141,9 +143,17 @@ export function initReader({
     applyTopbarOffset();
   };
 
+  const allowExport = siteConfig?.allowExport !== false;
+  exportControls.forEach((el) => {
+    el.hidden = !allowExport;
+  });
+
   backBtn.addEventListener("click", onBack);
   printBtn.addEventListener("click", () => window.print());
-  exportBtn.addEventListener("click", onExport);
+  exportBtn?.addEventListener("click", () => {
+    if (!allowExport) return;
+    onExport?.();
+  });
   reloadBtn?.addEventListener("click", () => location.reload());
   hardReloadBtn?.addEventListener("click", async () => {
     try {

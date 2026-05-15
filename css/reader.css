@@ -204,6 +204,16 @@ body.topbar-mobile-wrap .topbar-group-right .button {
   font-family: var(--reader-font-family, system-ui, -apple-system, "Segoe UI", sans-serif);
 }
 
+body.distribution-mode .reader-content,
+body.distribution-mode .reader-content * {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+body.distribution-mode .reader-content img {
+  -webkit-user-drag: none;
+}
+
 .reader-content.force-vertical {
   writing-mode: vertical-rl;
   text-orientation: mixed;
@@ -276,6 +286,22 @@ body.topbar-mobile-wrap .topbar-group-right .button {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.reader-copyright {
+  position: fixed;
+  left: 12px;
+  right: 12px;
+  bottom: max(8px, env(safe-area-inset-bottom));
+  z-index: 4;
+  pointer-events: none;
+  text-align: center;
+  text-shadow: 0 1px 2px var(--bg);
+}
+
+.settings-copyright {
+  padding-top: 2px;
+  border-top: 1px solid var(--border);
 }
 
 .tap-zone {

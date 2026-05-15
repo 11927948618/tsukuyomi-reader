@@ -4,7 +4,17 @@ import { exportZipFromBook } from "./storage.js";
 import { qs, loadJSON, saveJSON } from "./utils.js";
 import { APP_VERSION, BUILD_TIME, COMMIT } from "./version.js";
 
-const LIGHT_EDITION_BUNDLED_ONLY = true;
+const DEFAULT_SITE_CONFIG = {
+  mode: "development",
+  siteName: "TsukuyomiReader Dev",
+  allowLocalImport: true,
+  allowExport: true,
+  disableCopy: false,
+  showVersion: true,
+  showCopyright: true,
+  copyright: "© 2026 hal the juggernaut. All rights reserved.",
+  booksManifest: "./books/manifest.json"
+};
 
 const DEFAULT_SETTINGS = {
   fontSize: 100,
@@ -25,7 +35,6 @@ const DEFAULT_PROGRESS = {
   scrollTop: 0,
   pageIndex: 0
 };
-const BUNDLED_BOOK_MANIFEST_PATH = "./book/manifest.json";
 
 const appRoot = qs("#appRoot");
 const appState = {
@@ -33,9 +42,12 @@ const appState = {
   currentBookId: null,
   settings: { ...DEFAULT_SETTINGS },
   progress: { ...DEFAULT_PROGRESS },
+  siteConfig: { ...DEFAULT_SITE_CONFIG },
   openSettingsOnReader: false,
   helpReturnScreen: "library"
 };
+
+let distributionGuardsBound = false;
 
 async function loadTemplate(name) {
   const res = await fetch(`./templates/${name}.html`);
@@ -48,8 +60,10 @@ async function render(screen) {
   if (screen === "library") {
     await loadTemplate("library");
     applyTheme(appState.settings.theme);
+    applySiteChrome();
     document.getElementById("openHelpBtn")?.addEventListener("click", () => openHelp("library"));
     initLibrary({
+      siteConfig: appState.siteConfig,
       onOpenBook: (book) => {
         applyBook(book);
         render("reader");
@@ -83,11 +97,13 @@ async function render(screen) {
   if (screen === "reader") {
     await loadTemplate("reader");
     applyTheme(appState.settings.theme);
+    applySiteChrome();
     document.getElementById("helpBtn")?.addEventListener("click", () => openHelp("reader"));
     initReader({
       book: appState.currentBook,
       settings: appState.settings,
       progress: appState.progress,
+      siteConfig: appState.siteConfig,
       openSettingsOnStart: Boolean(appState.openSettingsOnReader),
       onBack: () => render("library"),
       onExport: () => exportCurrentBook(),
@@ -113,6 +129,7 @@ async function render(screen) {
   if (screen === "help") {
     await loadTemplate("help");
     applyTheme(appState.settings.theme);
+    applySiteChrome();
     initHelpScreen();
   }
 }
@@ -149,6 +166,7 @@ function applyBook(book) {
 }
 
 function exportCurrentBook() {
+  if (appState.siteConfig?.allowExport === false) return;
   exportZipFromBook(appState.currentBook, {
     settings: appState.settings,
     progress: appState.progress
@@ -212,8 +230,8 @@ async function tryRestoreLastBook() {
   if (!cached || !cached.html || !Array.isArray(cached.toc)) return false;
 
   const restoreSourceType = await resolveRestoreSourceType(cached);
-  if (LIGHT_EDITION_BUNDLED_ONLY && restoreSourceType !== "bundled") {
-    appState.startupMessage = "ライト版では外部書籍の自動復元を無効にしています";
+  if (!canRestoreCachedSource(restoreSourceType)) {
+    appState.startupMessage = "立ち読み用では外部書籍の自動復元を無効にしています";
     return false;
   }
 
@@ -241,6 +259,69 @@ async function tryRestoreLastBook() {
 function applyTheme(theme) {
   document.body.classList.remove("theme-light", "theme-dark");
   document.body.classList.add(theme === "dark" ? "theme-dark" : "theme-light");
+}
+
+async function loadSiteConfig() {
+  try {
+    const res = await fetch("./config/site-config.json", { cache: "no-store" });
+    if (!res.ok) return { ...DEFAULT_SITE_CONFIG };
+    const config = await res.json();
+    return normalizeSiteConfig(config);
+  } catch (err) {
+    return { ...DEFAULT_SITE_CONFIG };
+  }
+}
+
+function normalizeSiteConfig(config) {
+  return {
+    ...DEFAULT_SITE_CONFIG,
+    ...(config && typeof config === "object" ? config : {})
+  };
+}
+
+function applySiteConfig(config) {
+  appState.siteConfig = normalizeSiteConfig(config);
+  if (appState.siteConfig.siteName) {
+    document.title = appState.siteConfig.siteName;
+  }
+  document.body.classList.toggle("site-mode-distribution", appState.siteConfig.mode === "distribution");
+  document.body.classList.toggle("site-mode-development", appState.siteConfig.mode !== "distribution");
+  applyDistributionGuards(appState.siteConfig);
+}
+
+function applySiteChrome() {
+  const config = appState.siteConfig || DEFAULT_SITE_CONFIG;
+  const siteName = document.getElementById("librarySiteName");
+  if (siteName && config.siteName) siteName.textContent = config.siteName;
+
+  applyCopyright(config);
+  queueVersionBadge();
+}
+
+function applyCopyright(config) {
+  const visible = config?.showCopyright !== false;
+  const text = config?.copyright || DEFAULT_SITE_CONFIG.copyright;
+  document.querySelectorAll("#copyrightFooter, .copyright-footer").forEach((el) => {
+    el.textContent = visible ? text : "";
+    el.hidden = !visible;
+  });
+}
+
+function applyDistributionGuards(config) {
+  const guardEnabled = config?.mode === "distribution" && config?.disableCopy === true;
+  document.body.classList.toggle("distribution-mode", guardEnabled);
+  if (distributionGuardsBound) return;
+
+  const preventWhenDistribution = (event) => {
+    const current = appState.siteConfig || DEFAULT_SITE_CONFIG;
+    if (current.mode !== "distribution" || current.disableCopy !== true) return;
+    event.preventDefault();
+  };
+
+  document.addEventListener("copy", preventWhenDistribution);
+  document.addEventListener("contextmenu", preventWhenDistribution);
+  document.addEventListener("dragstart", preventWhenDistribution);
+  distributionGuardsBound = true;
 }
 
 function registerServiceWorker() {
@@ -276,8 +357,13 @@ function loadSettings(bookId) {
 }
 
 function applyVersionBadge() {
+  const showVersion = appState.siteConfig?.showVersion !== false;
+  document.querySelectorAll("[data-version-info], .build-info").forEach((el) => {
+    el.hidden = !showVersion;
+  });
+
   const badge = document.getElementById("versionBadge");
-  if (badge) badge.textContent = `v${APP_VERSION}`;
+  if (badge) badge.textContent = showVersion ? `v${APP_VERSION}` : "";
 
   const settingsVersion = document.getElementById("settingsVersion");
   if (settingsVersion) settingsVersion.textContent = `v${APP_VERSION}`;
@@ -303,34 +389,41 @@ function getBookSource(book) {
 
 async function resolveRestoreSourceType(cached) {
   const sourceType = typeof cached?.sourceType === "string" ? cached.sourceType : "";
-  if (!LIGHT_EDITION_BUNDLED_ONLY) {
+  if (sourceType === "manifest" || sourceType === "bundled") {
+    return sourceType;
+  }
+
+  if (appState.siteConfig?.allowLocalImport !== false) {
     return sourceType || "cache";
   }
 
-  if (sourceType === "bundled") {
-    return "bundled";
-  }
-
   // Compatibility path for caches created before sourceType/sourceData were stored.
-  // If the cached title still matches a bundled title, migrate it back into bundled restore flow.
+  // If the cached title still matches a published manifest title, treat it as manifest-backed.
   if (!sourceType || sourceType === "cache") {
-    const bundledTitles = await loadBundledBookTitles();
-    if (bundledTitles.has(String(cached?.title || "").trim())) {
-      return "bundled";
+    const manifestTitles = await loadManifestBookTitles();
+    if (manifestTitles.has(String(cached?.title || "").trim())) {
+      return "manifest";
     }
   }
 
   return sourceType || "cache";
 }
 
-async function loadBundledBookTitles() {
+function canRestoreCachedSource(sourceType) {
+  if (appState.siteConfig?.allowLocalImport !== false) return true;
+  return sourceType === "manifest" || sourceType === "bundled";
+}
+
+async function loadManifestBookTitles() {
   try {
-    const res = await fetch(BUNDLED_BOOK_MANIFEST_PATH, { cache: "no-store" });
+    const manifestPath = appState.siteConfig?.booksManifest || DEFAULT_SITE_CONFIG.booksManifest;
+    const res = await fetch(manifestPath, { cache: "no-store" });
     if (!res.ok) return new Set();
     const manifest = await res.json();
-    const books = Array.isArray(manifest?.books) ? manifest.books : [];
+    const books = Array.isArray(manifest) ? manifest : Array.isArray(manifest?.books) ? manifest.books : [];
     return new Set(
       books
+        .filter((entry) => entry?.published === true)
         .map((entry) => String(entry?.title || "").trim())
         .filter(Boolean)
     );
@@ -339,9 +432,13 @@ async function loadBundledBookTitles() {
   }
 }
 
-registerServiceWorker();
-tryRestoreLastBook().then((restored) => {
+async function bootstrap() {
+  applySiteConfig(await loadSiteConfig());
+  registerServiceWorker();
+  const restored = await tryRestoreLastBook();
   if (!restored) {
     render("library");
   }
-});
+}
+
+bootstrap();
