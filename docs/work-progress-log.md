@@ -459,3 +459,11 @@ Root directory: 空欄
 - 修正をcommit/pushしてCloudflare Pagesへ反映する。
 - 公開側で `v0.1.50` になったことを確認する。
 - 読者画面で「銀河鉄道の夜」を開き、Readerの縦書き・ページ送りに従って表示されるか実機確認する。
+
+### 追記
+
+- commit: `9f363eb normalize epub for reader layout`
+- `main` へpush済み。
+- Cloudflare Pages公開側で `js/version.js` が `APP_VERSION = "0.1.50"` を返すことを確認。
+- 公開側の `js/normalize-epub.js` に `PRESERVE_EPUB_CSS = false` と `copyLanguageOnly()` が反映されていることを確認。
+- 公開側の `css/reader.css` に `.epub-html` / `.epub-body` のReader組版継承CSSが反映されていることを確認。
