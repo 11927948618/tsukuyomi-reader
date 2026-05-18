@@ -16,7 +16,10 @@
         <p class="label">Distribution Admin</p>
         <h1>TsukuyomiReader 管理メニュー</h1>
       </div>
-      <a class="button ghost" href="./">読者画面</a>
+      <div class="admin-header-actions">
+        <button class="button ghost" id="openAdminHelpBtn" type="button">管理ヘルプ</button>
+        <a class="button ghost" href="./">読者画面</a>
+      </div>
     </header>
 
     <section class="card admin-card">
@@ -114,6 +117,29 @@
       <div class="admin-analytics-recent" id="analyticsRecent"></div>
     </section>
   </main>
+
+  <div class="admin-help-overlay" id="adminHelpOverlay" hidden>
+    <section class="admin-help-modal" role="dialog" aria-modal="true" aria-labelledby="adminHelpTitle">
+      <div class="admin-help-head">
+        <div>
+          <p class="label">Admin Help</p>
+          <h2 id="adminHelpTitle">管理ヘルプ</h2>
+        </div>
+        <button class="button ghost" id="closeAdminHelpBtn" type="button">閉じる</button>
+      </div>
+
+      <div class="admin-help-body">
+        <nav class="admin-help-menu" aria-label="ヘルプ項目">
+          <button class="button ghost" type="button" data-help-kind="quick">すぐ使う</button>
+          <button class="button ghost" type="button" data-help-doc="./docs/tachiyomi-update-manual.md">更新マニュアル</button>
+          <button class="button ghost" type="button" data-help-doc="./docs/tachiyomi-reader-manual.md">読者マニュアル</button>
+          <button class="button ghost" type="button" data-help-doc="./docs/tachiyomi-device-checklist.md">実機確認</button>
+          <button class="button ghost" type="button" data-help-doc="./docs/work-progress-log.md">作業ログ</button>
+        </nav>
+        <div class="admin-help-content" id="adminHelpContent" tabindex="0"></div>
+      </div>
+    </section>
+  </div>
 
   <script type="module" src="./js/admin.js"></script>
 </body>

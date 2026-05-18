@@ -873,3 +873,28 @@ Root directory: 空欄
 - commit: `00c3c3b add admin book id help`
 - `main` へpush済み。
 - Cloudflare Pages公開側で `js/version.js` が `APP_VERSION = "0.1.59"` を返すことを確認。
+
+## 2026-05-18 管理画面ヘルプ追加
+
+### 対応
+
+- 管理画面ヘッダーに `管理ヘルプ` ボタンを追加。
+- ポップアップヘルプを追加。
+  - すぐ使う操作の短いヘルプを表示。
+  - 管理トークン、作品ID、本文ファイル、公開停止、R2使用状況、読書ログ、古いiPhoneの注意を記載。
+- 既存Markdown資料を管理画面内で表示できる項目を追加。
+  - `docs/tachiyomi-update-manual.md`
+  - `docs/tachiyomi-reader-manual.md`
+  - `docs/tachiyomi-device-checklist.md`
+  - `docs/work-progress-log.md`
+- キャッシュ更新用に `v0.1.60` へ更新。
+
+### 検証
+
+- `node --check js/admin.js`: OK
+- `node --check js/version.js`: OK
+- Playwright Chromium / local `admin.html`:
+  - `管理ヘルプ` ボタンでポップアップが開くことを確認。
+  - `すぐ使う` に作品IDなどの短いヘルプが出ることを確認。
+  - `更新マニュアル` から `docs/tachiyomi-update-manual.md` を読み込めることを確認。
+  - `閉じる` でポップアップを閉じられることを確認。

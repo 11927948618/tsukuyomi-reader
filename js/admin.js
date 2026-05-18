@@ -19,6 +19,25 @@ const analyticsSummary = document.getElementById("analyticsSummary");
 const analyticsRecent = document.getElementById("analyticsRecent");
 const usageGuardStatus = document.getElementById("usageGuardStatus");
 const updatedAt = document.getElementById("updatedAt");
+const openAdminHelpBtn = document.getElementById("openAdminHelpBtn");
+const closeAdminHelpBtn = document.getElementById("closeAdminHelpBtn");
+const adminHelpOverlay = document.getElementById("adminHelpOverlay");
+const adminHelpContent = document.getElementById("adminHelpContent");
+const adminHelpButtons = Array.from(document.querySelectorAll("[data-help-kind], [data-help-doc]"));
+
+const QUICK_HELP_HTML = `
+  <h3>管理画面でよく使う操作</h3>
+  <ol>
+    <li><strong>管理トークン</strong>: Cloudflare Pages の環境変数 <code>TSUKUYOMI_ADMIN_TOKEN</code> と同じ値を入れて保存します。</li>
+    <li><strong>作品ID</strong>: 英数字、ハイフン、アンダースコアだけ使えます。空欄でも自動作成できます。差し替え時は同じIDを使います。</li>
+    <li><strong>本文ファイル</strong>: EPUBまたはTXTを登録できます。表紙はJPG、PNG、WebPを指定できます。</li>
+    <li><strong>公開停止</strong>: 作品一覧の「公開停止」で個別に非公開化できます。全体停止はCloudflare環境変数 <code>TSUKUYOMI_PUBLICATION_PAUSED=true</code> です。</li>
+    <li><strong>R2使用状況</strong>: 保存容量の概算を確認できます。Class A/B操作数はCloudflare R2 Metricsで確認します。</li>
+    <li><strong>読書ログ</strong>: 作品別の開始、読了、平均進捗を軽く確認できます。個人特定目的ではなく、作品傾向の把握用です。</li>
+    <li><strong>古いiPhone</strong>: iOS 12.5以降は警告後に試せますが、iPhone 6 Plus実機では描画不可を確認済みです。将来のレガシー対応候補です。</li>
+  </ol>
+  <p class="admin-note">左のボタンから既存マニュアルや作業ログをこの画面内で確認できます。</p>
+`;
 
 adminToken.value = localStorage.getItem(TOKEN_KEY) || "";
 updatedAt.value = new Date().toISOString().slice(0, 10);
@@ -43,6 +62,28 @@ reloadBooksBtn?.addEventListener("click", loadBooks);
 reloadAnalyticsBtn?.addEventListener("click", loadAnalytics);
 reloadStorageBtn?.addEventListener("click", loadStorage);
 resetFormBtn?.addEventListener("click", resetForm);
+openAdminHelpBtn?.addEventListener("click", openAdminHelp);
+closeAdminHelpBtn?.addEventListener("click", closeAdminHelp);
+
+adminHelpOverlay?.addEventListener("click", (event) => {
+  if (event.target === adminHelpOverlay) closeAdminHelp();
+});
+
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && adminHelpOverlay && !adminHelpOverlay.hidden) {
+    closeAdminHelp();
+  }
+});
+
+adminHelpButtons.forEach((button) => {
+  button.addEventListener("click", () => {
+    if (button.dataset.helpKind === "quick") {
+      renderQuickHelp(button);
+      return;
+    }
+    loadHelpDocument(button);
+  });
+});
 
 bookForm?.addEventListener("submit", async (event) => {
   event.preventDefault();
@@ -364,6 +405,58 @@ function resetForm() {
   bookForm.elements.author.value = "hal the juggernaut";
   bookForm.elements.updatedAt.value = new Date().toISOString().slice(0, 10);
   document.getElementById("publishedCheck").checked = true;
+}
+
+function openAdminHelp() {
+  if (!adminHelpOverlay) return;
+  adminHelpOverlay.hidden = false;
+  if (adminHelpContent && !adminHelpContent.innerHTML.trim()) {
+    renderQuickHelp(adminHelpButtons.find((button) => button.dataset.helpKind === "quick"));
+  }
+  closeAdminHelpBtn?.focus();
+}
+
+function closeAdminHelp() {
+  if (!adminHelpOverlay) return;
+  adminHelpOverlay.hidden = true;
+  openAdminHelpBtn?.focus();
+}
+
+function renderQuickHelp(button) {
+  if (!adminHelpContent) return;
+  setActiveHelpButton(button);
+  adminHelpContent.innerHTML = QUICK_HELP_HTML;
+}
+
+async function loadHelpDocument(button) {
+  if (!adminHelpContent) return;
+  const path = button?.dataset.helpDoc || "";
+  if (!path) return;
+
+  setActiveHelpButton(button);
+  adminHelpContent.innerHTML = `<p class="admin-note">読み込み中: ${escapeHtml(path)}</p>`;
+  try {
+    const res = await fetch(path, { cache: "no-store" });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const text = await res.text();
+    const title = button.textContent?.trim() || "ヘルプ";
+    adminHelpContent.innerHTML = `
+      <h3>${escapeHtml(title)}</h3>
+      <pre>${escapeHtml(text)}</pre>
+    `;
+    adminHelpContent.scrollTop = 0;
+  } catch (err) {
+    adminHelpContent.innerHTML = `
+      <h3>読み込み失敗</h3>
+      <p class="admin-note">${escapeHtml(path)} を読み込めませんでした。${escapeHtml(err.message || "")}</p>
+    `;
+  }
+}
+
+function setActiveHelpButton(activeButton) {
+  adminHelpButtons.forEach((button) => {
+    button.classList.toggle("active", Boolean(activeButton && button === activeButton));
+  });
 }
 
 function getToken() {

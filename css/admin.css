@@ -18,6 +18,14 @@
   line-height: 1.2;
 }
 
+.admin-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
 .admin-layout {
   display: grid;
   grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
@@ -273,6 +281,110 @@
   border-color: color-mix(in srgb, #d86464, var(--border) 45%);
 }
 
+.admin-help-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: color-mix(in srgb, #07111f, transparent 32%);
+}
+
+.admin-help-overlay[hidden] {
+  display: none;
+}
+
+.admin-help-modal {
+  width: min(960px, 96vw);
+  max-height: min(86vh, 760px);
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--panel);
+  box-shadow: 0 18px 48px color-mix(in srgb, #000, transparent 70%);
+}
+
+.admin-help-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.admin-help-head h2 {
+  margin: 0;
+  font-size: 1.2rem;
+}
+
+.admin-help-body {
+  display: grid;
+  grid-template-columns: 180px minmax(0, 1fr);
+  min-height: 0;
+}
+
+.admin-help-menu {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  padding: 14px;
+  border-right: 1px solid var(--border);
+  background: color-mix(in srgb, var(--panel), #000 3%);
+}
+
+.admin-help-menu .button {
+  width: 100%;
+  justify-content: center;
+}
+
+.admin-help-menu .button.active {
+  color: #fff;
+  border-color: var(--accent);
+  background: var(--accent);
+}
+
+.admin-help-content {
+  min-height: 0;
+  overflow: auto;
+  padding: 18px;
+  line-height: 1.65;
+}
+
+.admin-help-content h3 {
+  margin: 0 0 12px;
+  font-size: 1.05rem;
+}
+
+.admin-help-content ol,
+.admin-help-content ul {
+  margin: 0;
+  padding-left: 1.4rem;
+}
+
+.admin-help-content li + li {
+  margin-top: 8px;
+}
+
+.admin-help-content code {
+  padding: 0.1rem 0.3rem;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--panel), #000 6%);
+  font-size: 0.9em;
+}
+
+.admin-help-content pre {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font: inherit;
+  line-height: 1.6;
+}
+
 textarea.input {
   min-height: 7rem;
   resize: vertical;
@@ -287,6 +399,14 @@ textarea.input {
   .admin-header {
     display: grid;
     align-items: start;
+  }
+
+  .admin-header-actions {
+    justify-content: stretch;
+  }
+
+  .admin-header-actions .button {
+    flex: 1 1 auto;
   }
 
   .admin-layout {
@@ -308,5 +428,28 @@ textarea.input {
   .admin-storage-grid,
   .admin-storage-row {
     grid-template-columns: 1fr;
+  }
+
+  .admin-help-overlay {
+    padding: 8px;
+  }
+
+  .admin-help-modal {
+    width: 100%;
+    max-height: 92vh;
+  }
+
+  .admin-help-body {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-help-menu {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    border-right: 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .admin-help-content {
+    padding: 14px;
   }
 }
