@@ -796,3 +796,11 @@ Root directory: 空欄
 - Playwright Chromium / iPhone OS 12.5 UA:
   - 注意画面「レガシー端末での試用です」が表示されることを確認。
   - 「理解して試す」ボタンが表示されることを確認。
+
+### 追記
+
+- commit: `a71b0ac add ios legacy trial gate`
+- `main` へpush済み。
+- Cloudflare Pages公開側で `js/version.js` が `APP_VERSION = "0.1.57"` を返すことを確認。
+- `/js/legacy-check.js`: HTTP 200
+- `/api/books`: GETでHTTP 200、`application/json`
