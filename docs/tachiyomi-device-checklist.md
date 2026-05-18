@@ -100,10 +100,12 @@ https://tsukuyomi-reader-tachiyomi.pages.dev/
 - Windows / Edge
 - Surface Go / Edge
 - Android / Chrome
-- iPhone / Safari（iOS 13以降。目安: iPhone 6s / iPhone SE 第1世代以降）
-- iPad / Safari（iPadOS 13以降。目安: iPad Air 2 / iPad mini 4 / iPad Pro以降）
+- iPhone / Safari（iOS 15以降。目安: iPhone 6s / iPhone SE 第1世代以降）
+- iPad / Safari（iPadOS 15以降。目安: iPad Air 2 / iPad mini 4 / iPad Pro以降）
 
-iPhone 6 Plus以前、iOS 12以下、古いSafariは対象外とします。対象外端末で黒画面ではなく未対応案内が出れば許容とします。
+iOS 14以下、iPhone 6 Plus以前、古いSafariは対象外とします。対象外端末で黒画面ではなく未対応案内が出れば許容とします。
+
+実機がない端末は、ブラウザ開発者ツールのスマホ幅シミュレーションで、レイアウト崩れ、作品一覧スクロール、Reader上部UIの開閉だけ確認します。個別端末完全対応ではなく、立ち読み専用の標準ブラウザ向け表示安定を優先します。
 
 各端末で見る項目:
 
@@ -136,8 +138,8 @@ iPhone 6 Plus以前、iOS 12以下、古いSafariは対象外とします。対�
 - Windows Edge: OK
 - Surface Go Edge: OK
 - Android Chrome: 未確認
-- iPhone Safari（iOS 13以上）: Reader設定パネルのスクロール要再確認
-- iPhone 6 Plus以前 / iOS 12以下: 対象外。未対応案内のみ確認
+- iPhone Safari（iOS 15以上）: Reader設定パネルのスクロール要再確認
+- iOS 14以下 / iPhone 6 Plus以前: 対象外。未対応案内のみ確認
 
 ### 発見事項
 

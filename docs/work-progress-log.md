@@ -678,12 +678,12 @@ Root directory: 空欄
 - 初回はCodex側の使用量制限により `git push origin main` が未実行だった。
 - その後、再試行して `main` へpush済み。
 
-## 2026-05-18 iPhone / iPad 対応世代の明示
+## 2026-05-18 iPhone / iPad 対応世代の暫定明示
 
 ### 方針
 
-- iPhone 6 Plus以前、iOS 12以下のSafariは対象外とする。
-- iPhone / iPadは、iOS 13 / iPadOS 13以降を対象にする。
+- この時点では緩めの対象世代を記録したが、後続の「モバイル対応基準の再整理」でiOS / iPadOS 15以降へ変更した。
+- iPhone 6 Plus以前、古いSafariは対象外とする。
 - 目安:
   - iPhone: iPhone 6s / iPhone SE 第1世代以降
   - iPad: iPad Air 2 / iPad mini 4 / iPad Pro以降
@@ -714,3 +714,41 @@ Root directory: 空欄
 - `/`: HTTP 200
 - `/js/legacy-check.js`: HTTP 200
 - `/api/books`: GETでHTTP 200、`application/json`
+
+## 2026-05-18 モバイル対応基準の再整理
+
+### 方針
+
+- 個別端末の完全対応ではなく、立ち読み専用の標準ブラウザ向け表示安定を優先する。
+- iPhone / iPadは、iOS 15 / iPadOS 15以降を公式対応にする。
+- iOS 14以下、iPhone 6 Plus以前、古いSafariは対象外にする。
+- 実機がない端末は、ブラウザ開発者ツールのスマホ幅シミュレーションで以下を確認する。
+  - Library画面が崩れない
+  - 作品一覧を複数作品までスクロールできる
+  - Reader上部UIの表示/非表示で本文が極端に崩れない
+  - 設定パネル、章一覧が最後までスクロールできる
+
+### 対応
+
+- `js/legacy-check.js`
+  - 判別できる範囲でiOS/iPadOS 14以下を未対応案内に落とす。
+  - 未対応案内をiOS 15 / iPadOS 15以降基準に変更。
+- `docs/tachiyomi-reader-manual.md`
+  - 推奨ブラウザをiOS 15 / iPadOS 15以降に変更。
+- `docs/tachiyomi-device-checklist.md`
+  - 実機がない場合のスマホ幅シミュレーション確認方針を追記。
+- `templates/help.html`
+  - 配布前チェックリストへ対応OS基準とシミュレーション確認を追記。
+- キャッシュ更新用に `v0.1.56` へ更新。
+
+### 検証
+
+- `node --check js/legacy-check.js`: OK
+- `node --check js/version.js`: OK
+- `rg "iOS 13|iPadOS 13|iOS 12 以下|iOS 12以下"`: 現行表記なし
+- Playwright Chromium / mobile viewport `393x852`:
+  - 作品カード3件を表示。
+  - `#bundledBooksList` は `max-height: none` / `overflow-y: visible`。
+  - 3件目カードまで表示されることを確認。
+  - Readerを開き、上部UI表示中の本文枠 `375x693`、非表示後 `375x828`。
+  - 上部UI非表示後も `scrollLeft` は有限値で、本文枠とページ幅が破綻しないことを確認。
