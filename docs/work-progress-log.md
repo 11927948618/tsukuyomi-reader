@@ -675,8 +675,8 @@ Root directory: 空欄
 ### 追記
 
 - ローカルコミット作成済み。
-- Codex側の使用量制限により `git push origin main` は未実行。
-- 公開反映には手元で `git push origin main` を実行する必要がある。
+- 初回はCodex側の使用量制限により `git push origin main` が未実行だった。
+- その後、再試行して `main` へpush済み。
 
 ## 2026-05-18 iPhone / iPad 対応世代の明示
 
@@ -705,3 +705,12 @@ Root directory: 空欄
   - `/`: HTTP 200
   - `/js/legacy-check.js`: HTTP 200
   - `/js/version.js`: `APP_VERSION = "0.1.55"`
+
+### 追記
+
+- commit: `163ef90 fix mobile reader layout`
+- `main` へpush済み。
+- Cloudflare Pages公開側で `js/version.js` が `APP_VERSION = "0.1.55"` を返すことを確認。
+- `/`: HTTP 200
+- `/js/legacy-check.js`: HTTP 200
+- `/api/books`: GETでHTTP 200、`application/json`
