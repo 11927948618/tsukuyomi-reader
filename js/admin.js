@@ -8,8 +8,12 @@ const bookForm = document.getElementById("bookForm");
 const resetFormBtn = document.getElementById("resetFormBtn");
 const reloadBooksBtn = document.getElementById("reloadBooksBtn");
 const reloadAnalyticsBtn = document.getElementById("reloadAnalyticsBtn");
+const reloadStorageBtn = document.getElementById("reloadStorageBtn");
 const adminBookList = document.getElementById("adminBookList");
 const adminStatus = document.getElementById("adminStatus");
+const storageStatus = document.getElementById("storageStatus");
+const storageSummary = document.getElementById("storageSummary");
+const storagePrefixes = document.getElementById("storagePrefixes");
 const analyticsStatus = document.getElementById("analyticsStatus");
 const analyticsSummary = document.getElementById("analyticsSummary");
 const analyticsRecent = document.getElementById("analyticsRecent");
@@ -23,6 +27,7 @@ saveTokenBtn?.addEventListener("click", () => {
   localStorage.setItem(TOKEN_KEY, adminToken.value || "");
   setStatus("管理トークンを保存しました", "ok");
   loadBooks();
+  loadStorage();
   loadAnalytics();
 });
 
@@ -30,11 +35,13 @@ clearTokenBtn?.addEventListener("click", () => {
   localStorage.removeItem(TOKEN_KEY);
   adminToken.value = "";
   setStatus("管理トークンを消去しました");
+  clearStorage();
   clearAnalytics();
 });
 
 reloadBooksBtn?.addEventListener("click", loadBooks);
 reloadAnalyticsBtn?.addEventListener("click", loadAnalytics);
+reloadStorageBtn?.addEventListener("click", loadStorage);
 resetFormBtn?.addEventListener("click", resetForm);
 
 bookForm?.addEventListener("submit", async (event) => {
@@ -116,7 +123,8 @@ async function loadAnalytics() {
 function renderAnalytics(payload) {
   const summary = Array.isArray(payload?.summary) ? payload.summary : [];
   const recent = Array.isArray(payload?.recent) ? payload.recent : [];
-  setAnalyticsStatus(`${summary.length}作品 / 最近${recent.length}件`, "ok");
+  const source = payload?.source === "r2-lite" ? "R2軽量集計" : "D1";
+  setAnalyticsStatus(`${source}: ${summary.length}作品 / 最近${recent.length}件`, "ok");
 
   if (analyticsSummary) {
     analyticsSummary.innerHTML = summary.length
@@ -163,6 +171,80 @@ function clearAnalytics(message = "管理トークン保存後に読み込みま
   setAnalyticsStatus(message, type);
   if (analyticsSummary) analyticsSummary.innerHTML = "";
   if (analyticsRecent) analyticsRecent.innerHTML = "";
+}
+
+async function loadStorage() {
+  const token = getToken();
+  if (!token) {
+    clearStorage("管理トークンを入力してください");
+    return;
+  }
+
+  setStorageStatus("R2使用状況を読み込み中...");
+  try {
+    const res = await fetch("./api/admin/storage", {
+      headers: authHeaders(token)
+    });
+    const payload = await readJson(res);
+    if (!res.ok) throw new Error(payload?.error || "R2使用状況の読み込みに失敗しました");
+    renderStorage(payload);
+  } catch (err) {
+    clearStorage(err.message || "R2使用状況の読み込みに失敗しました", "error");
+  }
+}
+
+function renderStorage(payload) {
+  const storage = payload?.storage || {};
+  const usedBytes = Number(storage.usedBytes) || 0;
+  const freeTierBytes = Number(storage.freeTierBytes) || 0;
+  const remainingBytes = Number(storage.remainingBytes) || 0;
+  const usedPercent = Number(storage.usedPercent) || 0;
+  const objectCount = Number(storage.objectCount) || 0;
+  const truncated = storage.truncated === true;
+  setStorageStatus(
+    `${formatBytes(usedBytes)} 使用 / ${objectCount.toLocaleString()} objects${truncated ? " / 走査上限あり" : ""}`,
+    usedPercent >= 90 ? "error" : usedPercent >= 70 ? "warn" : "ok"
+  );
+
+  if (storageSummary) {
+    storageSummary.innerHTML = `
+      <div class="admin-storage-meter" aria-label="R2 storage usage">
+        <span style="width:${Math.max(0, Math.min(100, usedPercent))}%"></span>
+      </div>
+      <div class="admin-storage-grid">
+        <div><span class="admin-analytics-label">使用量</span><strong>${formatBytes(usedBytes)}</strong></div>
+        <div><span class="admin-analytics-label">無料枠目安</span><strong>${formatBytes(freeTierBytes)}</strong></div>
+        <div><span class="admin-analytics-label">残り目安</span><strong>${formatBytes(remainingBytes)}</strong></div>
+        <div><span class="admin-analytics-label">使用率</span><strong>${Number.isFinite(usedPercent) ? `${usedPercent}%` : "-"}</strong></div>
+      </div>
+    `;
+  }
+
+  if (storagePrefixes) {
+    const prefixes = payload?.prefixes && typeof payload.prefixes === "object" ? payload.prefixes : {};
+    const rows = Object.entries(prefixes)
+      .sort((a, b) => (Number(b[1]?.bytes) || 0) - (Number(a[1]?.bytes) || 0))
+      .map(([prefix, value]) => `
+        <div class="admin-storage-row">
+          <strong>${escapeHtml(prefix)}</strong>
+          <span>${formatBytes(Number(value?.bytes) || 0)}</span>
+          <span>${(Number(value?.count) || 0).toLocaleString()} objects</span>
+        </div>
+      `);
+    storagePrefixes.innerHTML = rows.length ? rows.join("") : `<p class="admin-note">R2オブジェクトはまだありません。</p>`;
+  }
+}
+
+function clearStorage(message = "管理トークン保存後に読み込みます", type = "") {
+  setStorageStatus(message, type);
+  if (storageSummary) storageSummary.innerHTML = "";
+  if (storagePrefixes) storagePrefixes.innerHTML = "";
+}
+
+function setStorageStatus(message, type = "") {
+  if (!storageStatus) return;
+  storageStatus.textContent = message;
+  storageStatus.className = `status ${type}`.trim();
 }
 
 function setAnalyticsStatus(message, type = "") {
@@ -321,5 +403,19 @@ function formatDateTime(value) {
   });
 }
 
+function formatBytes(bytes) {
+  const value = Number(bytes) || 0;
+  const units = ["B", "KB", "MB", "GB", "TB"];
+  let size = Math.max(0, value);
+  let unitIndex = 0;
+  while (size >= 1024 && unitIndex < units.length - 1) {
+    size /= 1024;
+    unitIndex += 1;
+  }
+  const digits = unitIndex === 0 ? 0 : size >= 100 ? 1 : 2;
+  return `${size.toFixed(digits)} ${units[unitIndex]}`;
+}
+
 loadBooks();
+loadStorage();
 loadAnalytics();

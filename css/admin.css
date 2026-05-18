@@ -157,6 +157,65 @@
   margin-top: 14px;
 }
 
+.admin-storage-card {
+  margin-top: 14px;
+}
+
+.status.warn {
+  color: #9b6b16;
+}
+
+.admin-storage-summary,
+.admin-storage-prefixes {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.admin-storage-meter {
+  height: 10px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--panel), #000 10%);
+}
+
+.admin-storage-meter span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--accent);
+}
+
+.admin-storage-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.admin-storage-grid > div,
+.admin-storage-row {
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--panel), #000 3%);
+}
+
+.admin-storage-grid strong,
+.admin-storage-row strong {
+  display: block;
+  margin-top: 2px;
+  overflow-wrap: anywhere;
+}
+
+.admin-storage-row {
+  display: grid;
+  grid-template-columns: minmax(8rem, 1fr) minmax(5rem, auto) minmax(6rem, auto);
+  gap: 8px;
+  align-items: center;
+  font-size: 0.84rem;
+}
+
 .admin-analytics-summary,
 .admin-analytics-recent {
   display: grid;
@@ -245,7 +304,9 @@ textarea.input {
   }
 
   .admin-analytics-row,
-  .admin-analytics-recent .admin-analytics-row {
+  .admin-analytics-recent .admin-analytics-row,
+  .admin-storage-grid,
+  .admin-storage-row {
     grid-template-columns: 1fr;
   }
 }

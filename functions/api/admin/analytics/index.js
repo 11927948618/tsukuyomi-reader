@@ -1,12 +1,18 @@
-import { error, json, requireAdmin } from "../../../_shared/books.js";
+import { error, getBucket, json, requireAdmin } from "../../../_shared/books.js";
 import { analyticsDisabled, analyticsErrorResponse, getAnalyticsDb } from "../../../_shared/analytics.js";
+import { liteAnalyticsToAdminPayload, readLiteAnalytics } from "../../../_shared/analytics-lite.js";
 
 export async function onRequestGet(context) {
   const auth = requireAdmin(context.request, context.env);
   if (!auth.ok) return auth.response;
 
   const db = getAnalyticsDb(context.env);
-  if (!db) return analyticsDisabled();
+  if (!db) {
+    const bucket = getBucket(context.env);
+    if (!bucket) return analyticsDisabled("D1 analytics binding and R2 bucket binding are not configured.");
+    const stats = await readLiteAnalytics(bucket);
+    return json(liteAnalyticsToAdminPayload(stats));
+  }
 
   try {
     const summary = await db
@@ -59,6 +65,7 @@ export async function onRequestGet(context) {
 
     return json({
       enabled: true,
+      source: "d1",
       summary: Array.isArray(summary.results) ? summary.results : [],
       recent: Array.isArray(recent.results) ? recent.results : []
     });

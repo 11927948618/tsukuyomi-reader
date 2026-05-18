@@ -1,4 +1,4 @@
-import { error, json } from "../../_shared/books.js";
+import { error, getBucket, json } from "../../_shared/books.js";
 import { applyRateLimit } from "../../_shared/rate-limit.js";
 import {
   analyticsErrorResponse,
@@ -7,6 +7,7 @@ import {
   normalizeProgressPercent,
   sha256Hex
 } from "../../_shared/analytics.js";
+import { recordLiteAnalytics } from "../../_shared/analytics-lite.js";
 
 const EVENT_TYPES = new Set(["open", "progress", "finish"]);
 
@@ -15,7 +16,8 @@ export async function onRequestPost(context) {
   if (rateLimited) return rateLimited;
 
   const db = getAnalyticsDb(context.env);
-  if (!db) return new Response(null, { status: 204 });
+  const bucket = getBucket(context.env);
+  if (!db && !bucket) return new Response(null, { status: 204 });
 
   if (!isSameOriginRequest(context.request)) {
     return error("許可されていない送信元です", 403);
@@ -43,45 +45,68 @@ export async function onRequestPost(context) {
   const readerIdHash = await sha256Hex(`${salt}:reader:${readerId}`);
   const userAgentHash = userAgent ? await sha256Hex(`${salt}:ua:${userAgent}`) : "";
   const now = new Date().toISOString();
+  const progressPercent = normalizeProgressPercent(payload?.progressPercent ?? payload?.progress_percent);
+  const chapterId = normalizeAnalyticsText(payload?.chapterId || payload?.chapter_id, 128);
+  const sourceType = normalizeAnalyticsText(payload?.sourceType || payload?.source_type, 32);
+  const country = normalizeAnalyticsText(context.request.cf?.country, 8);
 
-  try {
-    await db
-      .prepare(
-        `INSERT INTO reader_events (
-          id,
-          created_at,
-          event_type,
-          book_id,
-          reader_id_hash,
-          session_id,
-          progress_percent,
-          chapter_id,
-          source_type,
-          user_agent_hash,
+  if (db) {
+    try {
+      await db
+        .prepare(
+          `INSERT INTO reader_events (
+            id,
+            created_at,
+            event_type,
+            book_id,
+            reader_id_hash,
+            session_id,
+            progress_percent,
+            chapter_id,
+            source_type,
+            user_agent_hash,
+            country,
+            referer_path
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+        )
+        .bind(
+          crypto.randomUUID(),
+          now,
+          eventType,
+          bookId,
+          readerIdHash,
+          sessionId,
+          progressPercent,
+          chapterId,
+          sourceType,
+          userAgentHash,
           country,
-          referer_path
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-      )
-      .bind(
-        crypto.randomUUID(),
-        now,
-        eventType,
-        bookId,
-        readerIdHash,
-        sessionId,
-        normalizeProgressPercent(payload?.progressPercent ?? payload?.progress_percent),
-        normalizeAnalyticsText(payload?.chapterId || payload?.chapter_id, 128),
-        normalizeAnalyticsText(payload?.sourceType || payload?.source_type, 32),
-        userAgentHash,
-        normalizeAnalyticsText(context.request.cf?.country, 8),
-        refererPath(context.request)
-      )
-      .run();
-  } catch (err) {
-    return analyticsErrorResponse(err);
+          refererPath(context.request)
+        )
+        .run();
+    } catch (err) {
+      return analyticsErrorResponse(err);
+    }
+
+    return json({ ok: true, source: "d1" });
   }
 
-  return json({ ok: true });
+  try {
+    await recordLiteAnalytics(bucket, {
+      createdAt: now,
+      eventType,
+      bookId,
+      readerIdHash,
+      progressPercent,
+      chapterId,
+      sourceType,
+      country
+    });
+  } catch (err) {
+    return new Response(null, { status: 204 });
+  }
+
+  return json({ ok: true, source: "r2-lite" });
 }
 
 function isSameOriginRequest(request) {

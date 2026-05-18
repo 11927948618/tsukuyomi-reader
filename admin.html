@@ -92,6 +92,17 @@
       </section>
     </section>
 
+    <section class="card admin-card admin-storage-card">
+      <div class="admin-list-head">
+        <h2>R2使用状況</h2>
+        <button class="button ghost" id="reloadStorageBtn" type="button">再読込</button>
+      </div>
+      <div id="storageStatus" class="status">管理トークン保存後に読み込みます</div>
+      <div class="admin-storage-summary" id="storageSummary"></div>
+      <div class="admin-storage-prefixes" id="storagePrefixes"></div>
+      <p class="admin-note">保存容量はR2バケット内オブジェクトの合計から出す概算です。Class A/B操作数の月間実績はCloudflare R2 Metricsで確認してください。</p>
+    </section>
+
     <section class="card admin-card admin-analytics-card">
       <div class="admin-list-head">
         <h2>読書ログ</h2>

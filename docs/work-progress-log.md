@@ -804,3 +804,44 @@ Root directory: 空欄
 - Cloudflare Pages公開側で `js/version.js` が `APP_VERSION = "0.1.57"` を返すことを確認。
 - `/js/legacy-check.js`: HTTP 200
 - `/api/books`: GETでHTTP 200、`application/json`
+
+## 2026-05-18 管理画面のR2使用状況と軽量読書ログ
+
+### 目的
+
+- 管理画面からR2バケット内の保存容量とオブジェクト数を概算確認できるようにする。
+- D1未設定でも、軽い読書ログ分析を試せるようにする。
+
+### 対応
+
+- `GET /api/admin/storage` を追加。
+  - 管理トークン必須。
+  - R2バケット内オブジェクトを走査し、保存容量、残り目安、オブジェクト数、プレフィックス別内訳を返す。
+  - Class A/B操作数の月次残量はR2 bindingからは取得できないため、Cloudflare Metricsで確認する注記を返す。
+- 管理画面に `R2使用状況` カードを追加。
+  - 使用量、無料枠目安、残り目安、使用率、プレフィックス別内訳を表示。
+- `functions/_shared/analytics-lite.js` を追加。
+  - D1未設定時に `_tsukuyomi/analytics-lite.json` へ軽量集計を保存。
+  - 作品別の開始数、読了数、匿名読者数、平均到達率、最近のイベントを保存。
+- `POST /api/analytics/event`
+  - D1 bindingがある場合は従来通りD1へ保存。
+  - D1がなくR2 bucket bindingがある場合はR2軽量集計へ保存。
+  - D1もR2もない場合は204で無害にスキップ。
+- `GET /api/admin/analytics`
+  - D1がある場合はD1集計。
+  - D1がない場合はR2軽量集計を返す。
+- `docs/tachiyomi-update-manual.md` と `docs/reader-analytics-design.md` にR2使用状況とR2軽量集計の注意を追記。
+- キャッシュ更新用に `v0.1.58` へ更新。
+
+### 検証
+
+- `node --check functions/_shared/analytics-lite.js`: OK
+- `node --check functions/api/analytics/event.js`: OK
+- `node --check functions/api/admin/analytics/index.js`: OK
+- `node --check functions/api/admin/storage/index.js`: OK
+- `node --check js/admin.js`: OK
+- `node --check js/version.js`: OK
+- モックR2検証:
+  - R2軽量集計で `open` と `progress:50` を保存できることを確認。
+  - 管理用payloadで `opens: 1`、`avgProgress: 50` を返すことを確認。
+  - R2使用状況APIがオブジェクト数、使用容量、残り目安を返すことを確認。
