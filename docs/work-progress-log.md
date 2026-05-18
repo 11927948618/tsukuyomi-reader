@@ -624,3 +624,11 @@ Root directory: 空欄
   - 25%到達で `progress:25` が送信される。
   - 100%到達時に未送信の `progress:50` / `progress:75` と `finish:100` が送信される。
   - 同一閾値は重複送信されない。
+
+### 追記
+
+- commit: `3b7b1b3 add anonymous reader analytics`
+- `main` へpush済み。
+- Cloudflare Pages公開側で `js/version.js` が `APP_VERSION = "0.1.53"` を返すことを確認。
+- `/api/books` はHTTP 200を返すことを確認。
+- `/api/analytics/event` はD1未設定状態でHTTP 204を返し、Reader本体に影響しないことを確認。
