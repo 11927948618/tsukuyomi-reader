@@ -103,7 +103,9 @@ https://tsukuyomi-reader-tachiyomi.pages.dev/
 - iPhone / Safari（iOS 15以降。目安: iPhone 6s / iPhone SE 第1世代以降）
 - iPad / Safari（iPadOS 15以降。目安: iPad Air 2 / iPad mini 4 / iPad Pro以降）
 
-iOS 14以下、iPhone 6 Plus以前、古いSafariは対象外とします。対象外端末で黒画面ではなく未対応案内が出れば許容とします。
+iOS 12.5以降は一時的にレガシー試用枠として入口を開放します。レガシー資産のため、正常動作するかは不明です。該当端末では注意画面が出て、「理解して試す」を押してから起動を試せることを確認します。
+
+iOS 12.4以下、iPhone 6 Plus以前の一部環境、古いSafariは対象外とします。対象外端末で黒画面ではなく未対応案内が出れば許容とします。
 
 実機がない端末は、ブラウザ開発者ツールのスマホ幅シミュレーションで、レイアウト崩れ、作品一覧スクロール、Reader上部UIの開閉だけ確認します。個別端末完全対応ではなく、立ち読み専用の標準ブラウザ向け表示安定を優先します。
 
@@ -139,7 +141,8 @@ iOS 14以下、iPhone 6 Plus以前、古いSafariは対象外とします。対�
 - Surface Go Edge: OK
 - Android Chrome: 未確認
 - iPhone Safari（iOS 15以上）: Reader設定パネルのスクロール要再確認
-- iOS 14以下 / iPhone 6 Plus以前: 対象外。未対応案内のみ確認
+- iOS 12.5から14: レガシー試用枠。注意画面と「理解して試す」を確認
+- iOS 12.4以下 / iPhone 6 Plus以前の一部環境: 対象外。未対応案内のみ確認
 
 ### 発見事項
 

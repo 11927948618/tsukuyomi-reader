@@ -541,6 +541,13 @@ select.input option {
   line-height: 1.7;
 }
 
+.legacy-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 16px;
+}
+
 #libraryScreen .copyright-footer {
   margin-top: 14px;
   text-align: center;

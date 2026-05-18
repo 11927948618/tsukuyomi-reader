@@ -760,3 +760,39 @@ Root directory: 空欄
 - Cloudflare Pages公開側で `js/version.js` が `APP_VERSION = "0.1.56"` を返すことを確認。
 - `/js/legacy-check.js`: HTTP 200
 - `/api/books`: GETでHTTP 200、`application/json`
+
+## 2026-05-18 iOS 12.5 レガシー試用枠
+
+### 方針
+
+- iPhone 6 Plus実機確認のため、iOS 12.5以降を一時的にレガシー試用枠として入口開放する。
+- 公式対応は引き続き iOS 15 / iPadOS 15 以降とする。
+- iOS 12.5から14は、レガシー資産のため正常動作するか不明であることを注意画面で明示する。
+- iOS 12.4以下、古いSafari、必要Web APIがない環境は未対応案内に落とす。
+
+### 対応
+
+- `index.html`
+  - Reader本体 `js/app.js` の自動読み込みをやめ、`legacy-check.js` から起動する方式へ変更。
+- `js/legacy-check.js`
+  - 通常環境では自動で `js/app.js` を読み込む。
+  - iOS 12.5から14では注意画面を表示し、「理解して試す」押下後にReader本体を読み込む。
+  - 起動失敗時はレガシー試用失敗案内を表示する。
+- `docs/tachiyomi-reader-manual.md`
+  - iOS 12.5以降はレガシー試用枠で、正常動作不明と明記。
+- `docs/tachiyomi-device-checklist.md`
+  - iOS 12.5から14の確認項目をレガシー試用枠に変更。
+- `templates/help.html`
+  - 配布前チェックリストへレガシー試用枠を追記。
+- キャッシュ更新用に `v0.1.57` へ更新。
+
+### 検証
+
+- `node --check js/legacy-check.js`: OK
+- `node --check js/version.js`: OK
+- Playwright Chromium / 通常スマホ幅:
+  - `legacy-check.js` 経由でReader本体が起動することを確認。
+  - 作品カード表示と `v0.1.57` 表示を確認。
+- Playwright Chromium / iPhone OS 12.5 UA:
+  - 注意画面「レガシー端末での試用です」が表示されることを確認。
+  - 「理解して試す」ボタンが表示されることを確認。
