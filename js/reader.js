@@ -579,7 +579,9 @@ export function initReader({
         const offset = scrollContainer.scrollTop;
         const size = getVerticalPageSize();
         const pageIndex = Math.round(offset / size);
-        onUpdateProgress({ chapterId, scrollTop: offset, pageIndex });
+        const maxTop = Math.max(0, scrollContainer.scrollHeight - scrollContainer.clientHeight);
+        const progressPercent = maxTop > 0 ? Math.round((offset / maxTop) * 100) : 100;
+        onUpdateProgress({ chapterId, scrollTop: offset, pageIndex, progressPercent });
         return;
       }
 
@@ -587,7 +589,9 @@ export function initReader({
       const logical = toLogicalLeft(scrollContainer, physical, pageDirection);
       const size = getHorizontalPageSize();
       const pageIndex = Math.round(logical / size);
-      onUpdateProgress({ chapterId, scrollLeft: logical, pageIndex });
+      const maxLeft = getMaxLeft(scrollContainer);
+      const progressPercent = maxLeft > 0 ? Math.round((logical / maxLeft) * 100) : 100;
+      onUpdateProgress({ chapterId, scrollLeft: logical, pageIndex, progressPercent });
     }, 250);
 
     scrollContainer.addEventListener("scroll", handler);

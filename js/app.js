@@ -1,5 +1,11 @@
 import { initLibrary } from "./library.js";
 import { initReader } from "./reader.js";
+import {
+  applyAnalyticsNotice,
+  configureAnalytics,
+  startAnalyticsSession,
+  trackAnalyticsProgress
+} from "./analytics.js";
 import { exportZipFromBook } from "./storage.js";
 import { qs, loadJSON, saveJSON } from "./utils.js";
 import { APP_VERSION, BUILD_TIME, COMMIT } from "./version.js";
@@ -13,7 +19,11 @@ const DEFAULT_SITE_CONFIG = {
   showVersion: true,
   showCopyright: true,
   copyright: "© 2026 hal the juggernaut. All rights reserved.",
-  booksManifest: "./books/manifest.json"
+  booksManifest: "./books/manifest.json",
+  analyticsEnabled: false,
+  analyticsEndpoint: "/api/analytics/event",
+  analyticsRespectDoNotTrack: true,
+  analyticsNotice: ""
 };
 
 const DEFAULT_SETTINGS = {
@@ -118,6 +128,7 @@ async function render(screen) {
       onUpdateProgress: (nextProgress) => {
         appState.progress = { ...appState.progress, ...nextProgress };
         saveProgress(appState.currentBookId, appState.progress);
+        trackAnalyticsProgress(appState.currentBook, appState.progress);
       }
     });
     appState.openSettingsOnReader = false;
@@ -163,6 +174,7 @@ function applyBook(book) {
     ...DEFAULT_PROGRESS,
     ...(book.progress || book.meta?.progress || {})
   };
+  startAnalyticsSession(appState.currentBook, appState.siteConfig);
 }
 
 function exportCurrentBook() {
@@ -216,6 +228,7 @@ function saveProgress(bookId, progress) {
     scrollLeft: Number(progress.scrollLeft) || 0,
     scrollTop: Number(progress.scrollTop) || 0,
     pageIndex: Number(progress.pageIndex) || 0,
+    progressPercent: Number(progress.progressPercent) || 0,
     chapterId: progress.chapterId || null,
     updatedAt: new Date().toISOString()
   };
@@ -281,6 +294,7 @@ function normalizeSiteConfig(config) {
 
 function applySiteConfig(config) {
   appState.siteConfig = normalizeSiteConfig(config);
+  configureAnalytics(appState.siteConfig);
   if (appState.siteConfig.siteName) {
     document.title = appState.siteConfig.siteName;
   }
@@ -295,6 +309,7 @@ function applySiteChrome() {
   if (siteName && config.siteName) siteName.textContent = config.siteName;
 
   applyCopyright(config);
+  applyAnalyticsNotice(config);
   queueVersionBadge();
 }
 

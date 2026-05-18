@@ -334,6 +334,11 @@ body.distribution-mode .reader-content img {
   border-top: 1px solid var(--border);
 }
 
+.settings-privacy {
+  margin: 16px 0 0;
+  text-align: left;
+}
+
 .tap-zone {
   position: fixed;
   inset: 0;

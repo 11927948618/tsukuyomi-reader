@@ -40,6 +40,7 @@
   - 管理APIから公開 / 非公開を切替
   - R2使用量ガードによる新規公開停止 / 公開一時停止
   - 公開APIの簡易IPレート制限
+  - D1による匿名読書ログ
 
 ## マニュアル
 
@@ -48,6 +49,7 @@
 - [立ち読みモード 実機確認チェックリスト](docs/tachiyomi-device-checklist.md)
 - [Cloudflare R2 Usage Guard設計](docs/cloudflare-usage-guard-design.md)
 - [Cloudflare F5 Defense設計](docs/cloudflare-f5-defense-design.md)
+- [Reader Analytics設計](docs/reader-analytics-design.md)
 - [作業進捗ログ](docs/work-progress-log.md)
 
 ## ディレクトリ

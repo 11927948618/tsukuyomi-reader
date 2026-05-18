@@ -103,7 +103,11 @@ https://tsukuyomi-reader-tachiyomi.pages.dev/
   "showVersion": true,
   "showCopyright": true,
   "copyright": "© 2026 hal the juggernaut. All rights reserved.",
-  "booksManifest": "/api/books"
+  "booksManifest": "/api/books",
+  "analyticsEnabled": true,
+  "analyticsEndpoint": "/api/analytics/event",
+  "analyticsRespectDoNotTrack": true,
+  "analyticsNotice": "匿名の読書ログ（作品を開いた日時、進捗、読了）を分析目的で記録します。IPアドレスや氏名は保存しません。"
 }
 ```
 
@@ -119,7 +123,11 @@ https://tsukuyomi-reader-tachiyomi.pages.dev/
   "showVersion": true,
   "showCopyright": true,
   "copyright": "© 2026 hal the juggernaut. All rights reserved.",
-  "booksManifest": "./books/manifest.json"
+  "booksManifest": "./books/manifest.json",
+  "analyticsEnabled": false,
+  "analyticsEndpoint": "/api/analytics/event",
+  "analyticsRespectDoNotTrack": true,
+  "analyticsNotice": ""
 }
 ```
 
@@ -244,6 +252,62 @@ TSUKUYOMI_RATE_LIMIT_DISABLED=true
 ```text
 docs/cloudflare-f5-defense-design.md
 ```
+
+## 匿名読書ログ
+
+読者の実名、メールアドレス、端末番号、IPアドレスは保存せず、同じブラウザ環境を匿名IDとして読書傾向を記録できます。
+
+記録するイベント:
+
+```text
+open: 作品を開いた
+progress: 25% / 50% / 75% に到達した
+finish: 95%以上に到達した
+```
+
+詳細:
+
+```text
+docs/reader-analytics-design.md
+```
+
+D1を使う場合は、CloudflareでD1 databaseを作成し、PagesプロジェクトにD1 bindingを追加します。
+
+```text
+Variable name: TSUKUYOMI_ANALYTICS_DB
+```
+
+作業手順:
+
+1. Cloudflare Dashboardで `D1 SQL Database` を開きます。
+2. databaseを作成します。
+
+```text
+例: tsukuyomi-reader-analytics
+```
+
+3. 作成したD1 databaseのConsoleまたはQuery画面で、以下のSQLを実行します。
+
+テーブル定義:
+
+```text
+migrations/0001_reader_analytics.sql
+```
+
+4. Pagesプロジェクト `tsukuyomi-reader-tachiyomi` の `Settings > Bindings` でD1 bindingを追加します。
+
+```text
+Variable name: TSUKUYOMI_ANALYTICS_DB
+D1 database: 作成したD1 database
+```
+
+ハッシュ化用の環境変数も設定します。
+
+```text
+TSUKUYOMI_ANALYTICS_SALT=十分に長いランダム文字列
+```
+
+D1 bindingまたはテーブルが未設定の場合、読書ログは保存されません。Reader本体と作品管理はそのまま動きます。
 
 ## 具体的な初回作業
 

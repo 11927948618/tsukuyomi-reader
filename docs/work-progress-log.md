@@ -572,3 +572,55 @@ Root directory: 空欄
 - Cloudflare Pages公開側で `js/version.js` が `APP_VERSION = "0.1.52"` を返すことを確認。
 - `/api/books` はHTTP 200を返すことを確認。
 - `/api/books/test000/content` はHTTP 200、`application/epub+zip` を返すことを確認。
+
+## 2026-05-18 匿名読書ログ設計と実装
+
+### 目的
+
+- 立ち読み読者の実名、メールアドレス、端末番号、IPアドレスを保存せず、匿名読者ID単位で読書傾向を集計できるようにする。
+- 作品を開いた日時、25/50/75%到達、読了相当をD1へ保存する。
+- 同じ人物が別端末で読んだ場合は別読者扱いとし、強い端末追跡は行わない。
+
+### 対応
+
+- `docs/reader-analytics-design.md` を追加。
+- `migrations/0001_reader_analytics.sql` を追加。
+- `functions/_shared/analytics.js` を追加。
+- `POST /api/analytics/event` を追加。
+  - readerIdをサーバ側でハッシュ化。
+  - IPアドレスと生User-Agentは保存しない。
+  - D1未設定時は204で何もしない。
+- `GET /api/admin/analytics` を追加。
+  - 管理トークン必須。
+  - 作品別の開始数、読了数、匿名読者数、平均到達率、最近のイベントを返す。
+- Reader側に `js/analytics.js` を追加。
+  - localStorageにランダムな匿名読者IDを保存。
+  - `open`、25/50/75%到達、95%以上到達を送信。
+  - Do Not Track有効時は既定で送信しない。
+- 管理画面に読書ログ集計欄を追加。
+- プライバシー表示をLibraryとReader設定に追加。
+- キャッシュ更新用に `v0.1.53` へ更新。
+
+### 検証
+
+- `node --check functions/_shared/analytics.js`: OK
+- `node --check functions/_shared/rate-limit.js`: OK
+- `node --check functions/api/analytics/event.js`: OK
+- `node --check functions/api/admin/analytics/index.js`: OK
+- `node --check js/analytics.js`: OK
+- `node --check js/app.js`: OK
+- `node --check js/reader.js`: OK
+- `node --check js/admin.js`: OK
+- `node --check sw.js`: OK
+- D1モック検証:
+  - D1未設定時の `POST /api/analytics/event`: 204。
+  - D1設定時の `open` / `progress` / `finish`: 200、3件保存。
+  - 保存データにIPアドレスが含まれないことを確認。
+  - `reader_id_hash` が64文字SHA-256形式になることを確認。
+  - `GET /api/admin/analytics`: 200、作品別集計を返す。
+  - 別OriginからのPOSTは403。
+- フロント側送信ロジック検証:
+  - manifest由来作品で `open` が送信される。
+  - 25%到達で `progress:25` が送信される。
+  - 100%到達時に未送信の `progress:50` / `progress:75` と `finish:100` が送信される。
+  - 同一閾値は重複送信されない。

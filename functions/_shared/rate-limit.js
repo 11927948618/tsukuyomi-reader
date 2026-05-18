@@ -5,7 +5,8 @@ const DEFAULT_BLOCK_SECONDS = 30;
 const DEFAULT_LIMITS = {
   manifest: 60,
   content: 12,
-  cover: 60
+  cover: 60,
+  analytics: 120
 };
 
 const buckets = new Map();

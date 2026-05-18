@@ -91,6 +91,16 @@
         <div class="admin-book-list" id="adminBookList"></div>
       </section>
     </section>
+
+    <section class="card admin-card admin-analytics-card">
+      <div class="admin-list-head">
+        <h2>読書ログ</h2>
+        <button class="button ghost" id="reloadAnalyticsBtn" type="button">再読込</button>
+      </div>
+      <div id="analyticsStatus" class="status">管理トークン保存後に読み込みます</div>
+      <div class="admin-analytics-summary" id="analyticsSummary"></div>
+      <div class="admin-analytics-recent" id="analyticsRecent"></div>
+    </section>
   </main>
 
   <script type="module" src="./js/admin.js"></script>

@@ -7,8 +7,12 @@ const clearTokenBtn = document.getElementById("clearTokenBtn");
 const bookForm = document.getElementById("bookForm");
 const resetFormBtn = document.getElementById("resetFormBtn");
 const reloadBooksBtn = document.getElementById("reloadBooksBtn");
+const reloadAnalyticsBtn = document.getElementById("reloadAnalyticsBtn");
 const adminBookList = document.getElementById("adminBookList");
 const adminStatus = document.getElementById("adminStatus");
+const analyticsStatus = document.getElementById("analyticsStatus");
+const analyticsSummary = document.getElementById("analyticsSummary");
+const analyticsRecent = document.getElementById("analyticsRecent");
 const usageGuardStatus = document.getElementById("usageGuardStatus");
 const updatedAt = document.getElementById("updatedAt");
 
@@ -19,15 +23,18 @@ saveTokenBtn?.addEventListener("click", () => {
   localStorage.setItem(TOKEN_KEY, adminToken.value || "");
   setStatus("管理トークンを保存しました", "ok");
   loadBooks();
+  loadAnalytics();
 });
 
 clearTokenBtn?.addEventListener("click", () => {
   localStorage.removeItem(TOKEN_KEY);
   adminToken.value = "";
   setStatus("管理トークンを消去しました");
+  clearAnalytics();
 });
 
 reloadBooksBtn?.addEventListener("click", loadBooks);
+reloadAnalyticsBtn?.addEventListener("click", loadAnalytics);
 resetFormBtn?.addEventListener("click", resetForm);
 
 bookForm?.addEventListener("submit", async (event) => {
@@ -80,6 +87,88 @@ async function loadBooks() {
     renderUsageGuard(null);
     setStatus(err.message || "作品一覧の読み込みに失敗しました", "error");
   }
+}
+
+async function loadAnalytics() {
+  const token = getToken();
+  if (!token) {
+    clearAnalytics("管理トークンを入力してください");
+    return;
+  }
+
+  setAnalyticsStatus("読書ログを読み込み中...");
+  try {
+    const res = await fetch("./api/admin/analytics", {
+      headers: authHeaders(token)
+    });
+    const payload = await readJson(res);
+    if (!res.ok) throw new Error(payload?.error || "読書ログの読み込みに失敗しました");
+    if (payload?.enabled === false) {
+      clearAnalytics(payload.reason || "読書ログDBが未設定です");
+      return;
+    }
+    renderAnalytics(payload);
+  } catch (err) {
+    clearAnalytics(err.message || "読書ログの読み込みに失敗しました", "error");
+  }
+}
+
+function renderAnalytics(payload) {
+  const summary = Array.isArray(payload?.summary) ? payload.summary : [];
+  const recent = Array.isArray(payload?.recent) ? payload.recent : [];
+  setAnalyticsStatus(`${summary.length}作品 / 最近${recent.length}件`, "ok");
+
+  if (analyticsSummary) {
+    analyticsSummary.innerHTML = summary.length
+      ? summary.map(renderAnalyticsSummaryRow).join("")
+      : `<p class="admin-note">読書ログはまだありません。</p>`;
+  }
+
+  if (analyticsRecent) {
+    analyticsRecent.innerHTML = recent.length
+      ? recent.map(renderAnalyticsRecentRow).join("")
+      : "";
+  }
+}
+
+function renderAnalyticsSummaryRow(row) {
+  const readers = Number(row.readers) || 0;
+  const opens = Number(row.opens) || 0;
+  const finishes = Number(row.finishes) || 0;
+  const finishRate = opens > 0 ? Math.round((finishes / opens) * 100) : 0;
+  const progress = Number(row.avgProgress) || 0;
+  return `
+    <div class="admin-analytics-row">
+      <strong>${escapeHtml(row.bookId || "-")}</strong>
+      <span><span class="admin-analytics-label">読者</span> ${readers}</span>
+      <span><span class="admin-analytics-label">開始</span> ${opens}</span>
+      <span><span class="admin-analytics-label">読了</span> ${finishes}</span>
+      <span><span class="admin-analytics-label">率</span> ${finishRate}% / 平均${progress}%</span>
+    </div>
+  `;
+}
+
+function renderAnalyticsRecentRow(row) {
+  return `
+    <div class="admin-analytics-row">
+      <span>${escapeHtml(formatDateTime(row.createdAt))}</span>
+      <strong>${escapeHtml(row.eventType || "-")}</strong>
+      <span>${escapeHtml(row.bookId || "-")}</span>
+      <span>${row.progressPercent == null ? "-" : `${Number(row.progressPercent) || 0}%`}</span>
+    </div>
+  `;
+}
+
+function clearAnalytics(message = "管理トークン保存後に読み込みます", type = "") {
+  setAnalyticsStatus(message, type);
+  if (analyticsSummary) analyticsSummary.innerHTML = "";
+  if (analyticsRecent) analyticsRecent.innerHTML = "";
+}
+
+function setAnalyticsStatus(message, type = "") {
+  if (!analyticsStatus) return;
+  analyticsStatus.textContent = message;
+  analyticsStatus.className = `status ${type}`.trim();
 }
 
 function renderUsageGuard(guard) {
@@ -219,4 +308,18 @@ function setStatus(message, type = "") {
   adminStatus.className = `status ${type}`.trim();
 }
 
+function formatDateTime(value) {
+  if (!value) return "-";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value);
+  return date.toLocaleString("ja-JP", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit"
+  });
+}
+
 loadBooks();
+loadAnalytics();

@@ -7,5 +7,9 @@
   "showVersion": true,
   "showCopyright": true,
   "copyright": "© 2026 hal the juggernaut. All rights reserved.",
-  "booksManifest": "/api/books"
+  "booksManifest": "/api/books",
+  "analyticsEnabled": true,
+  "analyticsEndpoint": "/api/analytics/event",
+  "analyticsRespectDoNotTrack": true,
+  "analyticsNotice": "匿名の読書ログ（作品を開いた日時、進捗、読了）を分析目的で記録します。IPアドレスや氏名は保存しません。"
 }
