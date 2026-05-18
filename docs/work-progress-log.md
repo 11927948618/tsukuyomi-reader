@@ -898,3 +898,11 @@ Root directory: 空欄
   - `すぐ使う` に作品IDなどの短いヘルプが出ることを確認。
   - `更新マニュアル` から `docs/tachiyomi-update-manual.md` を読み込めることを確認。
   - `閉じる` でポップアップを閉じられることを確認。
+
+### 追記
+
+- commit: `0248f25 add admin help modal`
+- `main` へpush済み。
+- Cloudflare Pages公開側で `js/version.js` が `APP_VERSION = "0.1.60"` を返すことを確認。
+- 公開側 `admin.html` に `管理ヘルプ` とマニュアル表示導線が含まれることを確認。
+- 公開側 `docs/tachiyomi-update-manual.md` がHTTP 200で読めることを確認。
