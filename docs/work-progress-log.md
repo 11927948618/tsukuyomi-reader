@@ -752,3 +752,11 @@ Root directory: 空欄
   - 3件目カードまで表示されることを確認。
   - Readerを開き、上部UI表示中の本文枠 `375x693`、非表示後 `375x828`。
   - 上部UI非表示後も `scrollLeft` は有限値で、本文枠とページ幅が破綻しないことを確認。
+
+### 追記
+
+- commit: `0350eff set mobile support baseline`
+- `main` へpush済み。
+- Cloudflare Pages公開側で `js/version.js` が `APP_VERSION = "0.1.56"` を返すことを確認。
+- `/js/legacy-check.js`: HTTP 200
+- `/api/books`: GETでHTTP 200、`application/json`
