@@ -138,9 +138,49 @@ export function initReader({
     const height = topbar?.classList.contains("hidden") ? 0 : (topbar?.offsetHeight || 64);
     document.documentElement.style.setProperty("--reader-topbar-height", `${height}px`);
   };
-  const reflowTopbar = () => {
+
+  const captureReaderPosition = () => {
+    if (!scrollContainer) return null;
+    return {
+      logicalLeft: toLogicalLeft(scrollContainer, scrollContainer.scrollLeft, pageDirection),
+      scrollTop: scrollContainer.scrollTop
+    };
+  };
+
+  const restoreReaderPosition = (position) => {
+    if (!position || !scrollContainer) return;
+    if (displayMode === "scrolly") {
+      scrollContainer.scrollTop = Math.max(0, Number(position.scrollTop) || 0);
+      return;
+    }
+    scrollToLogicalLeft(Math.max(0, Number(position.logicalLeft) || 0));
+  };
+
+  const reflowReaderLayout = (options = {}) => {
+    const position = options.preservePosition ? captureReaderPosition() : null;
+    applyViewportMetrics();
     applyTopbarLayoutMode();
     applyTopbarOffset();
+    applyPageWidth();
+    updatePageDirection({ preservePosition: true });
+
+    const settle = () => {
+      applyViewportMetrics();
+      applyTopbarOffset();
+      applyPageWidth();
+      updatePageDirection({ preservePosition: true });
+      restoreReaderPosition(position);
+      if (typeof refreshHScroll === "function") refreshHScroll();
+    };
+
+    requestAnimationFrame(() => {
+      settle();
+      requestAnimationFrame(settle);
+    });
+  };
+
+  const reflowTopbar = (options = {}) => {
+    reflowReaderLayout(options);
   };
 
   const allowExport = siteConfig?.allowExport !== false;
@@ -211,19 +251,14 @@ export function initReader({
   bindPageTap(tapZone, scrollContainer);
   bindWheelScroll(readerViewport, scrollContainer, tapZone);
   applyDisplayMode(displayMode, { tapInScroll });
-  applyViewportMetrics();
-  reflowTopbar();
-  window.addEventListener("resize", applyPageWidth);
-  window.addEventListener("orientationchange", applyPageWidth);
-  window.addEventListener("resize", applyViewportMetrics);
-  window.addEventListener("orientationchange", applyViewportMetrics);
-  window.visualViewport?.addEventListener("resize", applyViewportMetrics);
+  reflowReaderLayout();
+  const handleViewportResize = () => reflowReaderLayout({ preservePosition: true });
+  window.addEventListener("resize", handleViewportResize);
+  window.addEventListener("orientationchange", handleViewportResize);
+  if (window.visualViewport) window.visualViewport.addEventListener("resize", handleViewportResize);
   window.addEventListener("resize", updateSettingValueLabels);
   window.addEventListener("orientationchange", updateSettingValueLabels);
-  window.visualViewport?.addEventListener("resize", updateSettingValueLabels);
-  window.addEventListener("resize", reflowTopbar);
-  window.addEventListener("orientationchange", reflowTopbar);
-  window.visualViewport?.addEventListener("resize", reflowTopbar);
+  if (window.visualViewport) window.visualViewport.addEventListener("resize", updateSettingValueLabels);
   if (openSettingsOnStart) {
     requestAnimationFrame(() => toggleSettings(true));
   }
@@ -825,12 +860,12 @@ export function initReader({
         topbar.classList.remove("hidden");
         document.body.classList.remove("chrome-hidden");
         skipNextTap = true;
-        reflowTopbar();
+        reflowTopbar({ preservePosition: true });
         return;
       }
       topbar.classList.add("hidden");
       document.body.classList.add("chrome-hidden");
-      reflowTopbar();
+      reflowTopbar({ preservePosition: true });
     };
 
     if (window.PointerEvent) {
@@ -862,7 +897,7 @@ export function initReader({
     }
     topbar.classList.toggle("hidden");
     document.body.classList.toggle("chrome-hidden", topbar.classList.contains("hidden"));
-    reflowTopbar();
+    reflowTopbar({ preservePosition: true });
   }
 
   function applyDisplayMode(mode, options = {}) {
@@ -878,6 +913,7 @@ export function initReader({
     } else {
       document.body.classList.add("mode-scrolly");
     }
+    requestAnimationFrame(() => reflowReaderLayout({ preservePosition: true }));
   }
 
   function bindWheelScroll(viewport, scrollEl, captureEl) {

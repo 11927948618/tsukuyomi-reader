@@ -100,7 +100,10 @@ https://tsukuyomi-reader-tachiyomi.pages.dev/
 - Windows / Edge
 - Surface Go / Edge
 - Android / Chrome
-- iPhone or iPad / Safari
+- iPhone / Safari（iOS 13以降。目安: iPhone 6s / iPhone SE 第1世代以降）
+- iPad / Safari（iPadOS 13以降。目安: iPad Air 2 / iPad mini 4 / iPad Pro以降）
+
+iPhone 6 Plus以前、iOS 12以下、古いSafariは対象外とします。対象外端末で黒画面ではなく未対応案内が出れば許容とします。
 
 各端末で見る項目:
 
@@ -133,7 +136,8 @@ https://tsukuyomi-reader-tachiyomi.pages.dev/
 - Windows Edge: OK
 - Surface Go Edge: OK
 - Android Chrome: 未確認
-- iPhone Safari: Reader設定パネルのスクロール要再確認
+- iPhone Safari（iOS 13以上）: Reader設定パネルのスクロール要再確認
+- iPhone 6 Plus以前 / iOS 12以下: 対象外。未対応案内のみ確認
 
 ### 発見事項
 

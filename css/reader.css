@@ -1,5 +1,6 @@
 .reader-layout {
   position: relative;
+  min-height: 100vh;
   min-height: var(--reader-viewport-height, 100dvh);
   padding-top: var(--reader-topbar-height, 64px);
 }
@@ -9,6 +10,7 @@ body.chrome-hidden .reader-layout {
 }
 
 body.chrome-hidden .reader-main {
+  height: 100vh;
   height: var(--reader-viewport-height, 100dvh);
 }
 
@@ -119,6 +121,7 @@ body.topbar-mobile-wrap .topbar-group-right .button {
   gap: 12px;
   width: min(1200px, 94vw);
   margin: 0 auto;
+  height: calc(100vh - var(--reader-topbar-height, 64px));
   height: calc(var(--reader-viewport-height, 100dvh) - var(--reader-topbar-height, 64px));
   padding: 12px 0 max(12px, env(safe-area-inset-bottom));
   box-sizing: border-box;
@@ -129,6 +132,7 @@ body.topbar-mobile-wrap .topbar-group-right .button {
   top: 0;
   right: 0;
   width: min(320px, 86vw);
+  height: 100vh;
   height: 100dvh;
   background: var(--panel);
   border-left: 1px solid var(--border);
@@ -387,6 +391,7 @@ body.mode-scrolly .reader-content {
   top: 0;
   right: 0;
   width: min(320px, 92vw);
+  height: 100vh;
   height: 100dvh;
   background: var(--panel);
   border-left: 1px solid var(--border);
@@ -703,6 +708,16 @@ body {
 
   .reader-title {
     font-size: 14px;
+  }
+
+  .reader-main {
+    width: min(100vw - 16px, 720px);
+    padding: 8px 0 max(14px, env(safe-area-inset-bottom));
+  }
+
+  .reader-viewport {
+    border-radius: 16px;
+    padding: 18px 16px;
   }
 
   .settings-panel {

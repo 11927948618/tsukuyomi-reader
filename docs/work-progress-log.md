@@ -632,3 +632,76 @@ Root directory: 空欄
 - Cloudflare Pages公開側で `js/version.js` が `APP_VERSION = "0.1.53"` を返すことを確認。
 - `/api/books` はHTTP 200を返すことを確認。
 - `/api/analytics/event` はD1未設定状態でHTTP 204を返し、Reader本体に影響しないことを確認。
+
+## 2026-05-18 モバイル表示の実機指摘対応
+
+### 目的
+
+- AndroidでReader上部UIを隠した後、縦書き段組みが崩れる問題を抑制する。
+- 立ち読み作品一覧をスマホで複数作品まで自然にスクロールして選べるようにする。
+- 古いiPhone/Safariで黒画面だけになる状態を避ける。
+
+### 対応
+
+- `js/reader.js`
+  - 上部UI表示/非表示、画面リサイズ、表示モード変更時にReader寸法を再計算する処理を統合。
+  - 縦書きRTLの物理スクロール位置ではなく、論理ページ位置を保持してから再レイアウトするよう変更。
+- `templates/library.html` / `css/base.css` / `js/library.js`
+  - 作品一覧の開閉ボタンを見出し右側の小ボタンに変更。
+  - スマホでは作品一覧をカード内スクロールではなくページ全体スクロールに変更。
+  - 立ち読みモードのスマホ表示では作品一覧を上に出す。
+  - 作品カードの表紙幅、説明文、読むボタンをスマホ向けに調整。
+- `css/reader.css`
+  - `100dvh` 非対応環境向けに `100vh` フォールバックを追加。
+  - スマホReaderの余白と本文枠幅を調整。
+- `js/legacy-check.js`
+  - 古いSafari等で `?.` / `??` が使えない場合、黒画面ではなく未対応案内を表示。
+  - iPhone 6 Plus級の完全対応は、Reader用JSの構文互換化が別作業として必要。
+- キャッシュ更新用に `v0.1.54` へ更新。
+
+### 検証
+
+- `node --check js/reader.js`: OK
+- `node --check js/library.js`: OK
+- `node --check js/legacy-check.js`: OK
+- `node --check js/app.js`: OK
+- `node --check js/version.js`: OK
+- `node --check sw.js`: OK
+- ローカルHTTP起動確認:
+  - `/`: HTTP 200
+  - `/js/legacy-check.js`: HTTP 200
+  - `/js/version.js`: `APP_VERSION = "0.1.54"`
+
+### 追記
+
+- ローカルコミット作成済み。
+- Codex側の使用量制限により `git push origin main` は未実行。
+- 公開反映には手元で `git push origin main` を実行する必要がある。
+
+## 2026-05-18 iPhone / iPad 対応世代の明示
+
+### 方針
+
+- iPhone 6 Plus以前、iOS 12以下のSafariは対象外とする。
+- iPhone / iPadは、iOS 13 / iPadOS 13以降を対象にする。
+- 目安:
+  - iPhone: iPhone 6s / iPhone SE 第1世代以降
+  - iPad: iPad Air 2 / iPad mini 4 / iPad Pro以降
+- 対象外端末では黒画面ではなく未対応案内が出れば許容とする。
+
+### 対応
+
+- `js/legacy-check.js` の未対応案内に対象世代を明記。
+- `docs/tachiyomi-reader-manual.md` の推奨ブラウザ欄に対象世代を追記。
+- `docs/tachiyomi-device-checklist.md` の端末別確認に対象世代と対象外基準を追記。
+- `templates/help.html` の配布前チェックリストに対象世代を追記。
+- キャッシュ更新用に `v0.1.55` へ更新。
+
+### 検証
+
+- `node --check js/legacy-check.js`: OK
+- `node --check js/version.js`: OK
+- ローカルHTTP起動確認:
+  - `/`: HTTP 200
+  - `/js/legacy-check.js`: HTTP 200
+  - `/js/version.js`: `APP_VERSION = "0.1.55"`

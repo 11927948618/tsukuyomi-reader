@@ -197,7 +197,7 @@ export function initLibrary({ siteConfig = null, onOpenBook, onExport, getCurren
     if (bundledBooksList) bundledBooksList.hidden = !bundledBooksOpen;
     if (bundledBooksToggleBtn) {
       bundledBooksToggleBtn.setAttribute("aria-expanded", bundledBooksOpen ? "true" : "false");
-      bundledBooksToggleBtn.textContent = bundledBooksOpen ? "作品一覧を閉じる" : "作品一覧を開く";
+      bundledBooksToggleBtn.textContent = bundledBooksOpen ? "閉じる" : "開く";
     }
   }
 }

@@ -102,6 +102,9 @@ Library画面の以下を順に試します。
 
 - Windows: Microsoft Edge / Google Chrome
 - Android: Google Chrome
-- iPhone / iPad: Safari
+- iPhone: Safari（iOS 13以降。目安: iPhone 6s / iPhone SE 第1世代以降）
+- iPad: Safari（iPadOS 13以降。目安: iPad Air 2 / iPad mini 4 / iPad Pro以降）
+
+iPhone 6 Plus以前、iOS 12以下、古いSafariでは対象外です。対象外の端末では未対応案内が表示される場合があります。
 
 古いブラウザでは、縦書き表示やキャッシュ更新が正常に動かない場合があります。
