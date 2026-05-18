@@ -845,3 +845,12 @@ Root directory: 空欄
   - R2軽量集計で `open` と `progress:50` を保存できることを確認。
   - 管理用payloadで `opens: 1`、`avgProgress: 50` を返すことを確認。
   - R2使用状況APIがオブジェクト数、使用容量、残り目安を返すことを確認。
+
+### 追記
+
+- commit: `0c90663 add admin storage and lite analytics`
+- `main` へpush済み。
+- Cloudflare Pages公開側で `js/version.js` が `APP_VERSION = "0.1.58"` を返すことを確認。
+- `/api/books`: GETでHTTP 200、`application/json`
+- `/api/admin/storage`: 未認証でHTTP 401
+- `/api/admin/analytics`: 未認証でHTTP 401
