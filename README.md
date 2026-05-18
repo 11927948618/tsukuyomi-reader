@@ -39,6 +39,7 @@
   - Cloudflare Pages Functions + R2 によるEPUB / TXT / 表紙保存
   - 管理APIから公開 / 非公開を切替
   - R2使用量ガードによる新規公開停止 / 公開一時停止
+  - 公開APIの簡易IPレート制限
 
 ## マニュアル
 
@@ -46,6 +47,7 @@
 - [立ち読みモード 読者向けマニュアル](docs/tachiyomi-reader-manual.md)
 - [立ち読みモード 実機確認チェックリスト](docs/tachiyomi-device-checklist.md)
 - [Cloudflare R2 Usage Guard設計](docs/cloudflare-usage-guard-design.md)
+- [Cloudflare F5 Defense設計](docs/cloudflare-f5-defense-design.md)
 - [作業進捗ログ](docs/work-progress-log.md)
 
 ## ディレクトリ

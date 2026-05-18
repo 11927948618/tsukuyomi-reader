@@ -119,6 +119,27 @@ Pages Functions / Workersは、R2の大きな本文ファイルを読む前にus
   newPublishDisabledなら、新規公開または非公開から公開への変更を拒否する
 ```
 
+## 簡易IPレート制限
+
+独自ドメインがない `*.pages.dev` 運用では、Cloudflare WAF Rate Limiting Rulesを前提にしにくいため、公開APIの入口に軽量なIPレート制限を置きます。
+
+この制限はR2を読む前に実行します。本文や表紙への短時間連打は429で返し、R2のClass B操作を増やしにくくします。
+
+既定値:
+
+```text
+/api/books: 10秒に60回まで
+/api/books/:id/content: 10秒に12回まで
+/api/books/:id/cover: 10秒に60回まで
+超過時: 30秒間 429
+```
+
+詳細は以下に分離します。
+
+```text
+docs/cloudflare-f5-defense-design.md
+```
+
 ## キャッシュ
 
 usage-guard.jsonを毎リクエストR2から読むと、それ自体がClass B操作になります。そのため、アプリ側では短時間キャッシュします。
@@ -171,7 +192,7 @@ R2 bucket: 対象バケット
 
 この設計は、課金事故を避けるための安全装置です。大量分散攻撃を完全に止めるものではありません。
 
-即時防御には、Cloudflare Rate Limiting Rules、WAF、Bot対策、独自ドメインでのCloudflare管理を併用します。
+即時防御には、アプリ側の簡易IPレート制限、Cloudflare Rate Limiting Rules、WAF、Bot対策、独自ドメインでのCloudflare管理を併用します。
 
 ## 参考
 

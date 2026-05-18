@@ -530,3 +530,37 @@ Root directory: 空欄
 - `main` へpush済み。
 - Cloudflare Pages公開側で `js/version.js` が `APP_VERSION = "0.1.51"` を返すことを確認。
 - `/api/books` はHTTP 200で公開作品一覧を返すことを確認。
+
+## 2026-05-18 簡易F5対策の実装
+
+### 目的
+
+- 独自ドメインがない `*.pages.dev` 運用でも、無料で入れられる短時間連打対策を追加する。
+- R2を読む前に公開APIで同一IPの過剰アクセスを429にし、R2 Class B操作の増加を抑える。
+- R2使用量ガードは最後の停止線として残す。
+
+### 対応
+
+- `functions/_shared/rate-limit.js` を追加。
+  - module scopeのMapで、同一IP・API種別ごとの短時間アクセス数を記録。
+  - 既定値は `/api/books` と表紙が10秒60回、本文が10秒12回。
+  - 超過時は30秒間429を返す。
+- 公開API3本にレート制限を追加。
+  - `/api/books`
+  - `/api/books/:id/content`
+  - `/api/books/:id/cover`
+- `docs/cloudflare-f5-defense-design.md` を追加。
+- `docs/cloudflare-usage-guard-design.md` と `docs/tachiyomi-update-manual.md` に運用メモを追記。
+- キャッシュ更新用に `v0.1.52` へ更新。
+
+### 検証
+
+- `node --check functions/_shared/rate-limit.js`: OK
+- `node --check functions/api/books/index.js`: OK
+- `node --check functions/api/books/[id]/content.js`: OK
+- `node --check functions/api/books/[id]/cover.js`: OK
+- `node --check sw.js`: OK
+- レート制限ヘルパー単体確認:
+  - `TSUKUYOMI_RATE_LIMIT_CONTENT=2` で同一IPの3回目アクセスが429。
+  - `retry-after` ヘッダーが付与される。
+  - `TSUKUYOMI_RATE_LIMIT_DISABLED=true` で制限が無効化される。

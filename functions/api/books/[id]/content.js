@@ -1,7 +1,11 @@
 import { getBucket, error, readCatalog, serveR2Object, contentTypeForExt } from "../../../_shared/books.js";
+import { applyRateLimit } from "../../../_shared/rate-limit.js";
 import { readUsageGuard, publicAssetPausedResponse } from "../../../_shared/usage-guard.js";
 
 export async function onRequestGet(context) {
+  const rateLimited = applyRateLimit(context.request, context.env, "content");
+  if (rateLimited) return rateLimited;
+
   const bucket = getBucket(context.env);
   if (!bucket) return error("R2 bucket binding が未設定です", 500);
 

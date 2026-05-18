@@ -211,6 +211,40 @@ workers/usage-guard/
 
 このWorkerはR2 MetricsをGraphQL Analytics APIで取得し、月間見込みに応じて `usage-guard.json` を更新します。
 
+## 簡易F5対策
+
+独自ドメインがない `*.pages.dev` 運用でも使える保険として、公開APIに簡易IPレート制限を入れています。
+
+既定値:
+
+```text
+/api/books: 10秒に60回まで
+/api/books/:id/content: 10秒に12回まで
+/api/books/:id/cover: 10秒に60回まで
+超過時: 30秒間 429
+```
+
+この制限はR2を読む前に働きます。Pages Functionsの実行自体は発生しますが、F5連打で本文ファイルや表紙ファイルのR2読み取りが増え続けることを抑えます。
+
+通常読者に429が出る場合は、Cloudflare Pagesの環境変数で値を上げます。
+
+```text
+TSUKUYOMI_RATE_LIMIT_CONTENT=20
+TSUKUYOMI_RATE_LIMIT_BLOCK_SECONDS=10
+```
+
+一時的に無効化する場合:
+
+```text
+TSUKUYOMI_RATE_LIMIT_DISABLED=true
+```
+
+詳細:
+
+```text
+docs/cloudflare-f5-defense-design.md
+```
+
 ## 具体的な初回作業
 
 初回だけ、開発環境側で以下を行います。
