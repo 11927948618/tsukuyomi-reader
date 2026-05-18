@@ -36,7 +36,8 @@
 
         <div class="field">
           <label class="label" for="bookId">作品ID</label>
-          <input class="input" id="bookId" name="id" type="text" placeholder="空ならタイトルから自動作成" />
+          <input class="input" id="bookId" name="id" type="text" pattern="[A-Za-z0-9_-]*" placeholder="例: namida-01 / 空なら自動作成" />
+          <p class="admin-note">英数字、ハイフン、アンダースコアだけ使えます。日本語タイトルの場合は空欄のままでも自動IDを作れます。</p>
         </div>
 
         <div class="field">
