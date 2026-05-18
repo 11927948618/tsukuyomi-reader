@@ -12,6 +12,7 @@ import {
   extFromFile,
   contentTypeForExt
 } from "../../../_shared/books.js";
+import { readUsageGuard, shouldBlockPublishing } from "../../../_shared/usage-guard.js";
 
 export async function onRequestGet(context) {
   const auth = requireAdmin(context.request, context.env);
@@ -26,7 +27,8 @@ export async function onRequestGet(context) {
     contentKey: book.contentKey || "",
     coverKey: book.coverKey || ""
   }));
-  return json({ books, updatedAt: catalog.updatedAt || "" });
+  const guard = await readUsageGuard(bucket, context.env);
+  return json({ books, updatedAt: catalog.updatedAt || "", guard });
 }
 
 export async function onRequestPost(context) {
@@ -48,6 +50,12 @@ export async function onRequestPost(context) {
 
   const bookFile = form.get("bookFile");
   const cover = form.get("cover");
+  const nextPublished = boolValue(form.get("published"));
+  const guard = await readUsageGuard(bucket, context.env);
+  if (shouldBlockPublishing(guard, current.published === true, nextPublished)) {
+    return error("使用量ガードにより、新規公開は一時停止中です。非公開保存は可能です。", 403);
+  }
+
   let contentKey = current.contentKey || "";
   let coverKey = current.coverKey || "";
   let format = current.format || "epub";
@@ -84,7 +92,7 @@ export async function onRequestPost(context) {
     format,
     contentKey,
     coverKey,
-    published: boolValue(form.get("published")),
+    published: nextPublished,
     updatedAt: safeText(form.get("updatedAt"), new Date().toISOString().slice(0, 10)),
     savedAt: new Date().toISOString()
   };

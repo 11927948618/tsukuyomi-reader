@@ -1,0 +1,23 @@
+name = "tsukuyomi-usage-guard"
+main = "src/index.js"
+compatibility_date = "2026-05-18"
+
+[triggers]
+crons = ["0 0 * * *"]
+
+[[r2_buckets]]
+binding = "TSUKUYOMI_BOOKS_BUCKET"
+bucket_name = "tsukuyomi-reader-books"
+
+[vars]
+CF_ACCOUNT_ID = "replace-with-account-id"
+R2_BUCKET_NAME = "tsukuyomi-reader-books"
+USAGE_WARN_CLASS_B = "7000000"
+USAGE_RESTRICT_CLASS_B = "8000000"
+USAGE_PAUSE_CLASS_B = "9000000"
+
+# Set CF_ANALYTICS_TOKEN as a secret:
+# wrangler secret put CF_ANALYTICS_TOKEN
+
+# Optional manual endpoint token:
+# wrangler secret put USAGE_GUARD_TOKEN

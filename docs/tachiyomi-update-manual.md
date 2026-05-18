@@ -172,6 +172,45 @@ TSUKUYOMI_ADMIN_TOKEN=十分に長いランダム文字列
 
 `wrangler.example.toml` は設定例です。実際のプロジェクトでWranglerを使う場合は、必要に応じて `wrangler.toml` にコピーして使います。
 
+## 使用量ガード
+
+R2のClass B操作が増えすぎた場合に備えて、使用量ガードを用意しています。設計の詳細は以下を参照します。
+
+```text
+docs/cloudflare-usage-guard-design.md
+```
+
+ガード状態はR2内の以下に保存されます。
+
+```text
+_tsukuyomi/usage-guard.json
+```
+
+主な状態:
+
+- `level: watch`
+  - 使用量注意。公開は継続します。
+- `level: restrict-publishing`
+  - 新規公開と非公開作品の再公開を止めます。既存公開作品は読めます。
+- `level: paused`
+  - 公開を一時停止します。読者画面の作品一覧は空になり、本文配信は停止します。
+
+緊急時はCloudflare Pagesの環境変数で手動停止できます。
+
+```text
+TSUKUYOMI_PUBLICATION_PAUSED=true
+```
+
+この値がtrueの場合、`usage-guard.json` より優先して公開停止します。解除する場合は `false` にするか、環境変数を削除して再デプロイします。
+
+自動監視Workerの雛形は以下です。
+
+```text
+workers/usage-guard/
+```
+
+このWorkerはR2 MetricsをGraphQL Analytics APIで取得し、月間見込みに応じて `usage-guard.json` を更新します。
+
 ## 具体的な初回作業
 
 初回だけ、開発環境側で以下を行います。

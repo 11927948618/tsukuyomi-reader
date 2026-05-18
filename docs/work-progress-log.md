@@ -467,3 +467,59 @@ Root directory: 空欄
 - Cloudflare Pages公開側で `js/version.js` が `APP_VERSION = "0.1.50"` を返すことを確認。
 - 公開側の `js/normalize-epub.js` に `PRESERVE_EPUB_CSS = false` と `copyLanguageOnly()` が反映されていることを確認。
 - 公開側の `css/reader.css` に `.epub-html` / `.epub-body` のReader組版継承CSSが反映されていることを確認。
+
+## 2026-05-18 Cloudflare R2使用量ガード設計と実装
+
+### 目的
+
+- Reader以外の公開アプリを増やす場合も、R2の無料枠はアカウント全体で共有される。
+- 公開アプリが増えるとClass B操作も足し算で増えるため、共通で使える使用量ガード設計を資料化する。
+- R2 Metricsの月間見込みに応じて、新規公開停止または公開一時停止できる構造を入れる。
+
+### 対応
+
+- `docs/cloudflare-usage-guard-design.md` を追加。
+  - R2 Metrics監視、Cron Worker、`usage-guard.json`、公開停止ガードの共通設計を記載。
+- `functions/_shared/usage-guard.js` を追加。
+  - `_tsukuyomi/usage-guard.json` を短時間キャッシュして読む。
+  - `TSUKUYOMI_PUBLICATION_PAUSED=true` による手動停止を優先。
+  - 公開停止時のmanifest空配列応答、本文/表紙503応答、新規公開ブロック判定を提供。
+- 公開APIにガードを追加。
+  - `/api/books`
+  - `/api/books/:id/content`
+  - `/api/books/:id/cover`
+- 管理APIにガードを追加。
+  - `newPublishDisabled` 時は、新規公開または非公開から公開への変更を403で拒否。
+  - 既存公開作品の非公開化や非公開保存は可能。
+- 管理画面に使用量ガード状態の表示を追加。
+- `workers/usage-guard/` を追加。
+  - Cloudflare GraphQL Analytics APIでR2 Metricsを取得。
+  - 月間Class B見込みを計算。
+  - `_tsukuyomi/usage-guard.json` をR2へ書き込む別Worker雛形。
+- `README.md` と `docs/tachiyomi-update-manual.md` に関連資料と運用メモを追記。
+- キャッシュ更新用に `v0.1.51` へ更新。
+
+### 検証
+
+- `node --check functions/_shared/books.js`: OK
+- `node --check functions/_shared/usage-guard.js`: OK
+- `node --check functions/api/books/index.js`: OK
+- `node --check functions/api/books/[id]/content.js`: OK
+- `node --check functions/api/books/[id]/cover.js`: OK
+- `node --check functions/api/admin/books/index.js`: OK
+- `node --check functions/api/admin/books/[id].js`: OK
+- `node --check js/admin.js`: OK
+- `node --check sw.js`: OK
+- `node --check workers/usage-guard/src/index.js`: OK
+- R2モック検証:
+  - 通常時 `/api/books`: 200、作品一覧を返す。
+  - 通常時 `/api/books/a/content`: 200、本文を返す。
+  - `TSUKUYOMI_PUBLICATION_PAUSED=true` 時 `/api/books`: 200、`[]` を返す。
+  - `TSUKUYOMI_PUBLICATION_PAUSED=true` 時 `/api/books/a/content`: 503。
+  - `TSUKUYOMI_PUBLICATION_PAUSED=true` 時、管理APIの新規公開POST: 403。
+
+### 次にやること
+
+- 変更をcommit/pushしてCloudflare Pagesへ反映する。
+- 公開側で `v0.1.51` を確認する。
+- 必要になった段階で `workers/usage-guard/` を別Workerとしてデプロイする。

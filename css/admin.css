@@ -83,6 +83,23 @@
   margin-top: 12px;
 }
 
+.admin-guard {
+  margin-top: 10px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  background: color-mix(in srgb, #c28d2f, transparent 84%);
+  font-size: 0.86rem;
+  line-height: 1.35;
+}
+
+.admin-guard.level-paused,
+.admin-guard.level-restrict-publishing {
+  background: color-mix(in srgb, #c74c4c, transparent 84%);
+  border-color: color-mix(in srgb, #c74c4c, var(--border) 42%);
+}
+
 .admin-book-card {
   display: grid;
   grid-template-columns: 72px minmax(0, 1fr);

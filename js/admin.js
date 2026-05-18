@@ -9,6 +9,7 @@ const resetFormBtn = document.getElementById("resetFormBtn");
 const reloadBooksBtn = document.getElementById("reloadBooksBtn");
 const adminBookList = document.getElementById("adminBookList");
 const adminStatus = document.getElementById("adminStatus");
+const usageGuardStatus = document.getElementById("usageGuardStatus");
 const updatedAt = document.getElementById("updatedAt");
 
 adminToken.value = localStorage.getItem(TOKEN_KEY) || "";
@@ -71,12 +72,37 @@ async function loadBooks() {
     });
     const payload = await readJson(res);
     if (!res.ok) throw new Error(payload?.error || "作品一覧の読み込みに失敗しました");
+    renderUsageGuard(payload?.guard || null);
     renderBooks(Array.isArray(payload?.books) ? payload.books : []);
     setStatus(`${payload.books?.length || 0}件`, "ok");
   } catch (err) {
     adminBookList.innerHTML = "";
+    renderUsageGuard(null);
     setStatus(err.message || "作品一覧の読み込みに失敗しました", "error");
   }
+}
+
+function renderUsageGuard(guard) {
+  if (!usageGuardStatus) return;
+  if (!guard || !guard.level || guard.level === "ok") {
+    usageGuardStatus.hidden = true;
+    usageGuardStatus.textContent = "";
+    usageGuardStatus.className = "admin-guard";
+    return;
+  }
+
+  const labels = {
+    watch: "使用量注意",
+    "restrict-publishing": "新規公開停止",
+    paused: "公開一時停止"
+  };
+  const projected = guard.metrics?.classBProjected
+    ? ` / 月間見込み ${Number(guard.metrics.classBProjected).toLocaleString()}回`
+    : "";
+  const reason = guard.reason ? ` / ${guard.reason}` : "";
+  usageGuardStatus.hidden = false;
+  usageGuardStatus.className = `admin-guard level-${guard.level}`;
+  usageGuardStatus.textContent = `${labels[guard.level] || guard.level}${projected}${reason}`;
 }
 
 function renderBooks(books) {

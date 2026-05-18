@@ -11,8 +11,8 @@ export function json(data, init = {}) {
   });
 }
 
-export function error(message, status = 400) {
-  return json({ error: message }, { status });
+export function error(message, status = 400, init = {}) {
+  return json({ error: message }, { ...init, status });
 }
 
 export function getBucket(env) {
