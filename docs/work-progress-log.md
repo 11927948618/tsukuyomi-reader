@@ -523,3 +523,10 @@ Root directory: 空欄
 - 変更をcommit/pushしてCloudflare Pagesへ反映する。
 - 公開側で `v0.1.51` を確認する。
 - 必要になった段階で `workers/usage-guard/` を別Workerとしてデプロイする。
+
+### 追記
+
+- commit: `369a871 add r2 usage guard`
+- `main` へpush済み。
+- Cloudflare Pages公開側で `js/version.js` が `APP_VERSION = "0.1.51"` を返すことを確認。
+- `/api/books` はHTTP 200で公開作品一覧を返すことを確認。
