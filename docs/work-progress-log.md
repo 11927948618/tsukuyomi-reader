@@ -906,3 +906,22 @@ Root directory: 空欄
 - Cloudflare Pages公開側で `js/version.js` が `APP_VERSION = "0.1.60"` を返すことを確認。
 - 公開側 `admin.html` に `管理ヘルプ` とマニュアル表示導線が含まれることを確認。
 - 公開側 `docs/tachiyomi-update-manual.md` がHTTP 200で読めることを確認。
+
+## 2026-05-18 EPUB br改行分割修正
+
+### 対応
+
+- EPUB内の `<p>...<br>...</p>` 形式の本文で、br分割が最初の1個で止まっていた問題を修正。
+- brタグの検出を `<br>` / `<br />` / 属性付きbrに対応する正規表現へ変更。
+- brが多い段落を論理段落へ分ける際、同一段落内の明示改行を `<br />` として残すように変更。
+- 青空文庫判定に乗らないEPUBでも、brが3個以上ある巨大段落はReader向けに分割するように変更。
+- キャッシュ更新用に `v0.1.61` へ更新。
+
+### 検証
+
+- `node --check js/normalize-epub.js`: OK
+- `node --check js/version.js`: OK
+- Playwright Chromium / local:
+  - テスト用EPUBをブラウザ上で生成して `normalizeEpub()` を実行。
+  - 青空文庫判定あり/なしの両方で、brが3個以上ある巨大段落が複数の `<p>` に分かれることを確認。
+  - 同一段落内の明示改行が `<br />` として残ることを確認。

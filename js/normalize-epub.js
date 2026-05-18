@@ -17,6 +17,7 @@ const BLOCKED_SELECTORS = [
 ].join(",");
 
 const PRESERVE_EPUB_CSS = false;
+const BR_TAG_PATTERN = /<br\b[^>]*\/?>/gi;
 
 export async function normalizeEpubToBook(file) {
   if (typeof JSZip === "undefined") {
@@ -67,6 +68,8 @@ export async function normalizeEpubToBook(file) {
     normalizeAozoraTextNodes(chapterDoc.body || chapterDoc.documentElement, chapterDoc);
     if (aozoraLike) {
       normalizeAozoraLikeChapter(chapterDoc);
+    } else {
+      splitBrHeavyParagraphs(chapterDoc.body || chapterDoc.documentElement, chapterDoc);
     }
 
     const fallbackTitle = filenameStem(item.href) || `章${chapters.length + 1}`;
@@ -517,17 +520,16 @@ function splitBrHeavyParagraphs(root, doc) {
 
   for (const p of paragraphs) {
     const html = String(p.innerHTML || "");
-    const breakCount = (html.match(/<br\s*\/?>/gi) || []).length;
-    if (breakCount === 0) continue;
-    const heavyBreaks = breakCount >= 3;
+    const breakCount = (html.match(BR_TAG_PATTERN) || []).length;
+    if (breakCount < 3) continue;
 
-    const rawParts = html.split(/<br\s*\/?>/i);
+    const rawParts = html.split(BR_TAG_PATTERN);
     const logicalParagraphs = [];
     let currentParts = [];
 
     const flushCurrent = () => {
       if (currentParts.length === 0) return;
-      logicalParagraphs.push(currentParts.join(heavyBreaks ? "" : "<br />"));
+      logicalParagraphs.push(currentParts.join("<br />"));
       currentParts = [];
     };
 
