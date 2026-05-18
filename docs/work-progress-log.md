@@ -564,3 +564,11 @@ Root directory: 空欄
   - `TSUKUYOMI_RATE_LIMIT_CONTENT=2` で同一IPの3回目アクセスが429。
   - `retry-after` ヘッダーが付与される。
   - `TSUKUYOMI_RATE_LIMIT_DISABLED=true` で制限が無効化される。
+
+### 追記
+
+- commit: `8f621c0 add lightweight api rate limit`
+- `main` へpush済み。
+- Cloudflare Pages公開側で `js/version.js` が `APP_VERSION = "0.1.52"` を返すことを確認。
+- `/api/books` はHTTP 200を返すことを確認。
+- `/api/books/test000/content` はHTTP 200、`application/epub+zip` を返すことを確認。
