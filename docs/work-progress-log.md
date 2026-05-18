@@ -867,3 +867,9 @@ Root directory: 空欄
   - 空欄なら自動IDを作成。
   - 同じ作品を差し替える場合は同じ作品IDを使う。
 - キャッシュ更新用に `v0.1.59` へ更新。
+
+### 追記
+
+- commit: `00c3c3b add admin book id help`
+- `main` へpush済み。
+- Cloudflare Pages公開側で `js/version.js` が `APP_VERSION = "0.1.59"` を返すことを確認。
