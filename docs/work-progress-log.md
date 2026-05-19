@@ -1059,3 +1059,12 @@ Root directory: 空欄
   - `muted@example.com` は `/api/books` が `[]` になることを確認。
   - `muted@example.com` は本文APIがHTTP 404になることを確認。
   - `allowed@example.com` は通常どおり作品一覧に作品が出ることを確認。
+
+### 追記
+
+- commit: `04424b0 add review access soft block`
+- `main` へpush済み。
+- Cloudflare Pages公開側で `js/version.js` が `APP_VERSION = "0.1.65"` を返すことを確認。
+- 公開側 `admin.html` に `閲覧保留` の選択肢と説明が反映されていることを確認。
+- 公開側 `js/admin.js` に `TSUKUYOMI_REVIEW_ACCESS_SOFT_BLOCK` のヘルプが反映されていることを確認。
+- 公開側 `docs/limited-review-operation.md` に閲覧保留の説明が反映されていることを確認。
