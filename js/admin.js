@@ -42,7 +42,7 @@ const QUICK_HELP_HTML = `
     <li><strong>本文ファイル</strong>: EPUBまたはTXTを登録できます。表紙はJPG、PNG、WebPを指定できます。</li>
     <li><strong>公開停止</strong>: 作品一覧の「公開停止」で個別に非公開化できます。全体停止はCloudflare環境変数 <code>TSUKUYOMI_PUBLICATION_PAUSED=true</code> です。</li>
     <li><strong>R2使用状況</strong>: 保存容量の概算を確認できます。Class A/B操作数はCloudflare R2 Metricsで確認します。</li>
-    <li><strong>読書ログ</strong>: 作品別の開始、読了、平均進捗を軽く確認できます。個人特定目的ではなく、作品傾向の把握用です。</li>
+    <li><strong>読書ログ</strong>: 作品別の開始、読了、平均進捗を軽く確認できます。読者同士には公開せず、管理側で一元保管・集計して作品傾向や将来分析に使います。</li>
     <li><strong>限定レビュー</strong>: 賞応募候補は公開版に置かず、別のレビュー版ReaderをCloudflare Access等で認証必須にします。</li>
     <li><strong>古いiPhone</strong>: iOS 12.5以降は警告後に試せますが、iPhone 6 Plus実機では描画不可を確認済みです。将来のレガシー対応候補です。</li>
   </ol>
@@ -56,11 +56,12 @@ const ACCESS_HELP_HTML = `
     <li><strong>保護範囲を確認する</strong>: Reader画面だけでなく、<code>/api/books</code>、本文API、表紙APIも未認証で読めないようにします。</li>
     <li><strong>One-time PIN</strong>: 友人側にアカウント作成を求めない場合は、One-time PIN方式を使います。</li>
     <li><strong>管理画面へ記録する</strong>: 下の「限定レビュー許可メモ」に名前、メール、状態を記入します。これは許可の実行ではなく記録です。</li>
-    <li><strong>読書ログへ紐づける</strong>: 限定レビュー版で <code>TSUKUYOMI_ACCESS_IDENTITY_ANALYTICS=true</code> を設定すると、Access認証済みメールと読書ログを紐づけます。</li>
+    <li><strong>読書ログへ紐づける</strong>: 限定レビュー版で <code>TSUKUYOMI_ACCESS_IDENTITY_ANALYTICS=true</code> を設定すると、Access認証済みメールと読書ログを管理用に紐づけます。</li>
     <li><strong>停止時</strong>: Cloudflare Accessから相手を外し、管理画面の記録も「停止済み」にします。</li>
   </ol>
   <p class="admin-note">Accessの許可リスト全員が自動表示されるわけではありません。読書ログに出るのは、実際にAccess認証を通ってReaderへアクセスした人です。</p>
-  <p class="admin-note">賞応募候補は公開版Readerに置かず、認証付きの限定レビュー版だけで扱います。案内文には、文芸分析目的で閲覧データを使うことがある旨を入れます。</p>
+  <p class="admin-note">これは読者同士に進捗を公開する機能ではありません。管理側が一元的に保管・集計し、将来の文芸分析や作品改善に使うための記録です。</p>
+  <p class="admin-note">賞応募候補は公開版Readerに置かず、認証付きの限定レビュー版だけで扱います。案内文には、閲覧データを管理側で分析目的に利用することがある旨を入れます。</p>
 `;
 
 adminToken.value = localStorage.getItem(TOKEN_KEY) || "";
@@ -205,7 +206,7 @@ function renderAnalytics(payload) {
       ? summary.map(renderAnalyticsSummaryRow).join("")
       : `<p class="admin-note">読書ログはまだありません。</p>`;
     const reviewerHtml = reviewers.length
-      ? `<h3 class="admin-subhead">Access別読書ログ</h3>${reviewers.map(renderReviewerAnalyticsRow).join("")}`
+      ? `<h3 class="admin-subhead">Access別読書ログ（管理用）</h3><p class="admin-note">読者間には公開せず、管理側の将来分析用に保管・集計します。</p>${reviewers.map(renderReviewerAnalyticsRow).join("")}`
       : "";
     analyticsSummary.innerHTML = `${summaryHtml}${reviewerHtml}`;
   }
