@@ -950,3 +950,11 @@ Root directory: 空欄
   - `管理ヘルプ` の短いヘルプに限定レビューの注意が出ることを確認。
   - `限定レビュー` ボタンから `docs/limited-review-operation.md` を読み込めることを確認。
   - 読み込んだ資料内に `Cloudflare Access` と `公開版Readerには置かない` が含まれることを確認。
+
+### 追記
+
+- commit: `0a12c0e add limited review operations guide`
+- `main` へpush済み。
+- Cloudflare Pages公開側で `js/version.js` が `APP_VERSION = "0.1.62"` を返すことを確認。
+- 公開側 `docs/limited-review-operation.md` がHTTP 200で読めることを確認。
+- 公開側 `admin.html` に限定レビュー資料へのヘルプ導線が含まれることを確認。
