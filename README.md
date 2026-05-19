@@ -50,6 +50,7 @@
 - [Cloudflare R2 Usage Guard設計](docs/cloudflare-usage-guard-design.md)
 - [Cloudflare F5 Defense設計](docs/cloudflare-f5-defense-design.md)
 - [Reader Analytics設計](docs/reader-analytics-design.md)
+- [限定レビュー運用資料](docs/limited-review-operation.md)
 - [作業進捗ログ](docs/work-progress-log.md)
 
 ## ディレクトリ
@@ -87,6 +88,13 @@
 - 配布用では通常コピー、右クリック、ドラッグ保存を抑制します
 - Surface Goなどの別環境では、原則として `admin.html` の管理メニューから更新します
 - `update_books.bat` はAPIを使わない予備運用向けです
+
+## 限定レビュー運用メモ
+- 賞応募候補作品は、公開版Readerには置かない方針です
+- 友人・編集者候補に読んでもらう場合は、公開版とは別の限定レビュー版Readerを用意します
+- 限定レビュー版はCloudflare Access等でサイト/API全体を認証必須にします
+- `reviewOnly` や `awardCandidate` のようなフラグだけでは保護にならないため、未認証URLで読める状態にしないことを優先します
+- 詳細は [限定レビュー運用資料](docs/limited-review-operation.md) を参照します
 
 ## 今後の候補
 - 大容量書籍向けの分割描画

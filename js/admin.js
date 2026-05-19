@@ -34,6 +34,7 @@ const QUICK_HELP_HTML = `
     <li><strong>公開停止</strong>: 作品一覧の「公開停止」で個別に非公開化できます。全体停止はCloudflare環境変数 <code>TSUKUYOMI_PUBLICATION_PAUSED=true</code> です。</li>
     <li><strong>R2使用状況</strong>: 保存容量の概算を確認できます。Class A/B操作数はCloudflare R2 Metricsで確認します。</li>
     <li><strong>読書ログ</strong>: 作品別の開始、読了、平均進捗を軽く確認できます。個人特定目的ではなく、作品傾向の把握用です。</li>
+    <li><strong>限定レビュー</strong>: 賞応募候補は公開版に置かず、別のレビュー版ReaderをCloudflare Access等で認証必須にします。</li>
     <li><strong>古いiPhone</strong>: iOS 12.5以降は警告後に試せますが、iPhone 6 Plus実機では描画不可を確認済みです。将来のレガシー対応候補です。</li>
   </ol>
   <p class="admin-note">左のボタンから既存マニュアルや作業ログをこの画面内で確認できます。</p>

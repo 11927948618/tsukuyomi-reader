@@ -70,6 +70,26 @@ https://tsukuyomi-reader-tachiyomi.pages.dev/
 
 ローカルファイル読込とバックアップZIP保存は非表示になり、本文では通常のコピー、右クリック、ドラッグ保存を抑制します。これは一般的なコピー操作を避けるための設定であり、スクリーンショット、開発者ツール、通信取得まで完全に防ぐものではありません。
 
+## 限定レビュー版と賞応募候補
+
+賞応募候補作品や未発表稿を友人・編集者候補に読んでもらう場合は、通常の立ち読み版とは分けて運用します。
+
+基本方針:
+
+- 公開版Readerには、賞応募に使わない作品だけ置きます。
+- 賞応募候補作品は、公開版Readerで `published: true` にしません。
+- 限定レビュー版Readerを別Pagesプロジェクトまたは別サブドメインで用意します。
+- 限定レビュー版ReaderはCloudflare Access等でサイト/API全体を認証必須にします。
+- `reviewOnly` や `awardCandidate` のようなフラグだけでは保護になりません。未認証URLで読めないことを優先します。
+
+現時点では、作品別IDや鍵付きURLを自前実装するより、Cloudflare Access等で限定レビュー版全体を守る運用を推奨します。
+
+詳細:
+
+```text
+docs/limited-review-operation.md
+```
+
 ## 重要なファイル
 
 - `config/site-config.json`

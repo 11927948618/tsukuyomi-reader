@@ -925,3 +925,28 @@ Root directory: 空欄
   - テスト用EPUBをブラウザ上で生成して `normalizeEpub()` を実行。
   - 青空文庫判定あり/なしの両方で、brが3個以上ある巨大段落が複数の `<p>` に分かれることを確認。
   - 同一段落内の明示改行が `<br />` として残ることを確認。
+
+## 2026-05-19 限定レビュー運用資料の取り込み
+
+### 対応
+
+- `docs/limited-review-operation.md` を追加。
+  - 公開版Reader、限定レビュー版Reader、ローカル確認版の役割を整理。
+  - 賞応募候補作品を公開版に置かない方針を明記。
+  - Cloudflare Access等でサイト/API全体を認証必須にする運用を推奨として記載。
+  - `reviewOnly` / `awardCandidate` フラグ案は、保護そのものではない注意を追記。
+- `README.md` のマニュアル一覧と立ち読みモードメモに限定レビュー運用を追加。
+- `docs/tachiyomi-update-manual.md` に限定レビュー版と賞応募候補の運用方針を追加。
+- 管理画面ヘルプに `限定レビュー` の資料表示項目を追加。
+- 管理画面の短いヘルプに、賞応募候補は公開版に置かない注意を追加。
+- キャッシュ更新用に `v0.1.62` へ更新。
+
+### 検証
+
+- `node --check js/admin.js`: OK
+- `node --check js/version.js`: OK
+- `rg "limited-review-operation|限定レビュー|awardCandidate|reviewOnly"`: 追加箇所を確認。
+- Playwright Chromium / local `admin.html`:
+  - `管理ヘルプ` の短いヘルプに限定レビューの注意が出ることを確認。
+  - `限定レビュー` ボタンから `docs/limited-review-operation.md` を読み込めることを確認。
+  - 読み込んだ資料内に `Cloudflare Access` と `公開版Readerには置かない` が含まれることを確認。
