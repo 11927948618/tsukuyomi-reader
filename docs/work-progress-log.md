@@ -1022,3 +1022,11 @@ Root directory: 空欄
 - `node --check js/admin.js`: OK
 - `node --check js/version.js`: OK
 - `rg "読者同士|一元保管|Access別読書ログ（管理用）"`: UIヘルプ、README、各マニュアルへの反映を確認。
+
+### 追記
+
+- commit: `f4d4599 clarify review analytics purpose`
+- `main` へpush済み。
+- Cloudflare Pages公開側で `js/version.js` が `APP_VERSION = "0.1.64"` を返すことを確認。
+- 公開側 `js/admin.js` に `Access別読書ログ（管理用）` と、読者同士に進捗を公開しない説明が反映されていることを確認。
+- 公開側 `docs/reader-analytics-design.md` と `docs/limited-review-operation.md` に、管理側の一元保管・将来分析用途の説明が反映されていることを確認。
