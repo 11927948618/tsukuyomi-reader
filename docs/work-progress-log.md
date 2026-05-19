@@ -958,3 +958,42 @@ Root directory: 空欄
 - Cloudflare Pages公開側で `js/version.js` が `APP_VERSION = "0.1.62"` を返すことを確認。
 - 公開側 `docs/limited-review-operation.md` がHTTP 200で読めることを確認。
 - 公開側 `admin.html` に限定レビュー資料へのヘルプ導線が含まれることを確認。
+
+## 2026-05-19 限定レビューの個別許可メモとAccess読書ログ
+
+### 対応
+
+- 管理画面に `限定レビュー許可メモ` を追加。
+  - 名前、メールアドレス、状態、メモを記録できる。
+  - 状態は `未適用` / `Access適用済み` / `停止済み`。
+  - 実際の許可はCloudflare Access側で行い、管理画面は記録欄として扱う。
+- 管理API `GET/PUT /api/admin/review-access` を追加。
+  - R2の `_tsukuyomi/review-access-list.json` に許可メモを保存する。
+- 管理ヘルプに `アクセス許可` の抜粋ヘルプを追加。
+  - Cloudflare Access側で許可すること。
+  - Reader画面だけでなく `/api/books`、本文API、表紙APIも保護すること。
+  - 管理画面の一覧は許可の実行ではなく記録であること。
+- 限定レビュー版向けにAccess認証済みメールと読書ログを紐づける任意設定を追加。
+  - `TSUKUYOMI_ACCESS_IDENTITY_ANALYTICS=true`
+  - D1用マイグレーション `migrations/0002_access_identity_analytics.sql` を追加。
+  - 管理画面の読書ログに `Access別読書ログ` を表示。
+  - R2軽量集計にもAccess別の簡易集計を追加。
+- マニュアル類へ、メールアドレスを含む個人情報ログになること、文芸分析目的で閲覧データを使う旨を案内文に明記することを追記。
+- キャッシュ更新用に `v0.1.63` へ更新。
+
+### 検証
+
+- `node --check js/admin.js`: OK
+- `node --check js/version.js`: OK
+- `node --check functions/_shared/analytics.js`: OK
+- `node --check functions/_shared/analytics-lite.js`: OK
+- `node --check functions/api/analytics/event.js`: OK
+- `node --check functions/api/admin/analytics/index.js`: OK
+- `node --check functions/api/admin/review-access/index.js`: OK
+- モックR2検証:
+  - `GET/PUT /api/admin/review-access` で許可メモを保存・取得できることを確認。
+  - R2軽量集計でAccess認証メール付きイベントを記録し、管理用payloadに `reviewers` が出ることを確認。
+  - `POST /api/analytics/event` が `cf-access-authenticated-user-email` と `TSUKUYOMI_ACCESS_IDENTITY_ANALYTICS=true` を受けて、Access別ログを保存することを確認。
+- Playwright Chromium / local `admin.html`:
+  - `限定レビュー許可メモ` に名前・メール・状態・メモを追加できることを確認。
+  - `管理ヘルプ > アクセス許可` で個別アクセス許可の抜粋ヘルプを表示できることを確認。

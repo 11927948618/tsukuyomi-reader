@@ -84,6 +84,24 @@ https://tsukuyomi-reader-tachiyomi.pages.dev/
 
 現時点では、作品別IDや鍵付きURLを自前実装するより、Cloudflare Access等で限定レビュー版全体を守る運用を推奨します。
 
+個別アクセス許可はCloudflare Access側で行います。TsukuyomiReaderの管理画面にある `限定レビュー許可メモ` は、Accessへ許可を実行する機能ではなく、許可・停止した相手を記録する欄です。
+
+限定レビュー版で「誰がどの作品をどこまで読んだか」を見る場合は、Access認証済みメールアドレスを読書ログへ紐づける設定を有効にします。
+
+```text
+TSUKUYOMI_ACCESS_IDENTITY_ANALYTICS=true
+```
+
+D1を使う場合は、追加マイグレーションも実行します。
+
+```text
+migrations/0002_access_identity_analytics.sql
+```
+
+この設定はメールアドレスを含む個人情報ログになります。限定レビューの案内文やCloudflare Accessの案内文に、文芸分析目的で閲覧データを分析に使うことがある旨を明記してください。
+
+Cloudflare Accessの許可リスト全員が自動で管理画面に出るわけではありません。読書ログに出るのは、実際にAccess認証を通ってReaderへアクセスした人です。
+
 詳細:
 
 ```text

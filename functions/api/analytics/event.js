@@ -2,6 +2,7 @@ import { error, getBucket, json } from "../../_shared/books.js";
 import { applyRateLimit } from "../../_shared/rate-limit.js";
 import {
   analyticsErrorResponse,
+  getAccessAnalyticsEmail,
   getAnalyticsDb,
   normalizeAnalyticsText,
   normalizeProgressPercent,
@@ -42,8 +43,10 @@ export async function onRequestPost(context) {
 
   const salt = normalizeAnalyticsText(context.env?.TSUKUYOMI_ANALYTICS_SALT || context.env?.ANALYTICS_SALT, 256);
   const userAgent = normalizeAnalyticsText(context.request.headers.get("user-agent"), 512);
+  const accessEmail = getAccessAnalyticsEmail(context.request, context.env);
   const readerIdHash = await sha256Hex(`${salt}:reader:${readerId}`);
   const userAgentHash = userAgent ? await sha256Hex(`${salt}:ua:${userAgent}`) : "";
+  const accessEmailHash = accessEmail ? await sha256Hex(`${salt}:access-email:${accessEmail}`) : "";
   const now = new Date().toISOString();
   const progressPercent = normalizeProgressPercent(payload?.progressPercent ?? payload?.progress_percent);
   const chapterId = normalizeAnalyticsText(payload?.chapterId || payload?.chapter_id, 128);
@@ -51,44 +54,36 @@ export async function onRequestPost(context) {
   const country = normalizeAnalyticsText(context.request.cf?.country, 8);
 
   if (db) {
+    const eventId = crypto.randomUUID();
+    const baseValues = [
+      eventId,
+      now,
+      eventType,
+      bookId,
+      readerIdHash,
+      sessionId,
+      progressPercent,
+      chapterId,
+      sourceType,
+      userAgentHash,
+      country,
+      refererPath(context.request)
+    ];
     try {
-      await db
-        .prepare(
-          `INSERT INTO reader_events (
-            id,
-            created_at,
-            event_type,
-            book_id,
-            reader_id_hash,
-            session_id,
-            progress_percent,
-            chapter_id,
-            source_type,
-            user_agent_hash,
-            country,
-            referer_path
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-        )
-        .bind(
-          crypto.randomUUID(),
-          now,
-          eventType,
-          bookId,
-          readerIdHash,
-          sessionId,
-          progressPercent,
-          chapterId,
-          sourceType,
-          userAgentHash,
-          country,
-          refererPath(context.request)
-        )
-        .run();
+      await insertD1Event(db, baseValues, accessEmail, accessEmailHash);
     } catch (err) {
+      if (accessEmail && /no such column|has no column|access_email/i.test(String(err?.message || err))) {
+        try {
+          await insertD1Event(db, baseValues, "", "");
+          return json({ ok: true, source: "d1", accessIdentity: false, accessIdentitySkipped: "migration-required" });
+        } catch (fallbackErr) {
+          return analyticsErrorResponse(fallbackErr);
+        }
+      }
       return analyticsErrorResponse(err);
     }
 
-    return json({ ok: true, source: "d1" });
+    return json({ ok: true, source: "d1", accessIdentity: Boolean(accessEmail) });
   }
 
   try {
@@ -100,13 +95,61 @@ export async function onRequestPost(context) {
       progressPercent,
       chapterId,
       sourceType,
-      country
+      country,
+      accessEmail,
+      accessEmailHash
     });
   } catch (err) {
     return new Response(null, { status: 204 });
   }
 
   return json({ ok: true, source: "r2-lite" });
+}
+
+function insertD1Event(db, baseValues, accessEmail, accessEmailHash) {
+  if (accessEmail) {
+    return db
+      .prepare(
+        `INSERT INTO reader_events (
+          id,
+          created_at,
+          event_type,
+          book_id,
+          reader_id_hash,
+          session_id,
+          progress_percent,
+          chapter_id,
+          source_type,
+          user_agent_hash,
+          country,
+          referer_path,
+          access_email,
+          access_email_hash
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      )
+      .bind(...baseValues, accessEmail, accessEmailHash)
+      .run();
+  }
+
+  return db
+    .prepare(
+      `INSERT INTO reader_events (
+        id,
+        created_at,
+        event_type,
+        book_id,
+        reader_id_hash,
+        session_id,
+        progress_percent,
+        chapter_id,
+        source_type,
+        user_agent_hash,
+        country,
+        referer_path
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    )
+    .bind(...baseValues)
+    .run();
 }
 
 function isSameOriginRequest(request) {

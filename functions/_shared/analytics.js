@@ -25,6 +25,19 @@ export function normalizeAnalyticsText(value, maxLength = 128) {
     .slice(0, maxLength);
 }
 
+export function getAccessAnalyticsEmail(request, env) {
+  if (!truthy(env?.TSUKUYOMI_ACCESS_IDENTITY_ANALYTICS || env?.ACCESS_IDENTITY_ANALYTICS)) {
+    return "";
+  }
+
+  const email = normalizeAnalyticsText(
+    request.headers.get("cf-access-authenticated-user-email") ||
+      request.headers.get("cf-access-user"),
+    160
+  ).toLowerCase();
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? email : "";
+}
+
 export function normalizeProgressPercent(value) {
   if (value == null || value === "") return null;
   const number = Number(value);
@@ -38,4 +51,9 @@ export function analyticsErrorResponse(err) {
     return analyticsDisabled("D1 analytics table is not ready.");
   }
   return json({ error: "読書ログの処理に失敗しました" }, { status: 500 });
+}
+
+function truthy(value) {
+  const normalized = String(value || "").trim().toLowerCase();
+  return normalized === "true" || normalized === "1" || normalized === "yes" || normalized === "on";
 }

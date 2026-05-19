@@ -96,6 +96,39 @@
       </section>
     </section>
 
+    <section class="card admin-card admin-review-access-card">
+      <div class="admin-list-head">
+        <h2>限定レビュー許可メモ</h2>
+        <button class="button ghost" id="reloadReviewAccessBtn" type="button">再読込</button>
+      </div>
+      <p class="admin-note">実際のアクセス許可はCloudflare Access側で行います。ここには、許可・停止した相手の記録だけを残します。</p>
+      <div class="admin-review-form">
+        <label class="field">
+          <span class="label">名前</span>
+          <input class="input" id="reviewName" type="text" placeholder="例: 山田さん" />
+        </label>
+        <label class="field">
+          <span class="label">メールアドレス</span>
+          <input class="input" id="reviewEmail" type="email" placeholder="friend@example.com" />
+        </label>
+        <label class="field">
+          <span class="label">状態</span>
+          <select id="reviewStatus">
+            <option value="pending">未適用</option>
+            <option value="applied">Access適用済み</option>
+            <option value="revoked">停止済み</option>
+          </select>
+        </label>
+        <label class="field">
+          <span class="label">メモ</span>
+          <input class="input" id="reviewNote" type="text" placeholder="例: 5/20に案内済み" />
+        </label>
+        <button class="button" id="addReviewAccessBtn" type="button">一覧に追加</button>
+      </div>
+      <div id="reviewAccessStatus" class="status">管理トークン保存後に読み込みます</div>
+      <div id="reviewAccessList" class="admin-review-access-list"></div>
+    </section>
+
     <section class="card admin-card admin-storage-card">
       <div class="admin-list-head">
         <h2>R2使用状況</h2>
@@ -131,6 +164,7 @@
       <div class="admin-help-body">
         <nav class="admin-help-menu" aria-label="ヘルプ項目">
           <button class="button ghost" type="button" data-help-kind="quick">すぐ使う</button>
+          <button class="button ghost" type="button" data-help-kind="access">アクセス許可</button>
           <button class="button ghost" type="button" data-help-doc="./docs/tachiyomi-update-manual.md">更新マニュアル</button>
           <button class="button ghost" type="button" data-help-doc="./docs/tachiyomi-reader-manual.md">読者マニュアル</button>
           <button class="button ghost" type="button" data-help-doc="./docs/limited-review-operation.md">限定レビュー</button>

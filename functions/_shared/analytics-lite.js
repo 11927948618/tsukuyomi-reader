@@ -4,6 +4,7 @@ const DEFAULT_ANALYTICS_LITE = {
   updatedAt: "",
   source: "r2-lite",
   books: {},
+  reviewers: {},
   recent: []
 };
 
@@ -37,6 +38,22 @@ export async function recordLiteAnalytics(bucket, event, options = {}) {
     book.readerProgress = readerProgress;
   }
 
+  const reviewers = normalizeMap(stats.reviewers);
+  if (event.accessEmail) {
+    const reviewer = normalizeReviewerStats(reviewers[event.accessEmail]);
+    const reviewerBook = normalizeReviewerBookStats(reviewer.books[event.bookId]);
+    reviewer.email = event.accessEmail;
+    reviewer.emailHash = event.accessEmailHash || reviewer.emailHash || "";
+    reviewer.lastEventAt = now;
+    reviewerBook.events += 1;
+    reviewerBook.lastEventAt = now;
+    reviewerBook.maxProgress = Math.max(Number(reviewerBook.maxProgress) || 0, progress || 0);
+    if (event.eventType === "open") reviewerBook.opens += 1;
+    if (event.eventType === "finish") reviewerBook.finishes += 1;
+    reviewer.books[event.bookId] = reviewerBook;
+    reviewers[event.accessEmail] = reviewer;
+  }
+
   books[event.bookId] = book;
   const recentLimit = Number(options.recentLimit) || DEFAULT_RECENT_LIMIT;
   const recent = [
@@ -46,7 +63,8 @@ export async function recordLiteAnalytics(bucket, event, options = {}) {
       bookId: event.bookId || "",
       progressPercent: progress,
       chapterId: event.chapterId || "",
-      country: event.country || ""
+      country: event.country || "",
+      accessEmail: event.accessEmail || ""
     },
     ...normalizeRecent(stats.recent)
   ].slice(0, recentLimit);
@@ -55,6 +73,7 @@ export async function recordLiteAnalytics(bucket, event, options = {}) {
     ...DEFAULT_ANALYTICS_LITE,
     updatedAt: now,
     books,
+    reviewers,
     recent
   };
 
@@ -104,7 +123,8 @@ export function liteAnalyticsToAdminPayload(stats) {
     source: "r2-lite",
     updatedAt: normalized.updatedAt || "",
     summary,
-    recent: normalizeRecent(normalized.recent)
+    recent: normalizeRecent(normalized.recent),
+    reviewers: reviewersToAdminRows(normalized.reviewers)
   };
 }
 
@@ -114,6 +134,7 @@ function normalizeLiteAnalytics(value) {
     ...DEFAULT_ANALYTICS_LITE,
     updatedAt: typeof stats.updatedAt === "string" ? stats.updatedAt : "",
     books: normalizeMap(stats.books),
+    reviewers: normalizeReviewers(stats.reviewers),
     recent: normalizeRecent(stats.recent)
   };
 }
@@ -131,6 +152,53 @@ function normalizeBookStats(value) {
   };
 }
 
+function normalizeReviewers(value) {
+  const reviewers = normalizeMap(value);
+  return Object.fromEntries(
+    Object.entries(reviewers).map(([email, reviewer]) => [email, normalizeReviewerStats(reviewer)])
+  );
+}
+
+function normalizeReviewerStats(value) {
+  const reviewer = value && typeof value === "object" ? value : {};
+  return {
+    email: typeof reviewer.email === "string" ? reviewer.email : "",
+    emailHash: typeof reviewer.emailHash === "string" ? reviewer.emailHash : "",
+    lastEventAt: typeof reviewer.lastEventAt === "string" ? reviewer.lastEventAt : "",
+    books: Object.fromEntries(
+      Object.entries(normalizeMap(reviewer.books)).map(([bookId, book]) => [bookId, normalizeReviewerBookStats(book)])
+    )
+  };
+}
+
+function normalizeReviewerBookStats(value) {
+  const book = value && typeof value === "object" ? value : {};
+  return {
+    events: Number(book.events) || 0,
+    opens: Number(book.opens) || 0,
+    finishes: Number(book.finishes) || 0,
+    maxProgress: Number(book.maxProgress) || 0,
+    lastEventAt: typeof book.lastEventAt === "string" ? book.lastEventAt : ""
+  };
+}
+
+function reviewersToAdminRows(reviewers) {
+  return Object.values(normalizeReviewers(reviewers))
+    .flatMap((reviewer) =>
+      Object.entries(reviewer.books).map(([bookId, book]) => ({
+        reviewerEmail: reviewer.email || "",
+        bookId,
+        events: book.events,
+        opens: book.opens,
+        finishes: book.finishes,
+        maxProgress: book.maxProgress,
+        lastEventAt: book.lastEventAt || reviewer.lastEventAt || ""
+      }))
+    )
+    .sort((a, b) => String(b.lastEventAt || "").localeCompare(String(a.lastEventAt || "")))
+    .slice(0, 200);
+}
+
 function normalizeMap(value) {
   if (!value || typeof value !== "object" || Array.isArray(value)) return {};
   return { ...value };
@@ -144,7 +212,8 @@ function normalizeRecent(value) {
     bookId: typeof row?.bookId === "string" ? row.bookId : "",
     progressPercent: normalizeProgress(row?.progressPercent),
     chapterId: typeof row?.chapterId === "string" ? row.chapterId : "",
-    country: typeof row?.country === "string" ? row.country : ""
+    country: typeof row?.country === "string" ? row.country : "",
+    accessEmail: typeof row?.accessEmail === "string" ? row.accessEmail : ""
   }));
 }
 

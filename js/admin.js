@@ -9,11 +9,19 @@ const resetFormBtn = document.getElementById("resetFormBtn");
 const reloadBooksBtn = document.getElementById("reloadBooksBtn");
 const reloadAnalyticsBtn = document.getElementById("reloadAnalyticsBtn");
 const reloadStorageBtn = document.getElementById("reloadStorageBtn");
+const reloadReviewAccessBtn = document.getElementById("reloadReviewAccessBtn");
 const adminBookList = document.getElementById("adminBookList");
 const adminStatus = document.getElementById("adminStatus");
 const storageStatus = document.getElementById("storageStatus");
 const storageSummary = document.getElementById("storageSummary");
 const storagePrefixes = document.getElementById("storagePrefixes");
+const reviewAccessStatus = document.getElementById("reviewAccessStatus");
+const reviewAccessList = document.getElementById("reviewAccessList");
+const reviewName = document.getElementById("reviewName");
+const reviewEmail = document.getElementById("reviewEmail");
+const reviewStatus = document.getElementById("reviewStatus");
+const reviewNote = document.getElementById("reviewNote");
+const addReviewAccessBtn = document.getElementById("addReviewAccessBtn");
 const analyticsStatus = document.getElementById("analyticsStatus");
 const analyticsSummary = document.getElementById("analyticsSummary");
 const analyticsRecent = document.getElementById("analyticsRecent");
@@ -24,6 +32,7 @@ const closeAdminHelpBtn = document.getElementById("closeAdminHelpBtn");
 const adminHelpOverlay = document.getElementById("adminHelpOverlay");
 const adminHelpContent = document.getElementById("adminHelpContent");
 const adminHelpButtons = Array.from(document.querySelectorAll("[data-help-kind], [data-help-doc]"));
+let reviewAccessEntries = [];
 
 const QUICK_HELP_HTML = `
   <h3>管理画面でよく使う操作</h3>
@@ -40,6 +49,20 @@ const QUICK_HELP_HTML = `
   <p class="admin-note">左のボタンから既存マニュアルや作業ログをこの画面内で確認できます。</p>
 `;
 
+const ACCESS_HELP_HTML = `
+  <h3>個別アクセス許可の手順</h3>
+  <ol>
+    <li><strong>Cloudflare側で許可する</strong>: Cloudflare Dashboardで限定レビュー版Pagesを開き、Accessの許可ポリシーに相手のメールアドレスを追加します。</li>
+    <li><strong>保護範囲を確認する</strong>: Reader画面だけでなく、<code>/api/books</code>、本文API、表紙APIも未認証で読めないようにします。</li>
+    <li><strong>One-time PIN</strong>: 友人側にアカウント作成を求めない場合は、One-time PIN方式を使います。</li>
+    <li><strong>管理画面へ記録する</strong>: 下の「限定レビュー許可メモ」に名前、メール、状態を記入します。これは許可の実行ではなく記録です。</li>
+    <li><strong>読書ログへ紐づける</strong>: 限定レビュー版で <code>TSUKUYOMI_ACCESS_IDENTITY_ANALYTICS=true</code> を設定すると、Access認証済みメールと読書ログを紐づけます。</li>
+    <li><strong>停止時</strong>: Cloudflare Accessから相手を外し、管理画面の記録も「停止済み」にします。</li>
+  </ol>
+  <p class="admin-note">Accessの許可リスト全員が自動表示されるわけではありません。読書ログに出るのは、実際にAccess認証を通ってReaderへアクセスした人です。</p>
+  <p class="admin-note">賞応募候補は公開版Readerに置かず、認証付きの限定レビュー版だけで扱います。案内文には、文芸分析目的で閲覧データを使うことがある旨を入れます。</p>
+`;
+
 adminToken.value = localStorage.getItem(TOKEN_KEY) || "";
 updatedAt.value = new Date().toISOString().slice(0, 10);
 
@@ -49,6 +72,7 @@ saveTokenBtn?.addEventListener("click", () => {
   loadBooks();
   loadStorage();
   loadAnalytics();
+  loadReviewAccess();
 });
 
 clearTokenBtn?.addEventListener("click", () => {
@@ -57,14 +81,17 @@ clearTokenBtn?.addEventListener("click", () => {
   setStatus("管理トークンを消去しました");
   clearStorage();
   clearAnalytics();
+  clearReviewAccess();
 });
 
 reloadBooksBtn?.addEventListener("click", loadBooks);
 reloadAnalyticsBtn?.addEventListener("click", loadAnalytics);
 reloadStorageBtn?.addEventListener("click", loadStorage);
+reloadReviewAccessBtn?.addEventListener("click", loadReviewAccess);
 resetFormBtn?.addEventListener("click", resetForm);
 openAdminHelpBtn?.addEventListener("click", openAdminHelp);
 closeAdminHelpBtn?.addEventListener("click", closeAdminHelp);
+addReviewAccessBtn?.addEventListener("click", addReviewAccessEntry);
 
 adminHelpOverlay?.addEventListener("click", (event) => {
   if (event.target === adminHelpOverlay) closeAdminHelp();
@@ -80,6 +107,10 @@ adminHelpButtons.forEach((button) => {
   button.addEventListener("click", () => {
     if (button.dataset.helpKind === "quick") {
       renderQuickHelp(button);
+      return;
+    }
+    if (button.dataset.helpKind === "access") {
+      renderAccessHelp(button);
       return;
     }
     loadHelpDocument(button);
@@ -165,13 +196,18 @@ async function loadAnalytics() {
 function renderAnalytics(payload) {
   const summary = Array.isArray(payload?.summary) ? payload.summary : [];
   const recent = Array.isArray(payload?.recent) ? payload.recent : [];
+  const reviewers = Array.isArray(payload?.reviewers) ? payload.reviewers : [];
   const source = payload?.source === "r2-lite" ? "R2軽量集計" : "D1";
-  setAnalyticsStatus(`${source}: ${summary.length}作品 / 最近${recent.length}件`, "ok");
+  setAnalyticsStatus(`${source}: ${summary.length}作品 / 個別${reviewers.length}件 / 最近${recent.length}件`, "ok");
 
   if (analyticsSummary) {
-    analyticsSummary.innerHTML = summary.length
+    const summaryHtml = summary.length
       ? summary.map(renderAnalyticsSummaryRow).join("")
       : `<p class="admin-note">読書ログはまだありません。</p>`;
+    const reviewerHtml = reviewers.length
+      ? `<h3 class="admin-subhead">Access別読書ログ</h3>${reviewers.map(renderReviewerAnalyticsRow).join("")}`
+      : "";
+    analyticsSummary.innerHTML = `${summaryHtml}${reviewerHtml}`;
   }
 
   if (analyticsRecent) {
@@ -199,12 +235,28 @@ function renderAnalyticsSummaryRow(row) {
 }
 
 function renderAnalyticsRecentRow(row) {
+  const accessEmail = row.accessEmail ? ` / ${row.accessEmail}` : "";
   return `
     <div class="admin-analytics-row">
       <span>${escapeHtml(formatDateTime(row.createdAt))}</span>
       <strong>${escapeHtml(row.eventType || "-")}</strong>
-      <span>${escapeHtml(row.bookId || "-")}</span>
+      <span>${escapeHtml(`${row.bookId || "-"}${accessEmail}`)}</span>
       <span>${row.progressPercent == null ? "-" : `${Number(row.progressPercent) || 0}%`}</span>
+    </div>
+  `;
+}
+
+function renderReviewerAnalyticsRow(row) {
+  const opens = Number(row.opens) || 0;
+  const finishes = Number(row.finishes) || 0;
+  const maxProgress = Number(row.maxProgress) || 0;
+  return `
+    <div class="admin-analytics-row">
+      <strong>${escapeHtml(row.reviewerEmail || "-")}</strong>
+      <span><span class="admin-analytics-label">作品</span> ${escapeHtml(row.bookId || "-")}</span>
+      <span><span class="admin-analytics-label">開始</span> ${opens}</span>
+      <span><span class="admin-analytics-label">読了</span> ${finishes}</span>
+      <span><span class="admin-analytics-label">最大</span> ${maxProgress}%</span>
     </div>
   `;
 }
@@ -213,6 +265,179 @@ function clearAnalytics(message = "管理トークン保存後に読み込みま
   setAnalyticsStatus(message, type);
   if (analyticsSummary) analyticsSummary.innerHTML = "";
   if (analyticsRecent) analyticsRecent.innerHTML = "";
+}
+
+async function loadReviewAccess() {
+  const token = getToken();
+  if (!token) {
+    clearReviewAccess("管理トークンを入力してください");
+    return;
+  }
+
+  setReviewAccessStatus("限定レビュー許可メモを読み込み中...");
+  try {
+    const res = await fetch("./api/admin/review-access", {
+      headers: authHeaders(token)
+    });
+    const payload = await readJson(res);
+    if (!res.ok) throw new Error(payload?.error || "限定レビュー許可メモの読み込みに失敗しました");
+    reviewAccessEntries = Array.isArray(payload?.entries) ? payload.entries : [];
+    renderReviewAccess(payload?.updatedAt || "");
+  } catch (err) {
+    clearReviewAccess(err.message || "限定レビュー許可メモの読み込みに失敗しました", "error");
+  }
+}
+
+async function addReviewAccessEntry() {
+  const name = String(reviewName?.value || "").trim();
+  const email = String(reviewEmail?.value || "").trim().toLowerCase();
+  const status = reviewStatus?.value || "pending";
+  const note = String(reviewNote?.value || "").trim();
+
+  if (!name && !email) {
+    setReviewAccessStatus("名前またはメールアドレスを入力してください", "error");
+    return;
+  }
+
+  const now = new Date().toISOString();
+  reviewAccessEntries = [
+    ...reviewAccessEntries,
+    {
+      id: `${email || name}-${Date.now()}`,
+      name,
+      email,
+      status,
+      note,
+      addedAt: now,
+      appliedAt: status === "applied" ? now : "",
+      revokedAt: status === "revoked" ? now : ""
+    }
+  ];
+  await saveReviewAccessEntries("一覧に追加しました");
+  if (reviewName) reviewName.value = "";
+  if (reviewEmail) reviewEmail.value = "";
+  if (reviewNote) reviewNote.value = "";
+  if (reviewStatus) reviewStatus.value = "pending";
+}
+
+async function saveReviewAccessEntries(successMessage = "保存しました") {
+  const token = getToken();
+  if (!token) {
+    setReviewAccessStatus("管理トークンを入力してください", "error");
+    return;
+  }
+
+  setReviewAccessStatus("限定レビュー許可メモを保存中...");
+  try {
+    const res = await fetch("./api/admin/review-access", {
+      method: "PUT",
+      headers: {
+        ...authHeaders(token),
+        "content-type": "application/json"
+      },
+      body: JSON.stringify({ entries: reviewAccessEntries })
+    });
+    const payload = await readJson(res);
+    if (!res.ok) throw new Error(payload?.error || "限定レビュー許可メモの保存に失敗しました");
+    reviewAccessEntries = Array.isArray(payload?.entries) ? payload.entries : [];
+    renderReviewAccess(payload?.updatedAt || "");
+    setReviewAccessStatus(successMessage, "ok");
+  } catch (err) {
+    setReviewAccessStatus(err.message || "限定レビュー許可メモの保存に失敗しました", "error");
+  }
+}
+
+function renderReviewAccess(updatedAt = "") {
+  if (!reviewAccessList) return;
+  const applied = reviewAccessEntries.filter((entry) => entry.status === "applied").length;
+  const pending = reviewAccessEntries.filter((entry) => entry.status === "pending").length;
+  const revoked = reviewAccessEntries.filter((entry) => entry.status === "revoked").length;
+  const updated = updatedAt ? ` / 更新 ${formatDateTime(updatedAt)}` : "";
+  setReviewAccessStatus(`合計${reviewAccessEntries.length}件 / 適用${applied} / 未適用${pending} / 停止${revoked}${updated}`, "ok");
+
+  if (!reviewAccessEntries.length) {
+    reviewAccessList.innerHTML = `<p class="admin-note">許可メモはまだありません。</p>`;
+    return;
+  }
+
+  reviewAccessList.innerHTML = reviewAccessEntries
+    .map((entry, index) => {
+      const status = reviewStatusLabel(entry.status);
+      const appliedAt = entry.appliedAt ? `適用: ${formatDateTime(entry.appliedAt)}` : "";
+      const revokedAt = entry.revokedAt ? `停止: ${formatDateTime(entry.revokedAt)}` : "";
+      const dateNote = [appliedAt, revokedAt].filter(Boolean).join(" / ");
+      return `
+        <article class="admin-review-row" data-review-index="${index}">
+          <div class="admin-review-main">
+            <strong>${escapeHtml(entry.name || "-")}</strong>
+            <span class="admin-analytics-label">追加: ${escapeHtml(formatDateTime(entry.addedAt))}</span>
+          </div>
+          <span>${escapeHtml(entry.email || "-")}</span>
+          <span class="admin-pill ${escapeHtml(entry.status || "pending")}">${escapeHtml(status)}</span>
+          <div class="admin-review-note">
+            <span>${escapeHtml(entry.note || "")}</span>
+            ${dateNote ? `<div class="admin-analytics-label">${escapeHtml(dateNote)}</div>` : ""}
+          </div>
+          <div class="admin-review-actions">
+            <button class="button ghost" type="button" data-review-action="applied">適用済み</button>
+            <button class="button ghost" type="button" data-review-action="revoked">停止</button>
+            <button class="button ghost" type="button" data-review-action="remove">削除</button>
+          </div>
+        </article>
+      `;
+    })
+    .join("");
+
+  reviewAccessList.querySelectorAll("[data-review-action]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const row = button.closest("[data-review-index]");
+      const index = Number(row?.dataset.reviewIndex);
+      if (!Number.isInteger(index) || !reviewAccessEntries[index]) return;
+      updateReviewAccessEntry(index, button.dataset.reviewAction);
+    });
+  });
+}
+
+async function updateReviewAccessEntry(index, action) {
+  const entry = reviewAccessEntries[index];
+  if (!entry) return;
+
+  if (action === "remove") {
+    reviewAccessEntries = reviewAccessEntries.filter((_, itemIndex) => itemIndex !== index);
+    await saveReviewAccessEntries("削除しました");
+    return;
+  }
+
+  const now = new Date().toISOString();
+  const next = { ...entry };
+  if (action === "applied") {
+    next.status = "applied";
+    next.appliedAt = now;
+    next.revokedAt = "";
+  } else if (action === "revoked") {
+    next.status = "revoked";
+    next.revokedAt = now;
+  }
+  reviewAccessEntries = reviewAccessEntries.map((item, itemIndex) => (itemIndex === index ? next : item));
+  await saveReviewAccessEntries(action === "applied" ? "Access適用済みとして記録しました" : "停止済みとして記録しました");
+}
+
+function clearReviewAccess(message = "管理トークン保存後に読み込みます", type = "") {
+  reviewAccessEntries = [];
+  setReviewAccessStatus(message, type);
+  if (reviewAccessList) reviewAccessList.innerHTML = "";
+}
+
+function setReviewAccessStatus(message, type = "") {
+  if (!reviewAccessStatus) return;
+  reviewAccessStatus.textContent = message;
+  reviewAccessStatus.className = `status ${type}`.trim();
+}
+
+function reviewStatusLabel(status) {
+  if (status === "applied") return "Access適用済み";
+  if (status === "revoked") return "停止済み";
+  return "未適用";
 }
 
 async function loadStorage() {
@@ -429,6 +654,12 @@ function renderQuickHelp(button) {
   adminHelpContent.innerHTML = QUICK_HELP_HTML;
 }
 
+function renderAccessHelp(button) {
+  if (!adminHelpContent) return;
+  setActiveHelpButton(button);
+  adminHelpContent.innerHTML = ACCESS_HELP_HTML;
+}
+
 async function loadHelpDocument(button) {
   if (!adminHelpContent) return;
   const path = button?.dataset.helpDoc || "";
@@ -513,3 +744,4 @@ function formatBytes(bytes) {
 loadBooks();
 loadStorage();
 loadAnalytics();
+loadReviewAccess();

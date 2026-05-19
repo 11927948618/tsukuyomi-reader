@@ -63,13 +63,41 @@ export async function onRequestGet(context) {
       )
       .all();
 
+    const reviewers = await readAccessReviewers(db);
+
     return json({
       enabled: true,
       source: "d1",
       summary: Array.isArray(summary.results) ? summary.results : [],
-      recent: Array.isArray(recent.results) ? recent.results : []
+      recent: Array.isArray(recent.results) ? recent.results : [],
+      reviewers
     });
   } catch (err) {
     return analyticsErrorResponse(err);
+  }
+}
+
+async function readAccessReviewers(db) {
+  try {
+    const result = await db
+      .prepare(
+        `SELECT
+          access_email AS reviewerEmail,
+          book_id AS bookId,
+          COUNT(*) AS events,
+          SUM(CASE WHEN event_type = 'open' THEN 1 ELSE 0 END) AS opens,
+          SUM(CASE WHEN event_type = 'finish' THEN 1 ELSE 0 END) AS finishes,
+          MAX(COALESCE(progress_percent, 0)) AS maxProgress,
+          MAX(created_at) AS lastEventAt
+        FROM reader_events
+        WHERE access_email IS NOT NULL AND access_email != ''
+        GROUP BY access_email, book_id
+        ORDER BY lastEventAt DESC
+        LIMIT 200`
+      )
+      .all();
+    return Array.isArray(result.results) ? result.results : [];
+  } catch (err) {
+    return [];
   }
 }
