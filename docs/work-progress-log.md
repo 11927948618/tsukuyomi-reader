@@ -997,3 +997,12 @@ Root directory: 空欄
 - Playwright Chromium / local `admin.html`:
   - `限定レビュー許可メモ` に名前・メール・状態・メモを追加できることを確認。
   - `管理ヘルプ > アクセス許可` で個別アクセス許可の抜粋ヘルプを表示できることを確認。
+
+### 追記
+
+- commit: `1b94a0b add review access tracking`
+- `main` へpush済み。
+- Cloudflare Pages公開側で `js/version.js` が `APP_VERSION = "0.1.63"` を返すことを確認。
+- 公開側 `admin.html` に `限定レビュー許可メモ` と `アクセス許可` ヘルプ導線が含まれることを確認。
+- 公開側 `/api/admin/review-access` が未認証でHTTP 401を返すことを確認。
+- 公開側 `docs/reader-analytics-design.md` に `TSUKUYOMI_ACCESS_IDENTITY_ANALYTICS` と `Access別読書ログ` の説明が反映されていることを確認。
