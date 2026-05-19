@@ -101,7 +101,7 @@
         <h2>限定レビュー許可メモ</h2>
         <button class="button ghost" id="reloadReviewAccessBtn" type="button">再読込</button>
       </div>
-      <p class="admin-note">実際のアクセス許可はCloudflare Access側で行います。ここには、許可・停止した相手の記録だけを残します。</p>
+      <p class="admin-note">実際のアクセス許可はCloudflare Access側で行います。ここには、許可・停止した相手の記録だけを残します。「閲覧保留」はAccess許可を残したまま、Reader側で作品がない状態に見せる管理用の保留です。</p>
       <div class="admin-review-form">
         <label class="field">
           <span class="label">名前</span>
@@ -116,6 +116,7 @@
           <select id="reviewStatus">
             <option value="pending">未適用</option>
             <option value="applied">Access適用済み</option>
+            <option value="muted">閲覧保留</option>
             <option value="revoked">停止済み</option>
           </select>
         </label>

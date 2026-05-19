@@ -92,6 +92,26 @@ migrations/0002_access_identity_analytics.sql
 
 D1が未設定の場合は、R2軽量集計にもAccess別の簡易集計を保存します。
 
+## 限定レビュー版の閲覧保留
+
+Access許可を残したまま、Reader側で個別に作品一覧を空にする保留機能です。
+
+有効化する環境変数:
+
+```text
+TSUKUYOMI_REVIEW_ACCESS_SOFT_BLOCK=true
+```
+
+この設定を有効にした場合、管理画面の `限定レビュー許可メモ` で状態が `閲覧保留` または `停止済み` のメールアドレスは、Reader側で公開作品を見られません。
+
+挙動:
+
+- `/api/books` は空配列を返します。
+- 本文APIと表紙APIは見つからない扱いにします。
+- Cloudflare Accessの拒否画面は出さず、読者側に保留理由も表示しません。
+
+この機能は、Access拒否画面を見せないための管理用保留です。完全な秘匿や強制的な流出防止ではありません。
+
 ## 保存先
 
 基本はCloudflare D1を使います。

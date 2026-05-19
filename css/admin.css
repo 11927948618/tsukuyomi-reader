@@ -362,6 +362,12 @@
   border-color: color-mix(in srgb, #3faf5c, var(--border) 45%);
 }
 
+.admin-pill.muted {
+  color: #514170;
+  background: color-mix(in srgb, #8f70c8, transparent 84%);
+  border-color: color-mix(in srgb, #8f70c8, var(--border) 45%);
+}
+
 .admin-pill.revoked {
   color: #7a2c2c;
   background: color-mix(in srgb, #d86464, transparent 84%);

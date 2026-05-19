@@ -1030,3 +1030,32 @@ Root directory: 空欄
 - Cloudflare Pages公開側で `js/version.js` が `APP_VERSION = "0.1.64"` を返すことを確認。
 - 公開側 `js/admin.js` に `Access別読書ログ（管理用）` と、読者同士に進捗を公開しない説明が反映されていることを確認。
 - 公開側 `docs/reader-analytics-design.md` と `docs/limited-review-operation.md` に、管理側の一元保管・将来分析用途の説明が反映されていることを確認。
+
+## 2026-05-19 限定レビューの閲覧保留
+
+### 対応
+
+- Cloudflare Access許可を残したまま、Reader側で個別に作品一覧を空にする `閲覧保留` を追加。
+- 環境変数 `TSUKUYOMI_REVIEW_ACCESS_SOFT_BLOCK=true` を追加。
+  - 未設定時は従来通りで、公開版や既存運用へ影響しない。
+- 管理画面の `限定レビュー許可メモ` に `閲覧保留` 状態と保留ボタンを追加。
+- `閲覧保留` または `停止済み` のAccess認証済みメールに対して、読者向けAPIを以下の挙動にする。
+  - `/api/books`: 空配列を返す。
+  - `/api/books/:id/content`: 見つからない扱いにする。
+  - `/api/books/:id/cover`: 見つからない扱いにする。
+- マニュアルへ、Cloudflare Accessから外すと拒否画面が出やすく、目立たせず保留したい場合はAccess許可を残してReader側の `閲覧保留` を使う旨を追記。
+- キャッシュ更新用に `v0.1.65` へ更新。
+
+### 検証
+
+- `node --check js/admin.js`: OK
+- `node --check js/version.js`: OK
+- `node --check functions/_shared/review-access.js`: OK
+- `node --check functions/api/admin/review-access/index.js`: OK
+- `node --check functions/api/books/index.js`: OK
+- `node --check functions/api/books/[id]/content.js`: OK
+- `node --check functions/api/books/[id]/cover.js`: OK
+- モックR2検証:
+  - `muted@example.com` は `/api/books` が `[]` になることを確認。
+  - `muted@example.com` は本文APIがHTTP 404になることを確認。
+  - `allowed@example.com` は通常どおり作品一覧に作品が出ることを確認。

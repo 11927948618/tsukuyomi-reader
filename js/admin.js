@@ -57,11 +57,13 @@ const ACCESS_HELP_HTML = `
     <li><strong>One-time PIN</strong>: 友人側にアカウント作成を求めない場合は、One-time PIN方式を使います。</li>
     <li><strong>管理画面へ記録する</strong>: 下の「限定レビュー許可メモ」に名前、メール、状態を記入します。これは許可の実行ではなく記録です。</li>
     <li><strong>読書ログへ紐づける</strong>: 限定レビュー版で <code>TSUKUYOMI_ACCESS_IDENTITY_ANALYTICS=true</code> を設定すると、Access認証済みメールと読書ログを管理用に紐づけます。</li>
+    <li><strong>閲覧保留</strong>: <code>TSUKUYOMI_REVIEW_ACCESS_SOFT_BLOCK=true</code> を設定した限定レビュー版では、状態を「閲覧保留」にした相手へ作品一覧を空で返します。Access許可は残すため、ログイン拒否より気づかれにくい保留になります。</li>
     <li><strong>停止時</strong>: Cloudflare Accessから相手を外し、管理画面の記録も「停止済み」にします。</li>
   </ol>
   <p class="admin-note">Accessの許可リスト全員が自動表示されるわけではありません。読書ログに出るのは、実際にAccess認証を通ってReaderへアクセスした人です。</p>
   <p class="admin-note">これは読者同士に進捗を公開する機能ではありません。管理側が一元的に保管・集計し、将来の文芸分析や作品改善に使うための記録です。</p>
   <p class="admin-note">賞応募候補は公開版Readerに置かず、認証付きの限定レビュー版だけで扱います。案内文には、閲覧データを管理側で分析目的に利用することがある旨を入れます。</p>
+  <p class="admin-note">閲覧保留は読者側に理由を表示しません。管理上の保留として使い、連絡が必要になった場合は個別に対応します。</p>
 `;
 
 adminToken.value = localStorage.getItem(TOKEN_KEY) || "";
@@ -311,6 +313,7 @@ async function addReviewAccessEntry() {
       note,
       addedAt: now,
       appliedAt: status === "applied" ? now : "",
+      mutedAt: status === "muted" ? now : "",
       revokedAt: status === "revoked" ? now : ""
     }
   ];
@@ -352,9 +355,10 @@ function renderReviewAccess(updatedAt = "") {
   if (!reviewAccessList) return;
   const applied = reviewAccessEntries.filter((entry) => entry.status === "applied").length;
   const pending = reviewAccessEntries.filter((entry) => entry.status === "pending").length;
+  const muted = reviewAccessEntries.filter((entry) => entry.status === "muted").length;
   const revoked = reviewAccessEntries.filter((entry) => entry.status === "revoked").length;
   const updated = updatedAt ? ` / 更新 ${formatDateTime(updatedAt)}` : "";
-  setReviewAccessStatus(`合計${reviewAccessEntries.length}件 / 適用${applied} / 未適用${pending} / 停止${revoked}${updated}`, "ok");
+  setReviewAccessStatus(`合計${reviewAccessEntries.length}件 / 適用${applied} / 未適用${pending} / 保留${muted} / 停止${revoked}${updated}`, "ok");
 
   if (!reviewAccessEntries.length) {
     reviewAccessList.innerHTML = `<p class="admin-note">許可メモはまだありません。</p>`;
@@ -365,8 +369,9 @@ function renderReviewAccess(updatedAt = "") {
     .map((entry, index) => {
       const status = reviewStatusLabel(entry.status);
       const appliedAt = entry.appliedAt ? `適用: ${formatDateTime(entry.appliedAt)}` : "";
+      const mutedAt = entry.mutedAt ? `保留: ${formatDateTime(entry.mutedAt)}` : "";
       const revokedAt = entry.revokedAt ? `停止: ${formatDateTime(entry.revokedAt)}` : "";
-      const dateNote = [appliedAt, revokedAt].filter(Boolean).join(" / ");
+      const dateNote = [appliedAt, mutedAt, revokedAt].filter(Boolean).join(" / ");
       return `
         <article class="admin-review-row" data-review-index="${index}">
           <div class="admin-review-main">
@@ -381,6 +386,7 @@ function renderReviewAccess(updatedAt = "") {
           </div>
           <div class="admin-review-actions">
             <button class="button ghost" type="button" data-review-action="applied">適用済み</button>
+            <button class="button ghost" type="button" data-review-action="muted">保留</button>
             <button class="button ghost" type="button" data-review-action="revoked">停止</button>
             <button class="button ghost" type="button" data-review-action="remove">削除</button>
           </div>
@@ -414,13 +420,24 @@ async function updateReviewAccessEntry(index, action) {
   if (action === "applied") {
     next.status = "applied";
     next.appliedAt = now;
+    next.mutedAt = "";
+    next.revokedAt = "";
+  } else if (action === "muted") {
+    next.status = "muted";
+    next.mutedAt = now;
     next.revokedAt = "";
   } else if (action === "revoked") {
     next.status = "revoked";
     next.revokedAt = now;
   }
   reviewAccessEntries = reviewAccessEntries.map((item, itemIndex) => (itemIndex === index ? next : item));
-  await saveReviewAccessEntries(action === "applied" ? "Access適用済みとして記録しました" : "停止済みとして記録しました");
+  const message =
+    action === "applied"
+      ? "Access適用済みとして記録しました"
+      : action === "muted"
+        ? "閲覧保留として記録しました"
+        : "停止済みとして記録しました";
+  await saveReviewAccessEntries(message);
 }
 
 function clearReviewAccess(message = "管理トークン保存後に読み込みます", type = "") {
@@ -437,6 +454,7 @@ function setReviewAccessStatus(message, type = "") {
 
 function reviewStatusLabel(status) {
   if (status === "applied") return "Access適用済み";
+  if (status === "muted") return "閲覧保留";
   if (status === "revoked") return "停止済み";
   return "未適用";
 }

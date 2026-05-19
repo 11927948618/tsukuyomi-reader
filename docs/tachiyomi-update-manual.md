@@ -102,6 +102,16 @@ migrations/0002_access_identity_analytics.sql
 
 Cloudflare Accessの許可リスト全員が自動で管理画面に出るわけではありません。読書ログに出るのは、実際にAccess認証を通ってReaderへアクセスした人です。
 
+許可ユーザーを一時的に目立たず保留にする場合は、Access許可を残したままReader側で作品一覧を空にする `閲覧保留` を使えます。
+
+```text
+TSUKUYOMI_REVIEW_ACCESS_SOFT_BLOCK=true
+```
+
+この環境変数を有効にした限定レビュー版では、管理画面の `限定レビュー許可メモ` で状態を `閲覧保留` または `停止済み` にしたメールアドレスへ、`/api/books` が空の作品一覧を返します。本文APIと表紙APIも見つからない扱いになります。
+
+Cloudflare Accessから外すと拒否画面が出やすいため、目立たせず保留したい場合はAccess許可を残し、Reader側の `閲覧保留` を使います。
+
 詳細:
 
 ```text
