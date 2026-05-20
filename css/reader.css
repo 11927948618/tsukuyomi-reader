@@ -310,6 +310,48 @@ body.distribution-mode .reader-content img {
   font-size: 0.92em;
 }
 
+body.pdf-reader-mode .reader-viewport {
+  padding: 0;
+  overflow: hidden;
+  scroll-snap-type: none;
+  touch-action: auto;
+}
+
+body.pdf-reader-mode .reader-content {
+  width: 100%;
+  height: 100%;
+  column-width: auto;
+  column-gap: 0;
+  writing-mode: horizontal-tb;
+  text-orientation: mixed;
+  line-height: normal;
+  letter-spacing: 0;
+}
+
+body.pdf-reader-mode .reader-content > * {
+  scroll-snap-align: none;
+}
+
+.pdf-viewer-shell {
+  width: 100%;
+  height: 100%;
+  min-height: calc(var(--reader-viewport-height, 100dvh) - var(--reader-topbar-height, 64px));
+  background: color-mix(in srgb, var(--panel), #000 8%);
+}
+
+.pdf-viewer-frame {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: inherit;
+  border: 0;
+  background: color-mix(in srgb, var(--panel), #000 12%);
+}
+
+.pdf-viewer-fallback {
+  display: none;
+}
+
 .reader-title {
   width: 100%;
   font-size: 17px;

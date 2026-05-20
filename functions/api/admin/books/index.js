@@ -62,7 +62,7 @@ export async function onRequestPost(context) {
 
   if (bookFile && typeof bookFile.arrayBuffer === "function" && bookFile.size > 0) {
     const ext = extFromFile(bookFile, "epub");
-    if (!["epub", "txt"].includes(ext)) return error("本文ファイルはEPUBまたはTXTを選択してください");
+    if (!["epub", "txt", "pdf"].includes(ext)) return error("本文ファイルはEPUB、TXT、PDFを選択してください");
     format = ext;
     contentKey = `works/${id}-${nowCompact}.${ext}`;
     await bucket.put(contentKey, await bookFile.arrayBuffer(), {

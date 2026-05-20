@@ -458,6 +458,11 @@ select.input option {
   border-color: color-mix(in srgb, #2a6aa6, var(--border) 42%);
 }
 
+#libraryScreen .bundled-book-kind.kind-pdf {
+  background: color-mix(in srgb, #b34e73, transparent 82%);
+  border-color: color-mix(in srgb, #b34e73, var(--border) 42%);
+}
+
 #libraryScreen .bundled-book-kind.kind-zip {
   background: color-mix(in srgb, #7b4db8, transparent 82%);
   border-color: color-mix(in srgb, #7b4db8, var(--border) 42%);

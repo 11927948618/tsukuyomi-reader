@@ -316,6 +316,18 @@ export function initReader({
     if (!currentBook) return;
 
     bookTitle.innerHTML = escapeHtml(currentBook.title || "Untitled");
+    const pdfUrl = getPdfUrl(currentBook);
+    const isPdf = Boolean(pdfUrl);
+    document.body.classList.toggle("pdf-reader-mode", isPdf);
+    bookContent.classList.toggle("pdf-content", isPdf);
+    bookContent.classList.remove("force-vertical", "force-horizontal");
+    bookContent.innerHTML = "";
+
+    if (isPdf) {
+      renderPdfBook(currentBook, pdfUrl);
+      return;
+    }
+
     bookContent.innerHTML = currentBook.html || "";
 
     tocList.innerHTML = "";
@@ -345,6 +357,43 @@ export function initReader({
     });
 
     // 現状は全文一括DOM生成。大容量書籍向けの分割描画は別対応とする。
+  }
+
+  function renderPdfBook(currentBook, pdfUrl) {
+    const shell = document.createElement("section");
+    shell.id = "pdf-viewer-root";
+    shell.className = "pdf-viewer-shell";
+
+    const frame = document.createElement("iframe");
+    frame.className = "pdf-viewer-frame";
+    frame.title = `${currentBook.title || "PDF作品"} PDF`;
+    frame.src = withPdfViewerParams(pdfUrl);
+    frame.loading = "eager";
+
+    const fallback = document.createElement("p");
+    fallback.className = "pdf-viewer-fallback";
+    fallback.textContent = "PDFを表示できません。ブラウザのPDF表示対応を確認してください。";
+
+    shell.appendChild(frame);
+    shell.appendChild(fallback);
+    bookContent.appendChild(shell);
+
+    tocList.innerHTML = "";
+    const li = document.createElement("li");
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.textContent = "PDF";
+    btn.addEventListener("click", () => {
+      shell.scrollIntoView({ behavior: "smooth", block: "start" });
+      closeToc();
+    });
+    li.appendChild(btn);
+    tocList.appendChild(li);
+
+    requestAnimationFrame(() => {
+      updatePageDirection();
+      refreshHScroll?.();
+    });
   }
 
   function applySettings(nextSettings) {
@@ -970,6 +1019,7 @@ export function initReader({
   function applyWritingModePreference(mode) {
     if (!bookContent) return;
     bookContent.classList.remove("force-vertical", "force-horizontal");
+    if (getPdfUrl(book)) return;
     if (mode === "vertical") {
       bookContent.classList.add("force-vertical");
     } else if (mode === "horizontal") {
@@ -978,6 +1028,7 @@ export function initReader({
   }
 
   function detectPageDirection() {
+    if (getPdfUrl(book)) return "ltr";
     if (writingModePreference === "vertical") return "rtl";
     if (writingModePreference === "horizontal") return "ltr";
     const probe = bookContent.querySelector("section.chapter, p, div, span") || bookContent;
@@ -994,6 +1045,23 @@ export function initReader({
     }
     refreshHScroll?.();
   }
+}
+
+function getPdfUrl(book) {
+  const meta = book?.meta && typeof book.meta === "object" ? book.meta : {};
+  const sourceData = meta.sourceData && typeof meta.sourceData === "object" ? meta.sourceData : {};
+  const isPdf =
+    String(meta.format || "").toLowerCase() === "pdf" ||
+    String(sourceData.kind || "").toLowerCase() === "pdf";
+  return isPdf ? String(meta.pdfUrl || "").trim() : "";
+}
+
+function withPdfViewerParams(url) {
+  const raw = String(url || "").trim();
+  if (!raw) return "";
+  const [base, hash = ""] = raw.split("#", 2);
+  const params = "toolbar=0&navpanes=0&scrollbar=1";
+  return `${base}#${hash ? `${hash}&${params}` : params}`;
 }
 
 function normalizeFontFamilyPreference(value) {

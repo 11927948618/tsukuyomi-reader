@@ -1068,3 +1068,53 @@ Root directory: 空欄
 - 公開側 `admin.html` に `閲覧保留` の選択肢と説明が反映されていることを確認。
 - 公開側 `js/admin.js` に `TSUKUYOMI_REVIEW_ACCESS_SOFT_BLOCK` のヘルプが反映されていることを確認。
 - 公開側 `docs/limited-review-operation.md` に閲覧保留の説明が反映されていることを確認。
+
+## 2026-05-19 初期設定チェックリスト
+
+### 対応
+
+- `docs/tachiyomi-initial-setup.md` を追加。
+  - Pages、R2、管理トークンの必須設定を整理。
+  - D1、Cloudflare Access、Access読書ログ、閲覧保留、公開停止を任意設定として整理。
+  - 未設定時の影響を表で整理。
+  - 初期設定後に確認すべき `/api/books`、`/admin.html`、作品登録、Reader表示を記載。
+- `README.md` のマニュアル一覧に初期設定チェックリストを追加。
+- 管理画面ヘルプに `初期設定` ボタンを追加。
+- 更新側マニュアルのCloudflare初期設定章からチェックリストへ誘導。
+- キャッシュ更新用に `v0.1.66` へ更新。
+
+### 検証
+
+- `node --check js/admin.js`: OK
+- `node --check js/version.js`: OK
+- `rg "tachiyomi-initial-setup|初期設定チェックリスト|未設定時の影響"`: README、管理画面ヘルプ、更新側マニュアル、作業ログへの反映を確認。
+
+## 2026-05-20 DialogueAssembler向けPDF資料とPDF固定レイアウト対応
+
+### 対応
+
+- `docs/dialogueassembler-mobile-pdf-export-spec.md` を追加。
+  - DialogueAssembler側でスマホ縦長PDFを出力する方針を整理。
+  - フォントサイズ、ページ比率、圧縮PDF、ファイル命名、確認項目を記載。
+- 管理画面ヘルプに `PDF出力` 資料ボタンを追加。
+- 管理画面の本文ファイルでPDFを選択できるようにした。
+- 管理APIの本文ファイル登録で `pdf` を許可。
+- `application/pdf` のContent-Typeを追加。
+- Libraryの手動読み込みとmanifest/API経由読み込みでPDFを判定。
+- PDF作品は通常の縦書き本文正規化に流さず、Reader内の固定レイアウトPDF表示枠で開く。
+- 更新側マニュアルとREADMEへPDF固定レイアウト作品の扱いを追記。
+- キャッシュ更新用に `v0.1.67` へ更新し、Service Worker cache nameも更新。
+
+### 検証
+
+- `node --check js/library.js`: OK
+- `node --check js/reader.js`: OK
+- `node --check js/admin.js`: OK
+- `node --check js/version.js`: OK
+- `node --check sw.js`: OK
+- `node --check functions/_shared/books.js`: OK
+- `node --check functions/api/admin/books/index.js`: OK
+- モックR2検証:
+  - 管理APIでPDFを登録した時、公開manifestの `format` が `pdf` になることを確認。
+  - R2保存時のContent-Typeが `application/pdf` になることを確認。
+- `rg "pdf|PDF|dialogueassembler|DialogueAssembler|pdf-reader"`: 追加箇所を確認。

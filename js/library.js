@@ -102,6 +102,7 @@ export function initLibrary({ siteConfig = null, onOpenBook, onExport, getCurren
     if (!file) return;
     const name = String(file.name || "").toLowerCase();
     const isEpub = name.endsWith(".epub") || file.type === "application/epub+zip";
+    const isPdf = name.endsWith(".pdf") || file.type === "application/pdf";
 
     if (isEpub) {
       setStatus("EPUB読み込み中...");
@@ -115,6 +116,27 @@ export function initLibrary({ siteConfig = null, onOpenBook, onExport, getCurren
         onOpenBook(book);
       } catch (err) {
         setStatus(err.message || "読み込みに失敗しました", "error");
+      }
+      return;
+    }
+
+    if (isPdf) {
+      setStatus("PDF読み込み中...");
+      try {
+        const pdfUrl = URL.createObjectURL(file);
+        const book = attachBookSource(createPdfBook({
+          title: file.name || "PDF作品",
+          filename: file.name || "",
+          pdfUrl
+        }), "file-import", {
+          kind: "pdf",
+          filename: file.name || ""
+        });
+        setDebug("");
+        setStatus("PDF読み込み完了", "ok");
+        onOpenBook(book);
+      } catch (err) {
+        setStatus(err.message || "PDFの読み込みに失敗しました", "error");
       }
       return;
     }
@@ -506,6 +528,19 @@ async function openBundledBook(entry, txtMode = "auto", setDebug, manifestPath =
     return attachBookSource(normalizeHtmlToBook(htmlText, filename), "manifest", sourceData);
   }
 
+  if (kind === "pdf") {
+    const res = await fetch(sourceUrl);
+    if (!res.ok) throw new Error(`PDFを読み込めません: ${filename}`);
+    const blob = await res.blob();
+    const pdfUrl = URL.createObjectURL(blob.type === "application/pdf" ? blob : new Blob([blob], { type: "application/pdf" }));
+    setDebug?.("");
+    return attachBookSource(createPdfBook({
+      title: safeText(entry?.title, filename),
+      filename,
+      pdfUrl
+    }), "manifest", sourceData);
+  }
+
   if (kind === "zip") {
     const res = await fetch(sourceUrl);
     if (!res.ok) throw new Error(`ZIPを読み込めません: ${filename}`);
@@ -563,11 +598,12 @@ function attachBookSource(book, sourceType, sourceData = null) {
 
 function normalizeBundledBookKind(kind, filename) {
   const hinted = String(kind || "").toLowerCase();
-  if (hinted === "txt" || hinted === "epub" || hinted === "html" || hinted === "zip") return hinted;
+  if (hinted === "txt" || hinted === "epub" || hinted === "html" || hinted === "pdf" || hinted === "zip") return hinted;
 
   const lower = String(filename || "").toLowerCase();
   if (lower.endsWith(".epub")) return "epub";
   if (lower.endsWith(".html") || lower.endsWith(".htm")) return "html";
+  if (lower.endsWith(".pdf")) return "pdf";
   if (lower.endsWith(".zip")) return "zip";
   return "txt";
 }
@@ -575,6 +611,20 @@ function normalizeBundledBookKind(kind, filename) {
 function defaultDescription(kind) {
   if (kind === "epub") return "EPUB作品";
   if (kind === "html") return "HTML作品";
+  if (kind === "pdf") return "PDF作品";
   if (kind === "zip") return "バックアップZIP";
   return "TXT作品";
+}
+
+function createPdfBook({ title, filename = "", pdfUrl }) {
+  return {
+    title: safeText(title, filename || "PDF作品"),
+    html: "",
+    toc: [{ title: "PDF", chapterId: "pdf-viewer-root" }],
+    meta: {
+      format: "pdf",
+      filename,
+      pdfUrl
+    }
+  };
 }

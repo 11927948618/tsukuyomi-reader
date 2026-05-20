@@ -39,7 +39,7 @@ const QUICK_HELP_HTML = `
   <ol>
     <li><strong>管理トークン</strong>: Cloudflare Pages の環境変数 <code>TSUKUYOMI_ADMIN_TOKEN</code> と同じ値を入れて保存します。</li>
     <li><strong>作品ID</strong>: 英数字、ハイフン、アンダースコアだけ使えます。空欄でも自動作成できます。差し替え時は同じIDを使います。</li>
-    <li><strong>本文ファイル</strong>: EPUBまたはTXTを登録できます。表紙はJPG、PNG、WebPを指定できます。</li>
+    <li><strong>本文ファイル</strong>: EPUB、TXT、PDFを登録できます。PDFは固定レイアウト作品として表示します。表紙はJPG、PNG、WebPを指定できます。</li>
     <li><strong>公開停止</strong>: 作品一覧の「公開停止」で個別に非公開化できます。全体停止はCloudflare環境変数 <code>TSUKUYOMI_PUBLICATION_PAUSED=true</code> です。</li>
     <li><strong>R2使用状況</strong>: 保存容量の概算を確認できます。Class A/B操作数はCloudflare R2 Metricsで確認します。</li>
     <li><strong>読書ログ</strong>: 作品別の開始、読了、平均進捗を軽く確認できます。読者同士には公開せず、管理側で一元保管・集計して作品傾向や将来分析に使います。</li>

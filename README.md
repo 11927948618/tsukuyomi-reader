@@ -13,6 +13,9 @@
   - nav / ncx / 見出しからの目次生成
   - 章内リンクの補正
   - 画像などアセットの blob URL 化
+- `PDF` 読み込み
+  - 固定レイアウト作品として表示
+  - DialogueAssembler等のバブルチャットPDF向け
 - バックアップ `ZIP` の保存 / 復元
 - Reader 表示
   - `paged` / `scrollx` / `scrolly`
@@ -45,12 +48,14 @@
 ## マニュアル
 
 - [立ち読みモード 更新側マニュアル](docs/tachiyomi-update-manual.md)
+- [立ち読みモード 初期設定チェックリスト](docs/tachiyomi-initial-setup.md)
 - [立ち読みモード 読者向けマニュアル](docs/tachiyomi-reader-manual.md)
 - [立ち読みモード 実機確認チェックリスト](docs/tachiyomi-device-checklist.md)
 - [Cloudflare R2 Usage Guard設計](docs/cloudflare-usage-guard-design.md)
 - [Cloudflare F5 Defense設計](docs/cloudflare-f5-defense-design.md)
 - [Reader Analytics設計](docs/reader-analytics-design.md)
 - [限定レビュー運用資料](docs/limited-review-operation.md)
+- [DialogueAssembler スマホ向けPDF出力メモ](docs/dialogueassembler-mobile-pdf-export-spec.md)
 - [作業進捗ログ](docs/work-progress-log.md)
 
 ## ディレクトリ

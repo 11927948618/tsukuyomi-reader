@@ -125,7 +125,7 @@ docs/limited-review-operation.md
 - `books/manifest.json`
   - 管理API未設定時のフォールバック用作品一覧です。
 - `books/works/`
-  - 管理API未設定時のフォールバック用EPUB置き場です。
+  - 管理API未設定時のフォールバック用EPUB / TXT / PDF置き場です。
 - `books/covers/`
   - 管理API未設定時のフォールバック用表紙画像置き場です。
 - `admin.html`
@@ -182,6 +182,12 @@ docs/limited-review-operation.md
 ## Cloudflare側の初期設定
 
 Web管理メニューを使う場合は、Cloudflare Pages Functions と R2 を使います。
+
+最初に必要な設定だけ確認したい場合は、以下のチェックリストを使います。
+
+```text
+docs/tachiyomi-initial-setup.md
+```
 
 R2は無料枠つきの従量課金です。Standard storageの場合、毎月10GB保存、Class A操作100万回、Class B操作1000万回までは無料です。無料枠を超えた分は後払いで課金されます。立ち読み用の小規模運用なら通常は無料枠内に収まる想定ですが、絶対に課金を発生させたくない場合はR2を使わず、`books/` 配下をGitHubへpushする静的ファイル運用にします。
 
@@ -318,6 +324,25 @@ TSUKUYOMI_RATE_LIMIT_DISABLED=true
 
 ```text
 docs/cloudflare-f5-defense-design.md
+```
+
+## PDF固定レイアウト作品
+
+DialogueAssembler等で作成したバブルチャット形式の作品は、PDF固定レイアウト作品として登録します。
+
+管理画面の本文ファイルでPDFを選択すると、作品の `format` は `pdf` になります。読者側では通常の縦書きReaderへ本文を流し込まず、PDF表示枠で開きます。
+
+推奨:
+
+- DialogueAssembler側でスマホ縦長レイアウトを使う
+- フォントサイズを大きめにする
+- 配布用に圧縮したPDFを登録する
+- 元PDFは保管用、圧縮PDFは配布用として分ける
+
+DialogueAssembler側へ渡す出力方針:
+
+```text
+docs/dialogueassembler-mobile-pdf-export-spec.md
 ```
 
 ## 匿名読書ログ

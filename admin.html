@@ -65,8 +65,8 @@
 
         <div class="field">
           <label class="label" for="bookFile">本文ファイル</label>
-          <input class="input" id="bookFile" name="bookFile" type="file" accept=".txt,.epub,text/plain,application/epub+zip" />
-          <p class="admin-note">EPUBまたはTXTを選択できます。TXTはReader側で既存のTXT正規化処理を通して表示します。</p>
+          <input class="input" id="bookFile" name="bookFile" type="file" accept=".txt,.epub,.pdf,text/plain,application/epub+zip,application/pdf" />
+          <p class="admin-note">EPUB、TXT、PDFを選択できます。PDFは固定レイアウト作品として表示します。</p>
         </div>
 
         <div class="field">
@@ -166,6 +166,8 @@
         <nav class="admin-help-menu" aria-label="ヘルプ項目">
           <button class="button ghost" type="button" data-help-kind="quick">すぐ使う</button>
           <button class="button ghost" type="button" data-help-kind="access">アクセス許可</button>
+          <button class="button ghost" type="button" data-help-doc="./docs/tachiyomi-initial-setup.md">初期設定</button>
+          <button class="button ghost" type="button" data-help-doc="./docs/dialogueassembler-mobile-pdf-export-spec.md">PDF出力</button>
           <button class="button ghost" type="button" data-help-doc="./docs/tachiyomi-update-manual.md">更新マニュアル</button>
           <button class="button ghost" type="button" data-help-doc="./docs/tachiyomi-reader-manual.md">読者マニュアル</button>
           <button class="button ghost" type="button" data-help-doc="./docs/limited-review-operation.md">限定レビュー</button>
