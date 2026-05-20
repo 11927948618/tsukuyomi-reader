@@ -1118,3 +1118,13 @@ Root directory: 空欄
   - 管理APIでPDFを登録した時、公開manifestの `format` が `pdf` になることを確認。
   - R2保存時のContent-Typeが `application/pdf` になることを確認。
 - `rg "pdf|PDF|dialogueassembler|DialogueAssembler|pdf-reader"`: 追加箇所を確認。
+
+### 追記
+
+- commit: `ca74aad add fixed layout pdf support`
+- `main` へpush済み。
+- Cloudflare Pages公開側で `js/version.js` が `APP_VERSION = "0.1.67"` を返すことを確認。
+- 公開側 `admin.html` にPDF登録UI、`PDF出力` 資料リンク、初期設定資料リンクが反映されていることを確認。
+- 公開側 `js/library.js` にPDF読み込み処理が反映されていることを確認。
+- 公開側 `js/reader.js` に固定レイアウトPDF表示処理が反映されていることを確認。
+- 公開側 `docs/dialogueassembler-mobile-pdf-export-spec.md` がHTTP 200で読めることを確認。
