@@ -1165,3 +1165,17 @@ Root directory: 空欄
 - 変更をcommit/pushしてCloudflare Pagesへ反映する。
 - 公開側で `js/version.js` が `APP_VERSION = "0.1.68"` を返すことを確認する。
 - 管理画面で実R2に対して表紙削除と作品削除を1件ずつ確認する。
+
+## 2026-05-25 `/api/books` 読み込み失敗の詳細表示
+
+### 発生状況
+
+- Reader画面は `v0.1.68` まで更新されているが、作品一覧に `/api/books を読み込めません` と表示された。
+- 静的ファイルは読めているため、切り分け対象は `/api/books` のHTTPステータスとレスポンス本文。
+
+### 対応
+
+- 作品一覧manifest読み込み時に、HTTPステータスとJSONエラー本文を画面へ表示するようにした。
+  - 例: `/api/books を読み込めません（HTTP 500: R2 bucket binding が未設定です）`
+- `fetch()` 自体が失敗した場合も、接続失敗としてエラー内容を表示するようにした。
+- キャッシュ更新用に `v0.1.69` へ更新し、Service Worker cache nameも更新した。

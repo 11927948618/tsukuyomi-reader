@@ -466,18 +466,40 @@ async function initBundledBooksShelf({
 }
 
 async function loadBundledBookManifest(manifestPath) {
-  const res = await fetch(manifestPath, { cache: "no-store" });
+  let res;
+  try {
+    res = await fetch(manifestPath, { cache: "no-store" });
+  } catch (err) {
+    throw new Error(`${manifestPath} に接続できません: ${err?.message || "network error"}`);
+  }
+
   if (res.status === 404 && manifestPath !== DEFAULT_SITE_CONFIG.booksManifest) {
     return loadBundledBookManifest(DEFAULT_SITE_CONFIG.booksManifest);
   }
+
   if (!res.ok) {
-    throw new Error(`${manifestPath} を読み込めません`);
+    const detail = await readErrorResponse(res);
+    throw new Error(`${manifestPath} を読み込めません（HTTP ${res.status}${detail ? `: ${detail}` : ""}）`);
   }
+
   const manifest = await res.json();
   if (!Array.isArray(manifest) && !Array.isArray(manifest?.books)) {
     throw new Error(`${manifestPath} の形式が未対応です`);
   }
   return manifest;
+}
+
+async function readErrorResponse(res) {
+  const contentType = res.headers.get("content-type") || "";
+  try {
+    if (contentType.includes("application/json")) {
+      const payload = await res.json();
+      return safeText(payload?.error || payload?.message, "").slice(0, 160);
+    }
+    return safeText(await res.text(), "").replace(/\s+/g, " ").slice(0, 160);
+  } catch (err) {
+    return "";
+  }
 }
 
 function normalizeBookManifestEntries(manifest) {
