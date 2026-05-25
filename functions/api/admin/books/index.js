@@ -5,6 +5,7 @@ import {
   requireAdmin,
   readCatalog,
   writeCatalog,
+  deleteR2Keys,
   toPublicManifestEntry,
   sanitizeId,
   safeText,
@@ -47,6 +48,7 @@ export async function onRequestPost(context) {
   const catalog = await readCatalog(bucket);
   const books = Array.isArray(catalog.books) ? catalog.books : [];
   const current = books.find((entry) => entry.id === id) || {};
+  const staleKeys = [];
 
   const bookFile = form.get("bookFile");
   const cover = form.get("cover");
@@ -65,6 +67,7 @@ export async function onRequestPost(context) {
     if (!["epub", "txt", "pdf"].includes(ext)) return error("本文ファイルはEPUB、TXT、PDFを選択してください");
     format = ext;
     contentKey = `works/${id}-${nowCompact}.${ext}`;
+    if (current.contentKey && current.contentKey !== contentKey) staleKeys.push(current.contentKey);
     await bucket.put(contentKey, await bookFile.arrayBuffer(), {
       httpMetadata: { contentType: contentTypeForExt(ext) }
     });
@@ -76,6 +79,7 @@ export async function onRequestPost(context) {
       return error("表紙画像は jpg / png / webp を選択してください");
     }
     coverKey = `covers/${id}-${nowCompact}.${ext}`;
+    if (current.coverKey && current.coverKey !== coverKey) staleKeys.push(current.coverKey);
     await bucket.put(coverKey, await cover.arrayBuffer(), {
       httpMetadata: { contentType: contentTypeForExt(ext) }
     });
@@ -102,5 +106,6 @@ export async function onRequestPost(context) {
     : [...books, nextBook];
 
   await writeCatalog(bucket, { books: nextBooks });
-  return json({ ok: true, book: toPublicManifestEntry(nextBook) });
+  const cleanup = await deleteR2Keys(bucket, staleKeys);
+  return json({ ok: true, book: toPublicManifestEntry(nextBook), cleanup });
 }

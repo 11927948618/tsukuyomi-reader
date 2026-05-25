@@ -17,7 +17,7 @@
   作品一覧。軽いので緩め。
 
 /api/books/:id/content:
-  本文EPUB/TXT。R2読み取り負荷が高いので厳しめ。
+  本文EPUB/TXT/PDF。R2読み取り負荷が高いので厳しめ。
 
 /api/books/:id/cover:
   表紙画像。一覧表示で複数回呼ばれるので緩め。

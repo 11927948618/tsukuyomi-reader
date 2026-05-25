@@ -84,6 +84,17 @@ h1, h2, h3 {
   border: 1px solid var(--border);
 }
 
+.button.danger {
+  background: var(--danger);
+  color: #fff;
+}
+
+.button.ghost.danger {
+  background: transparent;
+  color: var(--danger);
+  border-color: color-mix(in srgb, var(--danger), var(--border) 45%);
+}
+
 .button:disabled {
   opacity: 0.5;
   cursor: not-allowed;

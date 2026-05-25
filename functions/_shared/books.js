@@ -60,6 +60,23 @@ export async function writeCatalog(bucket, catalog) {
   return payload;
 }
 
+export async function deleteR2Keys(bucket, keys) {
+  const uniqueKeys = [...new Set((keys || []).map((key) => String(key || "").trim()).filter(Boolean))];
+  const deleted = [];
+  const failed = [];
+
+  for (const key of uniqueKeys) {
+    try {
+      await bucket.delete(key);
+      deleted.push(key);
+    } catch (err) {
+      failed.push({ key, error: err?.message || String(err || "") });
+    }
+  }
+
+  return { deleted, failed };
+}
+
 export function toPublicManifestEntry(book) {
   return {
     id: book.id,

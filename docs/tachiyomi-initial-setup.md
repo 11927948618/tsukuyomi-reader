@@ -77,7 +77,7 @@ https://tsukuyomi-reader-tachiyomi.pages.dev/admin.html
 3. R2が空なら `[]` が返ることを確認する
 4. `/admin.html` を開く
 5. 管理トークンを入力して保存する
-6. EPUBまたはTXTを1件登録する
+6. EPUB、TXT、PDFのいずれかを1件登録する
 7. `/api/books` に作品が1件出ることを確認する
 8. Reader画面で作品を開けることを確認する
 

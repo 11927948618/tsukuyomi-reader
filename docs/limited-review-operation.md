@@ -71,7 +71,7 @@ https://tsukuyomi-reader-tachiyomi.pages.dev/
 - Cloudflare Access 等でログイン必須にする
 - 許可したメールアドレスだけ閲覧できるようにする
 - One-time PIN方式なら、友人側にアカウント作成を求めずに済む
-- `/api/books`、`books/manifest.json`、EPUB/TXT実体URLを未認証で読めないようにする
+- `/api/books`、`books/manifest.json`、EPUB/TXT/PDF実体URLを未認証で読めないようにする
 - R2の直リンク公開は避ける
 - 閲覧データは読者同士には公開せず、管理側で一元保管・集計し、将来の文芸分析や作品改善に使うことを案内文に明記する
 - SNS共有・再配布・引用禁止を明記する
@@ -155,7 +155,7 @@ TSUKUYOMI_REVIEW_ACCESS_SOFT_BLOCK=true
 理由:
 
 - URLが漏れると読めてしまう設計では弱い
-- EPUB/TXT実体URLが見えると、鍵付きページだけ守っても意味が薄い
+- EPUB/TXT/PDF実体URLが見えると、鍵付きページだけ守っても意味が薄い
 - 作品ごとの閲覧制御、期限、ログ、失効処理まで作ると実装負荷が高い
 
 将来的にやるなら、以下の構成が必要です。

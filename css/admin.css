@@ -139,6 +139,18 @@
   display: block;
 }
 
+.admin-book-cover-label {
+  display: grid;
+  width: 100%;
+  height: 100%;
+  place-items: center;
+  padding: 6px;
+  color: var(--muted);
+  font-size: 0.72rem;
+  line-height: 1.25;
+  text-align: center;
+}
+
 .admin-book-info {
   display: grid;
   gap: 6px;

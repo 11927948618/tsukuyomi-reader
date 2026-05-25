@@ -41,6 +41,7 @@ const QUICK_HELP_HTML = `
     <li><strong>作品ID</strong>: 英数字、ハイフン、アンダースコアだけ使えます。空欄でも自動作成できます。差し替え時は同じIDを使います。</li>
     <li><strong>本文ファイル</strong>: EPUB、TXT、PDFを登録できます。PDFは固定レイアウト作品として表示します。表紙はJPG、PNG、WebPを指定できます。</li>
     <li><strong>公開停止</strong>: 作品一覧の「公開停止」で個別に非公開化できます。全体停止はCloudflare環境変数 <code>TSUKUYOMI_PUBLICATION_PAUSED=true</code> です。</li>
+    <li><strong>表紙削除・作品削除</strong>: 表紙だけ外す場合は「表紙削除」、本文ごとR2から消す場合は「作品削除」を使います。</li>
     <li><strong>R2使用状況</strong>: 保存容量の概算を確認できます。Class A/B操作数はCloudflare R2 Metricsで確認します。</li>
     <li><strong>読書ログ</strong>: 作品別の開始、読了、平均進捗を軽く確認できます。読者同士には公開せず、管理側で一元保管・集計して作品傾向や将来分析に使います。</li>
     <li><strong>限定レビュー</strong>: 賞応募候補は公開版に置かず、別のレビュー版ReaderをCloudflare Access等で認証必須にします。</li>
@@ -570,10 +571,12 @@ function renderBooks(books) {
 
   adminBookList.innerHTML = books
     .map((book) => {
-      const cover = book.published === true && book.cover
-        ? `<img src="${escapeHtml(book.cover)}" alt="${escapeHtml(book.title || "")} 表紙" />`
-        : "";
       const published = book.published === true;
+      const hasCover = Boolean(book.coverKey || book.cover);
+      const cover = published && book.cover
+        ? `<img src="${escapeHtml(book.cover)}" alt="${escapeHtml(book.title || "")} 表紙" />`
+        : `<span class="admin-book-cover-label">${hasCover ? "表紙あり" : "表紙なし"}</span>`;
+      const format = String(book.format || "-").toUpperCase();
       return `
         <article class="admin-book-card" data-book-id="${escapeHtml(book.id || "")}">
           <div class="admin-book-cover">${cover}</div>
@@ -582,10 +585,13 @@ function renderBooks(books) {
             <p class="admin-book-meta">${escapeHtml(book.author || "")}</p>
             <p class="admin-book-meta">${escapeHtml(book.description || "")}</p>
             <p class="admin-book-meta">ID: ${escapeHtml(book.id || "")} / 更新日: ${escapeHtml(book.updatedAt || "-")}</p>
+            <p class="admin-book-meta">形式: ${escapeHtml(format)} / 表紙: ${hasCover ? "あり" : "なし"}</p>
             <span class="admin-pill ${published ? "published" : "private"}">${published ? "公開中" : "非公開"}</span>
             <div class="admin-book-actions">
               <button class="button ghost" type="button" data-action="edit">編集に読み込む</button>
               <button class="button ghost" type="button" data-action="toggle">${published ? "公開停止" : "公開する"}</button>
+              ${hasCover ? `<button class="button ghost danger" type="button" data-action="remove-cover">表紙削除</button>` : ""}
+              <button class="button ghost danger" type="button" data-action="delete">作品削除</button>
             </div>
           </div>
         </article>
@@ -599,10 +605,15 @@ function renderBooks(books) {
       const id = card?.dataset.bookId || "";
       const book = books.find((entry) => entry.id === id);
       if (!book) return;
-      if (button.dataset.action === "edit") {
+      const action = button.dataset.action;
+      if (action === "edit") {
         fillForm(book);
-      } else {
+      } else if (action === "toggle") {
         togglePublished(book);
+      } else if (action === "remove-cover") {
+        removeCover(book);
+      } else if (action === "delete") {
+        deleteBook(book);
       }
     });
   });
@@ -633,6 +644,75 @@ async function togglePublished(book) {
   } catch (err) {
     setStatus(err.message || "公開状態の変更に失敗しました", "error");
   }
+}
+
+async function removeCover(book) {
+  const token = getToken();
+  if (!token) {
+    setStatus("管理トークンを入力してください", "error");
+    return;
+  }
+
+  if (!book.coverKey && !book.cover) {
+    setStatus("削除できる表紙はありません");
+    return;
+  }
+
+  const title = book.title || book.id || "この作品";
+  if (!window.confirm(`「${title}」の表紙だけを削除します。作品本文は残ります。`)) return;
+
+  setStatus("表紙を削除中...");
+  try {
+    const res = await fetch(`./api/admin/books/${encodeURIComponent(book.id)}`, {
+      method: "PATCH",
+      headers: {
+        ...authHeaders(token),
+        "content-type": "application/json"
+      },
+      body: JSON.stringify({ removeCover: true })
+    });
+    const payload = await readJson(res);
+    if (!res.ok) throw new Error(payload?.error || "表紙削除に失敗しました");
+    setStatus(cleanupStatus("表紙を削除しました", payload), "ok");
+    loadBooks();
+    loadStorage();
+  } catch (err) {
+    setStatus(err.message || "表紙削除に失敗しました", "error");
+  }
+}
+
+async function deleteBook(book) {
+  const token = getToken();
+  if (!token) {
+    setStatus("管理トークンを入力してください", "error");
+    return;
+  }
+
+  const title = book.title || book.id || "この作品";
+  const message = `「${title}」を作品一覧から削除し、現在参照中の本文ファイルと表紙ファイルもR2から削除します。元に戻せません。`;
+  if (!window.confirm(message)) return;
+
+  setStatus("作品を削除中...");
+  try {
+    const res = await fetch(`./api/admin/books/${encodeURIComponent(book.id)}`, {
+      method: "DELETE",
+      headers: authHeaders(token)
+    });
+    const payload = await readJson(res);
+    if (!res.ok) throw new Error(payload?.error || "作品削除に失敗しました");
+    if (bookForm?.elements?.id?.value === book.id) resetForm();
+    setStatus(cleanupStatus("作品を削除しました", payload), "ok");
+    loadBooks();
+    loadStorage();
+  } catch (err) {
+    setStatus(err.message || "作品削除に失敗しました", "error");
+  }
+}
+
+function cleanupStatus(message, payload) {
+  const failed = Array.isArray(payload?.cleanup?.failed) ? payload.cleanup.failed : [];
+  if (!failed.length) return message;
+  return `${message}（一部R2ファイル削除は未完了です）`;
 }
 
 function fillForm(book) {

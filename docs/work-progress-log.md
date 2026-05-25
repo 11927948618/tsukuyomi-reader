@@ -1128,3 +1128,40 @@ Root directory: 空欄
 - 公開側 `js/library.js` にPDF読み込み処理が反映されていることを確認。
 - 公開側 `js/reader.js` に固定レイアウトPDF表示処理が反映されていることを確認。
 - 公開側 `docs/dialogueassembler-mobile-pdf-export-spec.md` がHTTP 200で読めることを確認。
+
+## 2026-05-25 管理画面の作品削除と表紙削除
+
+### 開始
+
+- 目的: R2運用で不要になった作品本体や表紙を管理画面から削除できるようにする。
+- 対象: 管理API、管理画面、更新マニュアル、キャッシュ更新。
+- 方針: 作品削除はmanifestから外したうえで現在参照中の本文・表紙オブジェクトをR2から削除する。表紙削除は作品を残したままcoverKeyだけ消す。
+
+### 対応
+
+- 管理API `DELETE /api/admin/books/:id` を追加し、作品をmanifestから削除後、現在参照中の本文・表紙R2オブジェクトを削除するようにした。
+- 管理API `PATCH /api/admin/books/:id` に `removeCover` を追加し、作品本文を残したまま表紙だけ削除できるようにした。
+- 既存作品の本文または表紙を差し替えた場合、差し替え前に参照していたR2オブジェクトを削除するようにした。
+- 管理画面の作品一覧に、形式と表紙有無を表示し、`表紙削除` と `作品削除` ボタンを追加した。
+- 更新マニュアル、README、初期設定、限定レビュー関連資料のEPUB/TXT/PDF表記を整理した。
+- キャッシュ更新用に `v0.1.68` へ更新し、Service Worker cache nameも更新した。
+
+### 検証
+
+- `node --check js/admin.js`: OK
+- `node --check functions/_shared/books.js`: OK
+- `node --check functions/api/admin/books/index.js`: OK
+- `node --check functions/api/admin/books/[id].js`: OK
+- `node --check js/version.js`: OK
+- `node --check sw.js`: OK
+- `git diff --check`: OK
+- モックR2検証:
+  - 表紙削除で `coverKey` が空になり、旧表紙キーが削除されることを確認。
+  - 本文差し替えで `contentKey` が更新され、旧本文キーが削除されることを確認。
+  - 作品削除でmanifestから作品が消えることを確認。
+
+### 次にやること
+
+- 変更をcommit/pushしてCloudflare Pagesへ反映する。
+- 公開側で `js/version.js` が `APP_VERSION = "0.1.68"` を返すことを確認する。
+- 管理画面で実R2に対して表紙削除と作品削除を1件ずつ確認する。
