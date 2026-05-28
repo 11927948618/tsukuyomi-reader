@@ -39,6 +39,7 @@
   - copyright表示
 - 管理メニュー
   - `admin.html` から作品アップロード
+  - 管理トークン方式と管理者メールOTP方式に対応
   - Cloudflare Pages Functions + R2 によるEPUB / TXT / PDF / 表紙保存
   - 管理APIから公開 / 非公開を切替
   - R2使用量ガードによる新規公開停止 / 公開一時停止
@@ -47,16 +48,20 @@
 
 ## マニュアル
 
-- [立ち読みモード 更新側マニュアル](docs/tachiyomi-update-manual.md)
-- [立ち読みモード 初期設定チェックリスト](docs/tachiyomi-initial-setup.md)
-- [立ち読みモード 読者向けマニュアル](docs/tachiyomi-reader-manual.md)
-- [立ち読みモード 実機確認チェックリスト](docs/tachiyomi-device-checklist.md)
-- [Cloudflare R2 Usage Guard設計](docs/cloudflare-usage-guard-design.md)
-- [Cloudflare F5 Defense設計](docs/cloudflare-f5-defense-design.md)
-- [Reader Analytics設計](docs/reader-analytics-design.md)
-- [限定レビュー運用資料](docs/limited-review-operation.md)
-- [DialogueAssembler スマホ向けPDF出力メモ](docs/dialogueassembler-mobile-pdf-export-spec.md)
-- [作業進捗ログ](docs/work-progress-log.md)
+- [マニュアル索引](docs/00-manual-index.md)
+- [立ち読みモード 初期設定チェックリスト](docs/01-tachiyomi-initial-setup.md)
+- [立ち読みモード 更新側マニュアル](docs/02-tachiyomi-update-manual.md)
+- [立ち読みモード 読者向けマニュアル](docs/03-tachiyomi-reader-manual.md)
+- [立ち読みモード 実機確認チェックリスト](docs/04-tachiyomi-device-checklist.md)
+- [限定レビュー認証クイックガイド](docs/05-limited-review-auth-quick-guide.md)
+- [限定レビュー運用資料](docs/06-limited-review-operation.md)
+- [Cloudflare Access調査メモ](docs/07-cloudflare-access-investigation.md)
+- [管理者認証と復旧設計](docs/08-admin-auth-recovery-design.md)
+- [Reader Analytics設計](docs/10-reader-analytics-design.md)
+- [Cloudflare R2 Usage Guard設計](docs/20-cloudflare-usage-guard-design.md)
+- [Cloudflare F5 Defense設計](docs/21-cloudflare-f5-defense-design.md)
+- [DialogueAssembler スマホ向けPDF出力メモ](docs/30-dialogueassembler-mobile-pdf-export-spec.md)
+- [作業進捗ログ](docs/99-work-progress-log.md)
 
 ## ディレクトリ
 - `index.html`
@@ -98,11 +103,17 @@
 - 賞応募候補作品は、公開版Readerには置かない方針です
 - 友人・編集者候補に読んでもらう場合は、公開版とは別の限定レビュー版Readerを用意します
 - 限定レビュー版はCloudflare Access等でサイト/API全体を認証必須にします
+- Cloudflare Accessが使えない場合は、`TSUKUYOMI_REVIEW_PASSWORD_AUTH=true` を設定し、Reader内のメールアドレス+パスワード認証を使います
+- Reader内パスワード認証では、管理画面の `限定レビュー認証管理` から仮IDを作成し、メールアドレスと紐づけてパスワードを発行・無効化できます
+- 読者はメールアドレスまたは仮IDとパスワードでログインできます
+- Reader内パスワード認証は、ログイン総当たり対策、30日パスワード期限、同時利用検知、限定レビュー時の本文キャッシュ抑制を行います
+- 認証振り返りでは、有効IDのPW失敗やロックなどの意味があるイベントだけを詳細化し、未知IDへの試行は件数集計だけにします
 - `reviewOnly` や `awardCandidate` のようなフラグだけでは保護にならないため、未認証URLで読める状態にしないことを優先します
 - 限定レビュー版では、必要に応じてAccess認証済みメールアドレスを読書ログへ管理用に紐づけられます
+- Reader内パスワード認証のメールアドレスを読書ログへ紐づける場合は、`TSUKUYOMI_REVIEW_PASSWORD_IDENTITY_ANALYTICS=true` を設定します
 - その場合は、閲覧データを読者同士には公開せず、管理側で一元保管・集計して文芸分析目的に使うことを案内文に明記します
 - `TSUKUYOMI_REVIEW_ACCESS_SOFT_BLOCK=true` を使うと、管理画面で `閲覧保留` にした相手へ作品一覧を空で返す個別保留ができます
-- 詳細は [限定レビュー運用資料](docs/limited-review-operation.md) を参照します
+- 詳細は [限定レビュー運用資料](docs/06-limited-review-operation.md) を参照します
 
 ## 今後の候補
 - 大容量書籍向けの分割描画

@@ -1,0 +1,30 @@
+<section class="screen" id="reviewAuthScreen">
+  <div class="container auth-container">
+    <header class="auth-header">
+      <p class="label">Limited Review</p>
+      <h1 id="reviewAuthSiteName">TsukuyomiReader</h1>
+    </header>
+
+    <form class="card auth-card" id="reviewAuthForm">
+      <div>
+        <h2>限定レビュー認証</h2>
+        <p class="auth-copy">案内されたメールアドレスまたは仮IDとパスワードを入力してください。</p>
+      </div>
+
+      <label class="field">
+        <span class="label">メールアドレス / 仮ID</span>
+        <input class="input" id="reviewAuthIdentifier" type="text" autocomplete="username" required />
+      </label>
+
+      <label class="field">
+        <span class="label">パスワード</span>
+        <input class="input" id="reviewAuthPassword" type="password" autocomplete="current-password" required />
+      </label>
+
+      <button class="button" id="reviewAuthSubmitBtn" type="submit">認証する</button>
+      <div id="reviewAuthStatus" class="status">待機中</div>
+    </form>
+
+    <footer class="copyright-footer" id="copyrightFooter"></footer>
+  </div>
+</section>

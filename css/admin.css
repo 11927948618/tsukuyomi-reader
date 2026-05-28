@@ -255,7 +255,7 @@
 
 .admin-review-form {
   display: grid;
-  grid-template-columns: minmax(8rem, 1fr) minmax(12rem, 1.2fr) minmax(9rem, 0.8fr) minmax(12rem, 1.4fr) auto;
+  grid-template-columns: minmax(8rem, 0.9fr) minmax(10rem, 1fr) minmax(12rem, 1.1fr) minmax(9rem, 0.8fr) minmax(12rem, 1.2fr) auto;
   gap: 8px;
   align-items: end;
   margin: 12px 0;
@@ -275,10 +275,102 @@
   color: var(--text);
 }
 
+.admin-inline-field {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 6px;
+  align-items: center;
+}
+
+.admin-inline-field .button {
+  min-height: 2.45rem;
+  padding-inline: 12px;
+}
+
 .admin-review-access-list {
   display: grid;
   gap: 8px;
   margin-top: 12px;
+}
+
+.admin-auth-result {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(8rem, auto) auto;
+  gap: 8px;
+  align-items: center;
+  margin: 10px 0;
+  padding: 10px;
+  border: 1px solid color-mix(in srgb, var(--accent), var(--border) 45%);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--accent), transparent 90%);
+  font-size: 0.88rem;
+}
+
+.admin-auth-result > div {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.admin-auth-result strong,
+.admin-auth-result span,
+.admin-auth-result code {
+  overflow-wrap: anywhere;
+}
+
+.admin-auth-result code {
+  padding: 0.2rem 0.45rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--panel), #000 5%);
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.admin-auth-log {
+  display: grid;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.admin-auth-summary {
+  display: grid;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.admin-auth-summary-row {
+  display: grid;
+  grid-template-columns: minmax(7rem, auto) minmax(5rem, auto) minmax(7rem, auto) minmax(12rem, 1fr);
+  gap: 8px;
+  align-items: center;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--panel), #000 2%);
+  font-size: 0.84rem;
+}
+
+.admin-auth-summary-row strong,
+.admin-auth-summary-row span {
+  overflow-wrap: anywhere;
+}
+
+.admin-auth-log-row {
+  display: grid;
+  grid-template-columns: minmax(9rem, auto) minmax(6rem, auto) minmax(12rem, 1fr) minmax(7rem, auto);
+  gap: 8px;
+  align-items: center;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--panel), #000 3%);
+  font-size: 0.82rem;
+}
+
+.admin-auth-log-row strong,
+.admin-auth-log-row span {
+  overflow-wrap: anywhere;
 }
 
 .admin-review-row {
@@ -532,6 +624,9 @@ textarea.input {
   .admin-analytics-recent .admin-analytics-row,
   .admin-storage-grid,
   .admin-storage-row,
+  .admin-auth-result,
+  .admin-auth-summary-row,
+  .admin-auth-log-row,
   .admin-review-form,
   .admin-review-row {
     grid-template-columns: 1fr;

@@ -13,7 +13,7 @@ import {
 import { readUsageGuard, shouldBlockPublishing } from "../../../_shared/usage-guard.js";
 
 export async function onRequestPatch(context) {
-  const auth = requireAdmin(context.request, context.env);
+  const auth = await requireAdmin(context.request, context.env);
   if (!auth.ok) return auth.response;
 
   const bucket = getBucket(context.env);
@@ -55,7 +55,7 @@ export async function onRequestPatch(context) {
 }
 
 export async function onRequestDelete(context) {
-  const auth = requireAdmin(context.request, context.env);
+  const auth = await requireAdmin(context.request, context.env);
   if (!auth.ok) return auth.response;
 
   const bucket = getBucket(context.env);

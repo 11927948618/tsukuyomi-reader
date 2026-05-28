@@ -564,6 +564,55 @@ select.input option {
   margin-top: 16px;
 }
 
+#reviewAuthScreen {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: grid;
+  align-items: center;
+}
+
+#reviewAuthScreen .auth-container {
+  width: min(420px, 92vw);
+  padding: 24px 0;
+}
+
+#reviewAuthScreen .auth-header {
+  margin-bottom: 12px;
+}
+
+#reviewAuthScreen .auth-header h1 {
+  margin: 0;
+  font-size: 1.45rem;
+  line-height: 1.2;
+}
+
+#reviewAuthScreen .auth-card {
+  display: grid;
+  gap: 12px;
+}
+
+#reviewAuthScreen .auth-card h2 {
+  margin: 0;
+  font-size: 1.15rem;
+  line-height: 1.25;
+}
+
+#reviewAuthScreen .auth-copy {
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+#reviewAuthScreen .field {
+  display: grid;
+  gap: 6px;
+}
+
+#reviewAuthScreen .button {
+  width: 100%;
+}
+
 #libraryScreen .copyright-footer {
   margin-top: 14px;
   text-align: center;

@@ -7,15 +7,16 @@ Cloudflare側で以下が完了していることを確認します。
 - 立ち読み用Pagesプロジェクトがある
   - `tsukuyomi-reader-tachiyomi`
 - `https://tsukuyomi-reader-tachiyomi.pages.dev/` が `DNS_PROBE_FINISHED_NXDOMAIN` になる場合は、Pagesプロジェクトが未作成
-  - 先に `tachiyomi-update-manual.md` の「Pagesプロジェクトを作成する」を実施する
+  - 先に `02-tachiyomi-update-manual.md` の「Pagesプロジェクトを作成する」を実施する
 - 公開URLが開ける
   - `https://tsukuyomi-reader-tachiyomi.pages.dev/`
 - 管理URLが開ける
   - `https://tsukuyomi-reader-tachiyomi.pages.dev/admin.html`
 - R2 bindingがある
   - `TSUKUYOMI_BOOKS_BUCKET`
-- 管理トークン環境変数がある
-  - `TSUKUYOMI_ADMIN_TOKEN`
+- 管理者認証の環境変数がある
+  - `token` モード: `TSUKUYOMI_ADMIN_TOKEN`
+  - `email_otp` モード: `TSUKUYOMI_ADMIN_AUTH_SECRET`、`TSUKUYOMI_ADMIN_EMAILS`、`RESEND_API_KEY`
 - 最新コードがデプロイ済み
 - ブラウザでキャッシュが残っている場合は、Readerの「強制同期（キャッシュ破棄）」を使える状態にしておく
 
@@ -30,8 +31,9 @@ https://tsukuyomi-reader-tachiyomi.pages.dev/admin.html
 確認項目:
 
 - 管理画面が表示される
-- 管理トークン未入力では作品一覧取得に失敗する
-- 正しい管理トークンを入力して「保存」すると作品一覧が読める
+- 未認証では作品一覧取得に失敗する
+- `token` モードでは正しい管理トークンを入力して「保存」すると作品一覧が読める
+- `email_otp` モードでは管理者メールへコードを送り、6桁コードでログインすると作品一覧が読める
 - EPUBをアップロードできる
 - TXTをアップロードできる
 - 表紙画像をアップロードできる
@@ -130,7 +132,7 @@ iOS 12.4以下、iPhone 6 Plus以前の一部環境、古いSafariは対象外�
 
 ## 結果記録
 
-確認結果は `docs/work-progress-log.md` に追記します。
+確認結果は `docs/99-work-progress-log.md` に追記します。
 
 記録例:
 

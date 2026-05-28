@@ -8,7 +8,7 @@
 
 1. Pagesプロジェクトが正しいビルド設定でデプロイされている
 2. R2 bucket binding `TSUKUYOMI_BOOKS_BUCKET` がある
-3. 環境変数 `TSUKUYOMI_ADMIN_TOKEN` がある
+3. 管理者認証が設定されている
 
 この3つがそろうと、管理画面から作品を追加し、読者向けの `/api/books` で作品一覧を返せます。
 
@@ -54,17 +54,33 @@ Variable name: TSUKUYOMI_BOOKS_BUCKET
 R2 bucket: tsukuyomi-reader-books
 ```
 
-### 管理トークン
+### 管理者認証
 
 Pagesプロジェクトの `Settings > Environment variables` に追加します。
 
+既存互換の最小構成:
+
 ```text
+TSUKUYOMI_ADMIN_AUTH_MODE=token
 TSUKUYOMI_ADMIN_TOKEN=十分に長いランダム文字列
+```
+
+`TSUKUYOMI_ADMIN_AUTH_MODE` を省略した場合も `token` モードです。
+
+推奨構成は管理者メールOTPです。
+
+```text
+TSUKUYOMI_ADMIN_AUTH_MODE=email_otp
+TSUKUYOMI_ADMIN_EMAILS=halthejuggernaut@gmail.com,haltherock@yahoo.com,weezartherock@gmail.com
+TSUKUYOMI_ADMIN_AUTH_SECRET=十分に長いランダム文字列
+TSUKUYOMI_ADMIN_EMAIL_PROVIDER=resend
+TSUKUYOMI_ADMIN_EMAIL_FROM=Resendで有効な送信元
+RESEND_API_KEY=Resend APIキー
 ```
 
 設定後は再デプロイします。
 
-管理画面では、同じ値を入力して保存します。
+`token` モードでは、管理画面で `TSUKUYOMI_ADMIN_TOKEN` と同じ値を入力して保存します。`email_otp` モードでは、許可済み管理者メールに届く6桁コードでログインします。
 
 ```text
 https://tsukuyomi-reader-tachiyomi.pages.dev/admin.html
@@ -76,7 +92,7 @@ https://tsukuyomi-reader-tachiyomi.pages.dev/admin.html
 2. `https://tsukuyomi-reader-tachiyomi.pages.dev/api/books` を開く
 3. R2が空なら `[]` が返ることを確認する
 4. `/admin.html` を開く
-5. 管理トークンを入力して保存する
+5. 管理者認証を通す。`token` モードなら管理トークンを保存し、`email_otp` モードならメールコードでログインする
 6. EPUB、TXT、PDFのいずれかを1件登録する
 7. `/api/books` に作品が1件出ることを確認する
 8. Reader画面で作品を開けることを確認する
@@ -115,10 +131,52 @@ TSUKUYOMI_ANALYTICS_SALT=十分に長いランダム文字列
 
 未発表稿や賞応募候補を置く場合は、公開版とは別の限定レビュー版を用意し、Cloudflare Accessで保護します。
 
+Cloudflare Accessが使えない場合は、Reader内のメールアドレス+パスワード認証を有効にします。
+
+```text
+TSUKUYOMI_REVIEW_PASSWORD_AUTH=true
+TSUKUYOMI_REVIEW_AUTH_SECRET=十分に長いランダム文字列
+```
+
+`TSUKUYOMI_REVIEW_AUTH_SECRET` を省略した場合は `TSUKUYOMI_ADMIN_TOKEN` を署名・パスワードハッシュ用の補助値として使います。管理トークン変更で既存パスワードも無効化されるため、限定レビュー運用では専用の `TSUKUYOMI_REVIEW_AUTH_SECRET` を推奨します。
+
+有効化後は、管理画面の `限定レビュー認証管理` で仮IDを作成し、メールアドレスと紐づけます。`PW発行` で表示されたパスワードを個別に送ります。
+
+読者は、メールアドレスまたは仮IDとパスワードでログインできます。メールアドレスを伏せたい相手には、仮IDとパスワードだけを案内できます。
+
+標準では次の事前対策を行います。
+
+- ログインAPI: 60秒に6回まで。超過時は5分ブロック
+- メールアドレス単位: 5回失敗で15分ロック
+- パスワード期限: 発行から30日
+- セッション期限: 14日
+- 同時利用検知: 同じメールアドレスまたは仮IDで10分以内に複数セッションが動いた場合、認証イベントへ記録
+- 認証振り返り: 有効IDのPW失敗やロックは詳細イベント、未知IDへの試行は件数集計のみ
+- 限定レビュー認証時: 本文HTMLのローカルキャッシュ保存・復元を抑制
+
+必要に応じて調整できます。
+
+```text
+TSUKUYOMI_RATE_LIMIT_REVIEW_AUTH=6
+TSUKUYOMI_RATE_LIMIT_REVIEW_AUTH_WINDOW_SECONDS=60
+TSUKUYOMI_RATE_LIMIT_REVIEW_AUTH_BLOCK_SECONDS=300
+TSUKUYOMI_REVIEW_LOGIN_FAILURE_LIMIT=5
+TSUKUYOMI_REVIEW_LOGIN_LOCK_MINUTES=15
+TSUKUYOMI_REVIEW_PASSWORD_DAYS=30
+TSUKUYOMI_REVIEW_AUTH_SESSION_DAYS=14
+TSUKUYOMI_REVIEW_CONCURRENT_WINDOW_MINUTES=10
+```
+
 Access認証済みメールを読書ログへ管理用に紐づける場合:
 
 ```text
 TSUKUYOMI_ACCESS_IDENTITY_ANALYTICS=true
+```
+
+Reader内パスワード認証のメールアドレスを読書ログへ紐づける場合:
+
+```text
+TSUKUYOMI_REVIEW_PASSWORD_IDENTITY_ANALYTICS=true
 ```
 
 許可ユーザーをAccessから外さずにReader側で一時保留する場合:
@@ -147,12 +205,17 @@ TSUKUYOMI_PUBLICATION_PAUSED=true
 | Build settings不正 | デプロイ失敗、またはFunctions/APIが動かない |
 | `TSUKUYOMI_BOOKS_BUCKET` 未設定 | `/api/books` が500、管理画面の作品操作・R2使用状況・許可メモが使えない |
 | R2 bucketはあるが作品未登録 | `/api/books` は `[]`。Readerは開くが作品一覧は空 |
-| `TSUKUYOMI_ADMIN_TOKEN` 未設定 | 管理APIが500。読者向け閲覧はR2設定済みなら動く |
+| `TSUKUYOMI_ADMIN_TOKEN` 未設定 | `token` モードでは管理APIが500。読者向け閲覧はR2設定済みなら動く |
+| `TSUKUYOMI_ADMIN_AUTH_SECRET` 未設定 | `email_otp` モードでは管理セッション作成・検証ができない |
+| `RESEND_API_KEY` または `TSUKUYOMI_ADMIN_EMAIL_FROM` 未設定 | `email_otp` モードでログインコードを送信できない |
 | 管理画面に入れたトークンが違う | 管理APIが401。作品追加や公開停止はできない |
 | D1未設定 | 本格分析は不可。ただしR2 bucketがあれば軽量読書ログにフォールバック |
 | D1 migration未実行 | 管理画面の読書ログが未設定扱い、またはAccessメール列だけ保存スキップ |
 | `TSUKUYOMI_ACCESS_IDENTITY_ANALYTICS` 未設定 | Access認証メールと読書ログは紐づかない。匿名ログは通常どおり |
 | Cloudflare Access未設定 | 限定レビュー版は保護されない。未発表稿は置かない |
+| `TSUKUYOMI_REVIEW_PASSWORD_AUTH` 未設定 | Reader内パスワード認証は無効。Access等の外部認証がない場合は保護されない |
+| `TSUKUYOMI_REVIEW_AUTH_SECRET` 未設定 | 管理トークンを補助値に使う。管理トークン変更で既存パスワードが無効化される |
+| `TSUKUYOMI_REVIEW_PASSWORD_IDENTITY_ANALYTICS` 未設定 | Reader内パスワード認証メールと読書ログは紐づかない。認証イベントには対象のメールアドレスまたは仮IDが残る |
 | `TSUKUYOMI_REVIEW_ACCESS_SOFT_BLOCK` 未設定 | `閲覧保留` は記録だけになり、Reader側の個別保留は効かない |
 | `TSUKUYOMI_PUBLICATION_PAUSED` 未設定 | 手動の全体公開停止は無効。通常公開は継続 |
 
@@ -160,7 +223,7 @@ TSUKUYOMI_PUBLICATION_PAUSED=true
 
 公開URLと静的ファイルだけなら、Pagesのデプロイだけで画面は開きます。
 
-ただし、R2 bindingと管理トークンが未設定の場合、Web管理運用はできません。`/api/books` が500になり、作品一覧も管理画面も実運用できない状態になります。
+ただし、R2 bindingと管理者認証が未設定の場合、Web管理運用はできません。`/api/books` が500になり、作品一覧も管理画面も実運用できない状態になります。
 
 D1、Access、閲覧保留は任意機能です。未設定でも、通常の立ち読み公開と管理画面更新には直接影響しません。
 
@@ -172,7 +235,7 @@ D1、Access、閲覧保留は任意機能です。未設定でも、通常の立
 
 ```text
 /api/books が [] または作品一覧JSONを返す
-/admin.html で管理トークン保存後に作品一覧・R2使用状況を読める
+/admin.html で管理者認証後に作品一覧・R2使用状況を読める
 管理画面からTXTまたはEPUBを1件登録できる
 Reader画面で登録作品を開ける
 ```

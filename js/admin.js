@@ -2,6 +2,14 @@ import { escapeHtml } from "./utils.js";
 
 const TOKEN_KEY = "tsukuyomi:adminToken";
 const adminToken = document.getElementById("adminToken");
+const adminTokenAuth = document.getElementById("adminTokenAuth");
+const adminOtpAuth = document.getElementById("adminOtpAuth");
+const adminOtpEmail = document.getElementById("adminOtpEmail");
+const adminOtpCode = document.getElementById("adminOtpCode");
+const sendAdminOtpBtn = document.getElementById("sendAdminOtpBtn");
+const verifyAdminOtpBtn = document.getElementById("verifyAdminOtpBtn");
+const adminOtpLogoutBtn = document.getElementById("adminOtpLogoutBtn");
+const adminOtpNote = document.getElementById("adminOtpNote");
 const saveTokenBtn = document.getElementById("saveTokenBtn");
 const clearTokenBtn = document.getElementById("clearTokenBtn");
 const bookForm = document.getElementById("bookForm");
@@ -18,10 +26,15 @@ const storagePrefixes = document.getElementById("storagePrefixes");
 const reviewAccessStatus = document.getElementById("reviewAccessStatus");
 const reviewAccessList = document.getElementById("reviewAccessList");
 const reviewName = document.getElementById("reviewName");
+const reviewerId = document.getElementById("reviewerId");
 const reviewEmail = document.getElementById("reviewEmail");
 const reviewStatus = document.getElementById("reviewStatus");
 const reviewNote = document.getElementById("reviewNote");
 const addReviewAccessBtn = document.getElementById("addReviewAccessBtn");
+const generateReviewerIdBtn = document.getElementById("generateReviewerIdBtn");
+const reviewPasswordResult = document.getElementById("reviewPasswordResult");
+const reviewAuthSummary = document.getElementById("reviewAuthSummary");
+const reviewAuthLog = document.getElementById("reviewAuthLog");
 const analyticsStatus = document.getElementById("analyticsStatus");
 const analyticsSummary = document.getElementById("analyticsSummary");
 const analyticsRecent = document.getElementById("analyticsRecent");
@@ -33,18 +46,24 @@ const adminHelpOverlay = document.getElementById("adminHelpOverlay");
 const adminHelpContent = document.getElementById("adminHelpContent");
 const adminHelpButtons = Array.from(document.querySelectorAll("[data-help-kind], [data-help-doc]"));
 let reviewAccessEntries = [];
+let reviewAuthSummaryData = null;
+let reviewAuthLogEvents = [];
+let reviewAuthLogUpdatedAt = "";
+let adminAuthMode = "token";
+let adminAuthenticated = false;
+let adminOtpChallengeId = "";
 
 const QUICK_HELP_HTML = `
   <h3>管理画面でよく使う操作</h3>
   <ol>
-    <li><strong>管理トークン</strong>: Cloudflare Pages の環境変数 <code>TSUKUYOMI_ADMIN_TOKEN</code> と同じ値を入れて保存します。</li>
+    <li><strong>管理者認証</strong>: <code>token</code> モードでは <code>TSUKUYOMI_ADMIN_TOKEN</code> を保存します。<code>email_otp</code> モードでは管理者メールへ届く6桁コードでログインします。</li>
     <li><strong>作品ID</strong>: 英数字、ハイフン、アンダースコアだけ使えます。空欄でも自動作成できます。差し替え時は同じIDを使います。</li>
     <li><strong>本文ファイル</strong>: EPUB、TXT、PDFを登録できます。PDFは固定レイアウト作品として表示します。表紙はJPG、PNG、WebPを指定できます。</li>
     <li><strong>公開停止</strong>: 作品一覧の「公開停止」で個別に非公開化できます。全体停止はCloudflare環境変数 <code>TSUKUYOMI_PUBLICATION_PAUSED=true</code> です。</li>
     <li><strong>表紙削除・作品削除</strong>: 表紙だけ外す場合は「表紙削除」、本文ごとR2から消す場合は「作品削除」を使います。</li>
     <li><strong>R2使用状況</strong>: 保存容量の概算を確認できます。Class A/B操作数はCloudflare R2 Metricsで確認します。</li>
     <li><strong>読書ログ</strong>: 作品別の開始、読了、平均進捗を軽く確認できます。読者同士には公開せず、管理側で一元保管・集計して作品傾向や将来分析に使います。</li>
-    <li><strong>限定レビュー</strong>: 賞応募候補は公開版に置かず、別のレビュー版ReaderをCloudflare Access等で認証必須にします。</li>
+    <li><strong>限定レビュー</strong>: 賞応募候補は公開版に置かず、別のレビュー版ReaderをCloudflare AccessまたはReader内パスワード認証で保護します。</li>
     <li><strong>古いiPhone</strong>: iOS 12.5以降は警告後に試せますが、iPhone 6 Plus実機では描画不可を確認済みです。将来のレガシー対応候補です。</li>
   </ol>
   <p class="admin-note">左のボタンから既存マニュアルや作業ログをこの画面内で確認できます。</p>
@@ -53,15 +72,16 @@ const QUICK_HELP_HTML = `
 const ACCESS_HELP_HTML = `
   <h3>個別アクセス許可の手順</h3>
   <ol>
-    <li><strong>Cloudflare側で許可する</strong>: Cloudflare Dashboardで限定レビュー版Pagesを開き、Accessの許可ポリシーに相手のメールアドレスを追加します。</li>
+    <li><strong>Reader内パスワード認証</strong>: <code>TSUKUYOMI_REVIEW_PASSWORD_AUTH=true</code> を設定し、管理画面で相手のメールアドレスまたは仮IDにパスワードを発行します。平文は発行時だけ表示されます。</li>
+    <li><strong>Cloudflare側で許可する</strong>: Cloudflare Accessを使う場合は、Dashboardで限定レビュー版Pagesを開き、Accessの許可ポリシーに相手のメールアドレスを追加します。</li>
     <li><strong>保護範囲を確認する</strong>: Reader画面だけでなく、<code>/api/books</code>、本文API、表紙APIも未認証で読めないようにします。</li>
     <li><strong>One-time PIN</strong>: 友人側にアカウント作成を求めない場合は、One-time PIN方式を使います。</li>
-    <li><strong>管理画面へ記録する</strong>: 下の「限定レビュー許可メモ」に名前、メール、状態を記入します。これは許可の実行ではなく記録です。</li>
+    <li><strong>管理画面へ記録する</strong>: 下の「限定レビュー認証管理」に名前、仮ID、メール、状態を記入します。Reader内パスワード認証ではここから発行・無効化します。</li>
     <li><strong>読書ログへ紐づける</strong>: 限定レビュー版で <code>TSUKUYOMI_ACCESS_IDENTITY_ANALYTICS=true</code> を設定すると、Access認証済みメールと読書ログを管理用に紐づけます。</li>
     <li><strong>閲覧保留</strong>: <code>TSUKUYOMI_REVIEW_ACCESS_SOFT_BLOCK=true</code> を設定した限定レビュー版では、状態を「閲覧保留」にした相手へ作品一覧を空で返します。Access許可は残すため、ログイン拒否より気づかれにくい保留になります。</li>
     <li><strong>停止時</strong>: Cloudflare Accessから相手を外し、管理画面の記録も「停止済み」にします。</li>
   </ol>
-  <p class="admin-note">Accessの許可リスト全員が自動表示されるわけではありません。読書ログに出るのは、実際にAccess認証を通ってReaderへアクセスした人です。</p>
+  <p class="admin-note">Cloudflare Accessの許可リスト全員が自動表示されるわけではありません。Reader内パスワード認証では、この一覧に登録したメールアドレスまたは仮IDが認証対象です。</p>
   <p class="admin-note">これは読者同士に進捗を公開する機能ではありません。管理側が一元的に保管・集計し、将来の文芸分析や作品改善に使うための記録です。</p>
   <p class="admin-note">賞応募候補は公開版Readerに置かず、認証付きの限定レビュー版だけで扱います。案内文には、閲覧データを管理側で分析目的に利用することがある旨を入れます。</p>
   <p class="admin-note">閲覧保留は読者側に理由を表示しません。管理上の保留として使い、連絡が必要になった場合は個別に対応します。</p>
@@ -71,6 +91,7 @@ adminToken.value = localStorage.getItem(TOKEN_KEY) || "";
 updatedAt.value = new Date().toISOString().slice(0, 10);
 
 saveTokenBtn?.addEventListener("click", () => {
+  adminAuthenticated = true;
   localStorage.setItem(TOKEN_KEY, adminToken.value || "");
   setStatus("管理トークンを保存しました", "ok");
   loadBooks();
@@ -82,11 +103,15 @@ saveTokenBtn?.addEventListener("click", () => {
 clearTokenBtn?.addEventListener("click", () => {
   localStorage.removeItem(TOKEN_KEY);
   adminToken.value = "";
+  adminAuthenticated = false;
   setStatus("管理トークンを消去しました");
   clearStorage();
   clearAnalytics();
   clearReviewAccess();
 });
+sendAdminOtpBtn?.addEventListener("click", requestAdminOtp);
+verifyAdminOtpBtn?.addEventListener("click", verifyAdminOtp);
+adminOtpLogoutBtn?.addEventListener("click", logoutAdminOtp);
 
 reloadBooksBtn?.addEventListener("click", loadBooks);
 reloadAnalyticsBtn?.addEventListener("click", loadAnalytics);
@@ -96,6 +121,9 @@ resetFormBtn?.addEventListener("click", resetForm);
 openAdminHelpBtn?.addEventListener("click", openAdminHelp);
 closeAdminHelpBtn?.addEventListener("click", closeAdminHelp);
 addReviewAccessBtn?.addEventListener("click", addReviewAccessEntry);
+generateReviewerIdBtn?.addEventListener("click", () => {
+  if (reviewerId) reviewerId.value = createReviewerId();
+});
 
 adminHelpOverlay?.addEventListener("click", (event) => {
   if (event.target === adminHelpOverlay) closeAdminHelp();
@@ -125,7 +153,7 @@ bookForm?.addEventListener("submit", async (event) => {
   event.preventDefault();
   const token = getToken();
   if (!token) {
-    setStatus("管理トークンを入力してください", "error");
+    setStatus(adminAuthRequiredMessage(), "error");
     return;
   }
 
@@ -152,7 +180,7 @@ bookForm?.addEventListener("submit", async (event) => {
 async function loadBooks() {
   const token = getToken();
   if (!token) {
-    setStatus("管理トークンを入力してください");
+    setStatus(adminAuthRequiredMessage());
     return;
   }
 
@@ -176,7 +204,7 @@ async function loadBooks() {
 async function loadAnalytics() {
   const token = getToken();
   if (!token) {
-    clearAnalytics("管理トークンを入力してください");
+    clearAnalytics(adminAuthRequiredMessage());
     return;
   }
 
@@ -265,7 +293,7 @@ function renderReviewerAnalyticsRow(row) {
   `;
 }
 
-function clearAnalytics(message = "管理トークン保存後に読み込みます", type = "") {
+function clearAnalytics(message = adminAuthRequiredMessage(), type = "") {
   setAnalyticsStatus(message, type);
   if (analyticsSummary) analyticsSummary.innerHTML = "";
   if (analyticsRecent) analyticsRecent.innerHTML = "";
@@ -274,32 +302,38 @@ function clearAnalytics(message = "管理トークン保存後に読み込みま
 async function loadReviewAccess() {
   const token = getToken();
   if (!token) {
-    clearReviewAccess("管理トークンを入力してください");
+    clearReviewAccess(adminAuthRequiredMessage());
     return;
   }
 
-  setReviewAccessStatus("限定レビュー許可メモを読み込み中...");
+  setReviewAccessStatus("限定レビュー認証管理を読み込み中...");
   try {
     const res = await fetch("./api/admin/review-access", {
       headers: authHeaders(token)
     });
     const payload = await readJson(res);
-    if (!res.ok) throw new Error(payload?.error || "限定レビュー許可メモの読み込みに失敗しました");
+    if (!res.ok) throw new Error(payload?.error || "限定レビュー認証管理の読み込みに失敗しました");
     reviewAccessEntries = Array.isArray(payload?.entries) ? payload.entries : [];
+    reviewAuthSummaryData = payload?.authSummary || null;
+    reviewAuthLogEvents = Array.isArray(payload?.authLog?.events) ? payload.authLog.events : [];
+    reviewAuthLogUpdatedAt = payload?.authLog?.updatedAt || "";
     renderReviewAccess(payload?.updatedAt || "");
+    renderReviewAuthSummary();
+    renderReviewAuthLog();
   } catch (err) {
-    clearReviewAccess(err.message || "限定レビュー許可メモの読み込みに失敗しました", "error");
+    clearReviewAccess(err.message || "限定レビュー認証管理の読み込みに失敗しました", "error");
   }
 }
 
 async function addReviewAccessEntry() {
   const name = String(reviewName?.value || "").trim();
+  const reviewerIdValue = normalizeReviewerId(reviewerId?.value || "") || createReviewerId();
   const email = String(reviewEmail?.value || "").trim().toLowerCase();
   const status = reviewStatus?.value || "pending";
   const note = String(reviewNote?.value || "").trim();
 
-  if (!name && !email) {
-    setReviewAccessStatus("名前またはメールアドレスを入力してください", "error");
+  if (!name && !email && !reviewerIdValue) {
+    setReviewAccessStatus("名前、仮ID、メールアドレスのいずれかを入力してください", "error");
     return;
   }
 
@@ -308,6 +342,7 @@ async function addReviewAccessEntry() {
     ...reviewAccessEntries,
     {
       id: `${email || name}-${Date.now()}`,
+      reviewerId: reviewerIdValue,
       name,
       email,
       status,
@@ -320,6 +355,7 @@ async function addReviewAccessEntry() {
   ];
   await saveReviewAccessEntries("一覧に追加しました");
   if (reviewName) reviewName.value = "";
+  if (reviewerId) reviewerId.value = "";
   if (reviewEmail) reviewEmail.value = "";
   if (reviewNote) reviewNote.value = "";
   if (reviewStatus) reviewStatus.value = "pending";
@@ -328,11 +364,11 @@ async function addReviewAccessEntry() {
 async function saveReviewAccessEntries(successMessage = "保存しました") {
   const token = getToken();
   if (!token) {
-    setReviewAccessStatus("管理トークンを入力してください", "error");
+    setReviewAccessStatus(adminAuthRequiredMessage(), "error");
     return;
   }
 
-  setReviewAccessStatus("限定レビュー許可メモを保存中...");
+  setReviewAccessStatus("限定レビュー認証管理を保存中...");
   try {
     const res = await fetch("./api/admin/review-access", {
       method: "PUT",
@@ -343,12 +379,12 @@ async function saveReviewAccessEntries(successMessage = "保存しました") {
       body: JSON.stringify({ entries: reviewAccessEntries })
     });
     const payload = await readJson(res);
-    if (!res.ok) throw new Error(payload?.error || "限定レビュー許可メモの保存に失敗しました");
+    if (!res.ok) throw new Error(payload?.error || "限定レビュー認証管理の保存に失敗しました");
     reviewAccessEntries = Array.isArray(payload?.entries) ? payload.entries : [];
     renderReviewAccess(payload?.updatedAt || "");
     setReviewAccessStatus(successMessage, "ok");
   } catch (err) {
-    setReviewAccessStatus(err.message || "限定レビュー許可メモの保存に失敗しました", "error");
+    setReviewAccessStatus(err.message || "限定レビュー認証管理の保存に失敗しました", "error");
   }
 }
 
@@ -358,8 +394,9 @@ function renderReviewAccess(updatedAt = "") {
   const pending = reviewAccessEntries.filter((entry) => entry.status === "pending").length;
   const muted = reviewAccessEntries.filter((entry) => entry.status === "muted").length;
   const revoked = reviewAccessEntries.filter((entry) => entry.status === "revoked").length;
+  const passwords = reviewAccessEntries.filter((entry) => entry.hasPassword).length;
   const updated = updatedAt ? ` / 更新 ${formatDateTime(updatedAt)}` : "";
-  setReviewAccessStatus(`合計${reviewAccessEntries.length}件 / 適用${applied} / 未適用${pending} / 保留${muted} / 停止${revoked}${updated}`, "ok");
+  setReviewAccessStatus(`合計${reviewAccessEntries.length}件 / 許可${applied} / 未適用${pending} / 保留${muted} / 停止${revoked} / PW発行${passwords}${updated}`, "ok");
 
   if (!reviewAccessEntries.length) {
     reviewAccessList.innerHTML = `<p class="admin-note">許可メモはまだありません。</p>`;
@@ -372,23 +409,35 @@ function renderReviewAccess(updatedAt = "") {
       const appliedAt = entry.appliedAt ? `適用: ${formatDateTime(entry.appliedAt)}` : "";
       const mutedAt = entry.mutedAt ? `保留: ${formatDateTime(entry.mutedAt)}` : "";
       const revokedAt = entry.revokedAt ? `停止: ${formatDateTime(entry.revokedAt)}` : "";
-      const dateNote = [appliedAt, mutedAt, revokedAt].filter(Boolean).join(" / ");
+      const passwordAt = entry.passwordIssuedAt ? `PW発行: ${formatDateTime(entry.passwordIssuedAt)}` : "";
+      const passwordExpiresAt = entry.passwordExpiresAt ? `PW期限: ${formatDateTime(entry.passwordExpiresAt)}` : "";
+      const lastLogin = entry.lastLoginAt ? `最終ログイン: ${formatDateTime(entry.lastLoginAt)}` : "";
+      const lastFailed = entry.lastFailedAt ? `失敗: ${formatDateTime(entry.lastFailedAt)} (${Number(entry.failedLoginCount) || 0})` : "";
+      const lockedUntil = entry.loginLockedUntil && new Date(entry.loginLockedUntil).getTime() > Date.now()
+        ? `ロック中: ${formatDateTime(entry.loginLockedUntil)}まで`
+        : "";
+      const dateNote = [appliedAt, mutedAt, revokedAt, passwordAt, passwordExpiresAt, lastLogin, lastFailed, lockedUntil].filter(Boolean).join(" / ");
+      const passwordLabel = entry.hasPassword ? "PW発行済み" : "PW未発行";
       return `
         <article class="admin-review-row" data-review-index="${index}">
           <div class="admin-review-main">
             <strong>${escapeHtml(entry.name || "-")}</strong>
+            <span class="admin-analytics-label">仮ID: ${escapeHtml(entry.reviewerId || "-")}</span>
             <span class="admin-analytics-label">追加: ${escapeHtml(formatDateTime(entry.addedAt))}</span>
           </div>
           <span>${escapeHtml(entry.email || "-")}</span>
           <span class="admin-pill ${escapeHtml(entry.status || "pending")}">${escapeHtml(status)}</span>
           <div class="admin-review-note">
             <span>${escapeHtml(entry.note || "")}</span>
+            <div class="admin-analytics-label">${escapeHtml(passwordLabel)}</div>
             ${dateNote ? `<div class="admin-analytics-label">${escapeHtml(dateNote)}</div>` : ""}
           </div>
           <div class="admin-review-actions">
-            <button class="button ghost" type="button" data-review-action="applied">適用済み</button>
+            <button class="button ghost" type="button" data-review-action="applied">閲覧許可</button>
             <button class="button ghost" type="button" data-review-action="muted">保留</button>
             <button class="button ghost" type="button" data-review-action="revoked">停止</button>
+            ${entry.email || entry.reviewerId ? `<button class="button ghost" type="button" data-review-action="issue-password">${entry.hasPassword ? "PW再発行" : "PW発行"}</button>` : ""}
+            ${entry.hasPassword ? `<button class="button ghost danger" type="button" data-review-action="revoke-password">PW無効化</button>` : ""}
             <button class="button ghost" type="button" data-review-action="remove">削除</button>
           </div>
         </article>
@@ -401,6 +450,14 @@ function renderReviewAccess(updatedAt = "") {
       const row = button.closest("[data-review-index]");
       const index = Number(row?.dataset.reviewIndex);
       if (!Number.isInteger(index) || !reviewAccessEntries[index]) return;
+      if (button.dataset.reviewAction === "issue-password") {
+        issueReviewPassword(index);
+        return;
+      }
+      if (button.dataset.reviewAction === "revoke-password") {
+        revokeReviewPassword(index);
+        return;
+      }
       updateReviewAccessEntry(index, button.dataset.reviewAction);
     });
   });
@@ -434,17 +491,126 @@ async function updateReviewAccessEntry(index, action) {
   reviewAccessEntries = reviewAccessEntries.map((item, itemIndex) => (itemIndex === index ? next : item));
   const message =
     action === "applied"
-      ? "Access適用済みとして記録しました"
+      ? "閲覧許可として記録しました"
       : action === "muted"
         ? "閲覧保留として記録しました"
         : "停止済みとして記録しました";
   await saveReviewAccessEntries(message);
 }
 
-function clearReviewAccess(message = "管理トークン保存後に読み込みます", type = "") {
+async function issueReviewPassword(index) {
+  const entry = reviewAccessEntries[index];
+  if (!entry?.email && !entry?.reviewerId) {
+    setReviewAccessStatus("パスワード発行にはメールアドレスまたは仮IDが必要です", "error");
+    return;
+  }
+  const label = entry.email || entry.reviewerId;
+  if (entry.hasPassword && !window.confirm(`${label} のパスワードを再発行します。古いパスワードと既存セッションは無効になります。`)) {
+    return;
+  }
+
+  setReviewAccessStatus("パスワードを発行中...");
+  try {
+    const payload = await postReviewPasswordAction(entry, "issue");
+    reviewAccessEntries = Array.isArray(payload?.entries) ? payload.entries : reviewAccessEntries;
+    reviewAuthSummaryData = payload?.authSummary || reviewAuthSummaryData;
+    reviewAuthLogEvents = Array.isArray(payload?.authLog?.events) ? payload.authLog.events : reviewAuthLogEvents;
+    reviewAuthLogUpdatedAt = payload?.authLog?.updatedAt || reviewAuthLogUpdatedAt;
+    renderReviewAccess(payload?.updatedAt || "");
+    renderReviewAuthSummary();
+    renderReviewAuthLog();
+    renderReviewPasswordResult(entry, payload?.password || "");
+    setReviewAccessStatus("パスワードを発行しました。平文はこの表示で控えてください。", "ok");
+  } catch (err) {
+    setReviewAccessStatus(err.message || "パスワード発行に失敗しました", "error");
+  }
+}
+
+async function revokeReviewPassword(index) {
+  const entry = reviewAccessEntries[index];
+  if (!entry?.email && !entry?.reviewerId) return;
+  const label = entry.email || entry.reviewerId;
+  if (!window.confirm(`${label} のパスワードを無効化し、状態を停止済みにします。`)) return;
+
+  setReviewAccessStatus("パスワードを無効化中...");
+  try {
+    const payload = await postReviewPasswordAction(entry, "revoke");
+    reviewAccessEntries = Array.isArray(payload?.entries) ? payload.entries : reviewAccessEntries;
+    reviewAuthSummaryData = payload?.authSummary || reviewAuthSummaryData;
+    reviewAuthLogEvents = Array.isArray(payload?.authLog?.events) ? payload.authLog.events : reviewAuthLogEvents;
+    reviewAuthLogUpdatedAt = payload?.authLog?.updatedAt || reviewAuthLogUpdatedAt;
+    renderReviewAccess(payload?.updatedAt || "");
+    renderReviewAuthSummary();
+    renderReviewAuthLog();
+    if (reviewPasswordResult) {
+      reviewPasswordResult.hidden = true;
+      reviewPasswordResult.innerHTML = "";
+    }
+    setReviewAccessStatus("パスワードを無効化しました", "ok");
+  } catch (err) {
+    setReviewAccessStatus(err.message || "パスワード無効化に失敗しました", "error");
+  }
+}
+
+async function postReviewPasswordAction(entry, action) {
+  const token = getToken();
+  if (!token) throw new Error(adminAuthRequiredMessage());
+  const res = await fetch("./api/admin/review-access/password", {
+    method: "POST",
+    headers: {
+      ...authHeaders(token),
+      "content-type": "application/json"
+    },
+    body: JSON.stringify({ email: entry?.email || "", reviewerId: entry?.reviewerId || "", action })
+  });
+  const payload = await readJson(res);
+  if (!res.ok) throw new Error(payload?.error || "パスワード操作に失敗しました");
+  return payload;
+}
+
+function renderReviewPasswordResult(entry, password) {
+  if (!reviewPasswordResult) return;
+  if (!password) {
+    reviewPasswordResult.hidden = true;
+    reviewPasswordResult.innerHTML = "";
+    return;
+  }
+
+  const email = entry?.email || "";
+  const reviewerIdValue = entry?.reviewerId || "";
+  const label = [email, reviewerIdValue ? `仮ID: ${reviewerIdValue}` : ""].filter(Boolean).join(" / ");
+  reviewPasswordResult.hidden = false;
+  reviewPasswordResult.innerHTML = `
+    <div>
+      <strong>発行パスワード</strong>
+      <span>${escapeHtml(label || "-")}</span>
+    </div>
+    <code>${escapeHtml(password)}</code>
+    <button class="button ghost" type="button" data-copy-password>コピー</button>
+  `;
+  reviewPasswordResult.querySelector("[data-copy-password]")?.addEventListener("click", async () => {
+    try {
+      await navigator.clipboard.writeText(password);
+      setReviewAccessStatus("パスワードをコピーしました", "ok");
+    } catch (err) {
+      setReviewAccessStatus("コピーできませんでした。表示されたパスワードを控えてください。", "error");
+    }
+  });
+}
+
+function clearReviewAccess(message = adminAuthRequiredMessage(), type = "") {
   reviewAccessEntries = [];
+  reviewAuthSummaryData = null;
+  reviewAuthLogEvents = [];
+  reviewAuthLogUpdatedAt = "";
   setReviewAccessStatus(message, type);
   if (reviewAccessList) reviewAccessList.innerHTML = "";
+  if (reviewPasswordResult) {
+    reviewPasswordResult.hidden = true;
+    reviewPasswordResult.innerHTML = "";
+  }
+  renderReviewAuthSummary();
+  renderReviewAuthLog();
 }
 
 function setReviewAccessStatus(message, type = "") {
@@ -453,8 +619,74 @@ function setReviewAccessStatus(message, type = "") {
   reviewAccessStatus.className = `status ${type}`.trim();
 }
 
+function renderReviewAuthSummary() {
+  if (!reviewAuthSummary) return;
+  const failures = reviewAuthSummaryData?.unknownIdentifierFailures || {};
+  const byDay = failures.byDay && typeof failures.byDay === "object" ? failures.byDay : {};
+  const todayKey = new Date().toISOString().slice(0, 10);
+  const today = Number(byDay[todayKey]) || 0;
+  const total = Number(failures.total) || 0;
+  const lastAt = failures.lastAt ? formatDateTime(failures.lastAt) : "-";
+  const updatedAtSource = reviewAuthLogUpdatedAt || reviewAuthSummaryData?.updatedAt || "";
+  const updatedAtText = updatedAtSource ? formatDateTime(updatedAtSource) : "-";
+
+  if (!reviewAuthSummaryData && !total) {
+    reviewAuthSummary.innerHTML = `<p class="admin-note">認証集計はまだありません。</p>`;
+    return;
+  }
+
+  reviewAuthSummary.innerHTML = `
+    <div class="admin-auth-summary-row">
+      <span class="admin-analytics-label">未知ID失敗</span>
+      <strong>${total.toLocaleString()}件</strong>
+      <span>今日 ${today.toLocaleString()}件</span>
+      <span>最終 ${escapeHtml(lastAt)}</span>
+    </div>
+    <div class="admin-auth-summary-row">
+      <span class="admin-analytics-label">詳細イベント</span>
+      <strong>${(Array.isArray(reviewAuthLogEvents) ? reviewAuthLogEvents.length : 0).toLocaleString()}件</strong>
+      <span>有効IDのPW失敗、ロック、期限切れ、PW発行/無効化、同時利用</span>
+      <span>更新 ${escapeHtml(updatedAtText)}</span>
+    </div>
+  `;
+}
+
+function renderReviewAuthLog() {
+  if (!reviewAuthLog) return;
+  const events = Array.isArray(reviewAuthLogEvents) ? reviewAuthLogEvents.slice(0, 30) : [];
+  if (!events.length) {
+    reviewAuthLog.innerHTML = `<p class="admin-note">認証ログはまだありません。</p>`;
+    return;
+  }
+
+  reviewAuthLog.innerHTML = events
+    .map((event) => `
+      <div class="admin-auth-log-row">
+        <span>${escapeHtml(formatDateTime(event.createdAt))}</span>
+        <strong>${escapeHtml(authLogTypeLabel(event.type, event.result))}</strong>
+        <span>${escapeHtml([event.email, event.reviewerId ? `仮ID:${event.reviewerId}` : ""].filter(Boolean).join(" / ") || "-")}</span>
+        <span>${escapeHtml(event.reason || "")}</span>
+      </div>
+    `)
+    .join("");
+}
+
+function authLogTypeLabel(type, result) {
+  const suffix = result === "failed" ? "失敗" : result === "ok" ? "成功" : result || "";
+  if (type === "login") return `ログイン${suffix ? ` ${suffix}` : ""}`;
+  if (type === "logout") return "ログアウト";
+  if (type === "password-issued") return "PW発行";
+  if (type === "password-revoked") return "PW無効化";
+  if (type === "concurrent-session") return "同時利用検知";
+  if (type === "valid-id-password-mismatch") return "有効IDのPW失敗";
+  if (type === "account-locked") return "ロック発生";
+  if (type === "password-expired") return "PW期限切れ";
+  if (type === "valid-id-login-denied") return "有効IDの認証拒否";
+  return `${type || "-"}${suffix ? ` ${suffix}` : ""}`;
+}
+
 function reviewStatusLabel(status) {
-  if (status === "applied") return "Access適用済み";
+  if (status === "applied") return "閲覧許可";
   if (status === "muted") return "閲覧保留";
   if (status === "revoked") return "停止済み";
   return "未適用";
@@ -463,7 +695,7 @@ function reviewStatusLabel(status) {
 async function loadStorage() {
   const token = getToken();
   if (!token) {
-    clearStorage("管理トークンを入力してください");
+    clearStorage(adminAuthRequiredMessage());
     return;
   }
 
@@ -522,7 +754,7 @@ function renderStorage(payload) {
   }
 }
 
-function clearStorage(message = "管理トークン保存後に読み込みます", type = "") {
+function clearStorage(message = adminAuthRequiredMessage(), type = "") {
   setStorageStatus(message, type);
   if (storageSummary) storageSummary.innerHTML = "";
   if (storagePrefixes) storagePrefixes.innerHTML = "";
@@ -622,7 +854,7 @@ function renderBooks(books) {
 async function togglePublished(book) {
   const token = getToken();
   if (!token) {
-    setStatus("管理トークンを入力してください", "error");
+    setStatus(adminAuthRequiredMessage(), "error");
     return;
   }
 
@@ -649,7 +881,7 @@ async function togglePublished(book) {
 async function removeCover(book) {
   const token = getToken();
   if (!token) {
-    setStatus("管理トークンを入力してください", "error");
+    setStatus(adminAuthRequiredMessage(), "error");
     return;
   }
 
@@ -684,7 +916,7 @@ async function removeCover(book) {
 async function deleteBook(book) {
   const token = getToken();
   if (!token) {
-    setStatus("管理トークンを入力してください", "error");
+    setStatus(adminAuthRequiredMessage(), "error");
     return;
   }
 
@@ -790,14 +1022,149 @@ function setActiveHelpButton(activeButton) {
   });
 }
 
+async function initAdminAuth() {
+  try {
+    const res = await fetch("./api/admin-auth/status", { cache: "no-store" });
+    const payload = await readJson(res);
+    adminAuthMode = payload?.mode === "email_otp" ? "email_otp" : "token";
+    adminAuthenticated = adminAuthMode === "email_otp"
+      ? payload?.authenticated === true
+      : Boolean(getStoredToken());
+    renderAdminAuth(payload);
+  } catch (err) {
+    adminAuthMode = "token";
+    adminAuthenticated = Boolean(getStoredToken());
+    renderAdminAuth(null);
+  }
+
+  if (isAdminReady()) {
+    loadBooks();
+    loadStorage();
+    loadAnalytics();
+    loadReviewAccess();
+  } else {
+    setStatus(adminAuthRequiredMessage());
+    clearStorage(adminAuthRequiredMessage());
+    clearAnalytics(adminAuthRequiredMessage());
+    clearReviewAccess(adminAuthRequiredMessage());
+  }
+}
+
+function renderAdminAuth(status) {
+  const emailMode = adminAuthMode === "email_otp";
+  if (adminTokenAuth) adminTokenAuth.hidden = emailMode;
+  if (adminOtpAuth) adminOtpAuth.hidden = !emailMode;
+
+  if (!emailMode) {
+    if (adminToken) adminToken.value = getStoredToken();
+    return;
+  }
+
+  const email = status?.email || adminOtpEmail?.value || "";
+  if (adminOtpEmail && email) adminOtpEmail.value = email;
+  if (adminOtpLogoutBtn) adminOtpLogoutBtn.hidden = !adminAuthenticated;
+  if (sendAdminOtpBtn) sendAdminOtpBtn.disabled = adminAuthenticated;
+  if (verifyAdminOtpBtn) verifyAdminOtpBtn.disabled = adminAuthenticated;
+  if (adminOtpCode) adminOtpCode.disabled = adminAuthenticated;
+  if (adminOtpNote) {
+    const expires = status?.expiresAt ? ` / 有効期限 ${formatDateTime(status.expiresAt)}` : "";
+    adminOtpNote.textContent = adminAuthenticated
+      ? `管理者メールでログイン中: ${email || "-"}${expires}`
+      : "許可された管理者メールにだけログインコードを送信します。";
+  }
+}
+
+async function requestAdminOtp() {
+  const email = String(adminOtpEmail?.value || "").trim().toLowerCase();
+  if (!email) {
+    setStatus("管理者メールを入力してください", "error");
+    return;
+  }
+
+  setStatus("ログインコードを送信中...");
+  try {
+    const res = await fetch("./api/admin-auth/request", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ email })
+    });
+    const payload = await readJson(res);
+    if (!res.ok) throw new Error(payload?.error || "ログインコード送信に失敗しました");
+    adminOtpChallengeId = payload?.challengeId || "";
+    setStatus(payload?.message || "ログインコードを送信しました", "ok");
+    adminOtpCode?.focus();
+  } catch (err) {
+    setStatus(err.message || "ログインコード送信に失敗しました", "error");
+  }
+}
+
+async function verifyAdminOtp() {
+  const email = String(adminOtpEmail?.value || "").trim().toLowerCase();
+  const otp = String(adminOtpCode?.value || "").trim();
+  if (!email || !adminOtpChallengeId || !otp) {
+    setStatus("管理者メールとログインコードを入力してください", "error");
+    return;
+  }
+
+  setStatus("ログイン中...");
+  try {
+    const res = await fetch("./api/admin-auth/verify", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ email, otp, challengeId: adminOtpChallengeId })
+    });
+    const payload = await readJson(res);
+    if (!res.ok) throw new Error(payload?.error || "ログインに失敗しました");
+    adminAuthenticated = true;
+    adminOtpChallengeId = "";
+    if (adminOtpCode) adminOtpCode.value = "";
+    renderAdminAuth(payload);
+    setStatus("ログインしました", "ok");
+    loadBooks();
+    loadStorage();
+    loadAnalytics();
+    loadReviewAccess();
+  } catch (err) {
+    setStatus(err.message || "ログインに失敗しました", "error");
+  }
+}
+
+async function logoutAdminOtp() {
+  try {
+    await fetch("./api/admin-auth/logout", { method: "POST" });
+  } catch (err) {
+    // Cookie clearing is best-effort.
+  }
+  adminAuthenticated = false;
+  adminOtpChallengeId = "";
+  if (adminOtpCode) adminOtpCode.value = "";
+  renderAdminAuth(null);
+  setStatus("ログアウトしました");
+  clearStorage(adminAuthRequiredMessage());
+  clearAnalytics(adminAuthRequiredMessage());
+  clearReviewAccess(adminAuthRequiredMessage());
+}
+
 function getToken() {
-  return adminToken.value || localStorage.getItem(TOKEN_KEY) || "";
+  if (adminAuthMode === "email_otp") return adminAuthenticated ? "__cookie__" : "";
+  return adminToken.value || getStoredToken();
 }
 
 function authHeaders(token) {
-  return {
-    authorization: `Bearer ${token}`
-  };
+  if (adminAuthMode === "email_otp") return {};
+  return { authorization: `Bearer ${token}` };
+}
+
+function getStoredToken() {
+  return localStorage.getItem(TOKEN_KEY) || "";
+}
+
+function isAdminReady() {
+  return adminAuthMode === "email_otp" ? adminAuthenticated : Boolean(getToken());
+}
+
+function adminAuthRequiredMessage() {
+  return adminAuthMode === "email_otp" ? "管理者メールでログインしてください" : "管理トークンを入力してください";
 }
 
 async function readJson(res) {
@@ -840,7 +1207,23 @@ function formatBytes(bytes) {
   return `${size.toFixed(digits)} ${units[unitIndex]}`;
 }
 
-loadBooks();
-loadStorage();
-loadAnalytics();
-loadReviewAccess();
+function createReviewerId() {
+  const alphabet = "abcdefghijkmnopqrstuvwxyz23456789";
+  const bytes = new Uint8Array(8);
+  crypto.getRandomValues(bytes);
+  const suffix = Array.from(bytes)
+    .map((byte) => alphabet[byte % alphabet.length])
+    .join("");
+  return `rv-${suffix}`;
+}
+
+function normalizeReviewerId(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 40);
+}
+
+initAdminAuth();

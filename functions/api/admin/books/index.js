@@ -16,7 +16,7 @@ import {
 import { readUsageGuard, shouldBlockPublishing } from "../../../_shared/usage-guard.js";
 
 export async function onRequestGet(context) {
-  const auth = requireAdmin(context.request, context.env);
+  const auth = await requireAdmin(context.request, context.env);
   if (!auth.ok) return auth.response;
 
   const bucket = getBucket(context.env);
@@ -33,7 +33,7 @@ export async function onRequestGet(context) {
 }
 
 export async function onRequestPost(context) {
-  const auth = requireAdmin(context.request, context.env);
+  const auth = await requireAdmin(context.request, context.env);
   if (!auth.ok) return auth.response;
 
   const bucket = getBucket(context.env);

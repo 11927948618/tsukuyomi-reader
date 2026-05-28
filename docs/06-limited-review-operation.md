@@ -13,7 +13,7 @@ TsukuyomiReader は、友人に読んでもらうためのプラットフォー�
 最小推奨構成:
 
 - 公開版: 賞応募に使わない作品だけ置く
-- 限定レビュー版: Cloudflare Access 等で認証をかけ、許可した相手だけ閲覧できるようにする
+- 限定レビュー版: Cloudflare Access またはReader内パスワード認証で保護し、許可した相手だけ閲覧できるようにする
 - 賞応募候補: 認証なしURL、一般公開、販売、頒布を避ける
 
 ## 前提
@@ -68,7 +68,7 @@ https://tsukuyomi-reader-tachiyomi.pages.dev/
 用途: 友人・少数読者・編集者候補に未発表稿を読んでもらう。
 
 - 公開版とは別のPagesプロジェクトまたは別サブドメインを用意する
-- Cloudflare Access 等でログイン必須にする
+- Cloudflare Access、またはReader内メールアドレス+パスワード認証でログイン必須にする
 - 許可したメールアドレスだけ閲覧できるようにする
 - One-time PIN方式なら、友人側にアカウント作成を求めずに済む
 - `/api/books`、`books/manifest.json`、EPUB/TXT/PDF実体URLを未認証で読めないようにする
@@ -98,6 +98,63 @@ https://review.example.com/
 - 外部公開しない
 - 賞応募候補の一次管理場所として使う
 
+## Reader内パスワード認証
+
+Cloudflare Accessがうまく動かない場合の代替認証です。Readerの起動時にメールアドレスまたは仮IDとパスワードを入力させ、ログイン後はHttpOnly Cookieのセッションで `/api/books`、本文API、表紙APIを保護します。
+
+実際の操作手順だけを確認する場合は、`05-limited-review-auth-quick-guide.md` を先に見ます。
+
+有効化する環境変数:
+
+```text
+TSUKUYOMI_REVIEW_PASSWORD_AUTH=true
+TSUKUYOMI_REVIEW_AUTH_SECRET=十分に長いランダム文字列
+```
+
+`TSUKUYOMI_REVIEW_AUTH_SECRET` を省略した場合は `TSUKUYOMI_ADMIN_TOKEN` を補助値として使います。ただし管理トークンを変更すると既存パスワードも無効化されるため、限定レビュー版では専用の長いランダム文字列を推奨します。
+
+運用手順:
+
+1. 管理画面の `限定レビュー認証管理` で仮IDを作成する
+2. 必要に応じて名前とメールアドレスを紐づける
+3. `PW発行` を押し、表示されたパスワードを個別に送る
+4. 読者はReader起動時にメールアドレスまたは仮IDとパスワードを入力する
+5. 停止時は `PW無効化`、または状態を `閲覧保留` / `停止済み` にする
+
+パスワードの平文は発行時だけ表示され、R2にはPBKDF2ハッシュを保存します。メール送信は行わないため、パスワードの送付は管理者が別途行います。
+
+管理画面では、仮ID、メールアドレス、発行済み状態、最終ログイン、ログイン失敗回数、認証振り返り、認証イベントを確認できます。
+
+標準の事前対策:
+
+- ログインAPIは60秒に6回まで。超過時は5分ブロック
+- メールアドレスまたは仮ID単位で5回失敗すると15分ロック
+- パスワードは発行から30日で期限切れ
+- ログインセッションは14日で期限切れ
+- 同じメールアドレスまたは仮IDで10分以内に複数セッションが動いた場合、認証イベントへ `同時利用検知` を残す
+- 限定レビュー認証が有効な場合、本文HTMLのローカルキャッシュ保存・復元を抑制する
+
+同時利用検知は即ブロックではなく、管理ログへの記録です。本人がPCとスマホで開く可能性があるため、最初は警告に留め、必要に応じて `PW無効化` で止めます。
+
+認証ログは「後で見返して判断材料になるもの」に絞ります。
+
+- 有効なメールアドレスまたは仮IDに対するPW失敗、ロック発生、PW期限切れ、PW発行、PW無効化、同時利用検知は詳細イベントとして残す
+- 存在しないIDへの試行は、生のIDリストを残さず、未知ID失敗の件数だけを日別に集計する
+- 成功ログインやログアウトは詳細イベントに溜めず、各エントリの最終ログイン時刻で確認する
+
+調整用の環境変数:
+
+```text
+TSUKUYOMI_RATE_LIMIT_REVIEW_AUTH=6
+TSUKUYOMI_RATE_LIMIT_REVIEW_AUTH_WINDOW_SECONDS=60
+TSUKUYOMI_RATE_LIMIT_REVIEW_AUTH_BLOCK_SECONDS=300
+TSUKUYOMI_REVIEW_LOGIN_FAILURE_LIMIT=5
+TSUKUYOMI_REVIEW_LOGIN_LOCK_MINUTES=15
+TSUKUYOMI_REVIEW_PASSWORD_DAYS=30
+TSUKUYOMI_REVIEW_AUTH_SESSION_DAYS=14
+TSUKUYOMI_REVIEW_CONCURRENT_WINDOW_MINUTES=10
+```
+
 ## Cloudflare Accessを使う理由
 
 限定レビューでは、自前で作品別IDや鍵付きURLを作るより、まずサイト全体をAccessで守る方が現実的です。
@@ -125,7 +182,15 @@ TSUKUYOMI_ACCESS_IDENTITY_ANALYTICS=true
 
 この場合は匿名ログではなく、メールアドレスを含む個人情報ログになります。読者同士に進捗を公開するものではありませんが、限定レビュー版の案内文には、管理側が閲覧データを一元保管・集計し、文芸分析目的で使うことを明記します。
 
-管理画面の「限定レビュー許可メモ」は、Cloudflare Accessへの許可を実行するものではありません。Access側で追加・停止した相手を、管理用に記録する欄です。
+管理画面の「限定レビュー認証管理」は、Reader内パスワード認証では発行・無効化の実行欄です。Cloudflare Access運用では、Access側で追加・停止した相手を管理用に記録する欄として使います。
+
+Reader内パスワード認証のメールアドレスを読書ログへ管理用に紐づける場合:
+
+```text
+TSUKUYOMI_REVIEW_PASSWORD_IDENTITY_ANALYTICS=true
+```
+
+この設定もメールアドレスを含む個人情報ログになります。
 
 ### 閲覧保留
 
@@ -139,12 +204,14 @@ Cloudflare Accessから相手を外すと、ログイン段階で拒否される
 TSUKUYOMI_REVIEW_ACCESS_SOFT_BLOCK=true
 ```
 
-この設定を有効にしたうえで、管理画面の `限定レビュー許可メモ` で対象者を `閲覧保留` または `停止済み` にすると、Access認証済みメールアドレスが一致した場合だけ以下の挙動になります。
+この設定を有効にしたうえで、管理画面の `限定レビュー認証管理` で対象者を `閲覧保留` または `停止済み` にすると、Access認証済みメールアドレスが一致した場合だけ以下の挙動になります。
 
 - `/api/books` は `[]` を返す
 - `/api/books/:id/content` は `作品が見つかりません` として扱う
 - `/api/books/:id/cover` も同様に見つからない扱いにする
 - 読者側には保留理由を表示しない
+
+Reader内パスワード認証では、`閲覧保留` または `停止済み` のメールアドレスは `TSUKUYOMI_REVIEW_ACCESS_SOFT_BLOCK` の有無に関係なく認証後のAPIで拒否されます。
 
 これは完全な秘匿ではありません。通信内容や過去の記憶から状況を推測される可能性はあります。目的は、Cloudflare Accessの拒否画面を直接出さず、管理上の一時保留として扱いやすくすることです。
 

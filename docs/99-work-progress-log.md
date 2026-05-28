@@ -31,7 +31,7 @@
 
 ### 追加した確認資料
 
-- `docs/tachiyomi-device-checklist.md`
+- `docs/04-tachiyomi-device-checklist.md`
   - 実機確認用のチェックリストを追加。
 - `README.md`
   - 実機確認チェックリストと作業進捗ログへのリンクを追加。
@@ -75,7 +75,7 @@
 
 ### 完了
 
-- 実機確認手順を `docs/tachiyomi-device-checklist.md` に整理した。
+- 実機確認手順を `docs/04-tachiyomi-device-checklist.md` に整理した。
 - 本体側の未実装・修正中・要確認機能を上記にリストアップした。
 - 本体機能見直しで見つけた事項については、コード修正を行っていない。
 
@@ -161,8 +161,8 @@
 
 ### 対応
 
-- `docs/tachiyomi-update-manual.md` に「Pagesプロジェクトを作成する」手順を追加。
-- `docs/tachiyomi-device-checklist.md` に、NXDOMAIN時はPagesプロジェクト未作成として扱う注意を追加。
+- `docs/02-tachiyomi-update-manual.md` に「Pagesプロジェクトを作成する」手順を追加。
+- `docs/04-tachiyomi-device-checklist.md` に、NXDOMAIN時はPagesプロジェクト未作成として扱う注意を追加。
 
 ### 次にやること
 
@@ -478,7 +478,7 @@ Root directory: 空欄
 
 ### 対応
 
-- `docs/cloudflare-usage-guard-design.md` を追加。
+- `docs/20-cloudflare-usage-guard-design.md` を追加。
   - R2 Metrics監視、Cron Worker、`usage-guard.json`、公開停止ガードの共通設計を記載。
 - `functions/_shared/usage-guard.js` を追加。
   - `_tsukuyomi/usage-guard.json` を短時間キャッシュして読む。
@@ -496,7 +496,7 @@ Root directory: 空欄
   - Cloudflare GraphQL Analytics APIでR2 Metricsを取得。
   - 月間Class B見込みを計算。
   - `_tsukuyomi/usage-guard.json` をR2へ書き込む別Worker雛形。
-- `README.md` と `docs/tachiyomi-update-manual.md` に関連資料と運用メモを追記。
+- `README.md` と `docs/02-tachiyomi-update-manual.md` に関連資料と運用メモを追記。
 - キャッシュ更新用に `v0.1.51` へ更新。
 
 ### 検証
@@ -549,8 +549,8 @@ Root directory: 空欄
   - `/api/books`
   - `/api/books/:id/content`
   - `/api/books/:id/cover`
-- `docs/cloudflare-f5-defense-design.md` を追加。
-- `docs/cloudflare-usage-guard-design.md` と `docs/tachiyomi-update-manual.md` に運用メモを追記。
+- `docs/21-cloudflare-f5-defense-design.md` を追加。
+- `docs/20-cloudflare-usage-guard-design.md` と `docs/02-tachiyomi-update-manual.md` に運用メモを追記。
 - キャッシュ更新用に `v0.1.52` へ更新。
 
 ### 検証
@@ -583,7 +583,7 @@ Root directory: 空欄
 
 ### 対応
 
-- `docs/reader-analytics-design.md` を追加。
+- `docs/10-reader-analytics-design.md` を追加。
 - `migrations/0001_reader_analytics.sql` を追加。
 - `functions/_shared/analytics.js` を追加。
 - `POST /api/analytics/event` を追加。
@@ -692,8 +692,8 @@ Root directory: 空欄
 ### 対応
 
 - `js/legacy-check.js` の未対応案内に対象世代を明記。
-- `docs/tachiyomi-reader-manual.md` の推奨ブラウザ欄に対象世代を追記。
-- `docs/tachiyomi-device-checklist.md` の端末別確認に対象世代と対象外基準を追記。
+- `docs/03-tachiyomi-reader-manual.md` の推奨ブラウザ欄に対象世代を追記。
+- `docs/04-tachiyomi-device-checklist.md` の端末別確認に対象世代と対象外基準を追記。
 - `templates/help.html` の配布前チェックリストに対象世代を追記。
 - キャッシュ更新用に `v0.1.55` へ更新。
 
@@ -733,9 +733,9 @@ Root directory: 空欄
 - `js/legacy-check.js`
   - 判別できる範囲でiOS/iPadOS 14以下を未対応案内に落とす。
   - 未対応案内をiOS 15 / iPadOS 15以降基準に変更。
-- `docs/tachiyomi-reader-manual.md`
+- `docs/03-tachiyomi-reader-manual.md`
   - 推奨ブラウザをiOS 15 / iPadOS 15以降に変更。
-- `docs/tachiyomi-device-checklist.md`
+- `docs/04-tachiyomi-device-checklist.md`
   - 実機がない場合のスマホ幅シミュレーション確認方針を追記。
 - `templates/help.html`
   - 配布前チェックリストへ対応OS基準とシミュレーション確認を追記。
@@ -778,9 +778,9 @@ Root directory: 空欄
   - 通常環境では自動で `js/app.js` を読み込む。
   - iOS 12.5から14では注意画面を表示し、「理解して試す」押下後にReader本体を読み込む。
   - 起動失敗時はレガシー試用失敗案内を表示する。
-- `docs/tachiyomi-reader-manual.md`
+- `docs/03-tachiyomi-reader-manual.md`
   - iOS 12.5以降はレガシー試用枠で、正常動作不明と明記。
-- `docs/tachiyomi-device-checklist.md`
+- `docs/04-tachiyomi-device-checklist.md`
   - iOS 12.5から14の確認項目をレガシー試用枠に変更。
 - `templates/help.html`
   - 配布前チェックリストへレガシー試用枠を追記。
@@ -830,7 +830,7 @@ Root directory: 空欄
 - `GET /api/admin/analytics`
   - D1がある場合はD1集計。
   - D1がない場合はR2軽量集計を返す。
-- `docs/tachiyomi-update-manual.md` と `docs/reader-analytics-design.md` にR2使用状況とR2軽量集計の注意を追記。
+- `docs/02-tachiyomi-update-manual.md` と `docs/10-reader-analytics-design.md` にR2使用状況とR2軽量集計の注意を追記。
 - キャッシュ更新用に `v0.1.58` へ更新。
 
 ### 検証
@@ -883,10 +883,10 @@ Root directory: 空欄
   - すぐ使う操作の短いヘルプを表示。
   - 管理トークン、作品ID、本文ファイル、公開停止、R2使用状況、読書ログ、古いiPhoneの注意を記載。
 - 既存Markdown資料を管理画面内で表示できる項目を追加。
-  - `docs/tachiyomi-update-manual.md`
-  - `docs/tachiyomi-reader-manual.md`
-  - `docs/tachiyomi-device-checklist.md`
-  - `docs/work-progress-log.md`
+  - `docs/02-tachiyomi-update-manual.md`
+  - `docs/03-tachiyomi-reader-manual.md`
+  - `docs/04-tachiyomi-device-checklist.md`
+  - `docs/99-work-progress-log.md`
 - キャッシュ更新用に `v0.1.60` へ更新。
 
 ### 検証
@@ -896,7 +896,7 @@ Root directory: 空欄
 - Playwright Chromium / local `admin.html`:
   - `管理ヘルプ` ボタンでポップアップが開くことを確認。
   - `すぐ使う` に作品IDなどの短いヘルプが出ることを確認。
-  - `更新マニュアル` から `docs/tachiyomi-update-manual.md` を読み込めることを確認。
+  - `更新マニュアル` から `docs/02-tachiyomi-update-manual.md` を読み込めることを確認。
   - `閉じる` でポップアップを閉じられることを確認。
 
 ### 追記
@@ -905,7 +905,7 @@ Root directory: 空欄
 - `main` へpush済み。
 - Cloudflare Pages公開側で `js/version.js` が `APP_VERSION = "0.1.60"` を返すことを確認。
 - 公開側 `admin.html` に `管理ヘルプ` とマニュアル表示導線が含まれることを確認。
-- 公開側 `docs/tachiyomi-update-manual.md` がHTTP 200で読めることを確認。
+- 公開側 `docs/02-tachiyomi-update-manual.md` がHTTP 200で読めることを確認。
 
 ## 2026-05-18 EPUB br改行分割修正
 
@@ -930,13 +930,13 @@ Root directory: 空欄
 
 ### 対応
 
-- `docs/limited-review-operation.md` を追加。
+- `docs/06-limited-review-operation.md` を追加。
   - 公開版Reader、限定レビュー版Reader、ローカル確認版の役割を整理。
   - 賞応募候補作品を公開版に置かない方針を明記。
   - Cloudflare Access等でサイト/API全体を認証必須にする運用を推奨として記載。
   - `reviewOnly` / `awardCandidate` フラグ案は、保護そのものではない注意を追記。
 - `README.md` のマニュアル一覧と立ち読みモードメモに限定レビュー運用を追加。
-- `docs/tachiyomi-update-manual.md` に限定レビュー版と賞応募候補の運用方針を追加。
+- `docs/02-tachiyomi-update-manual.md` に限定レビュー版と賞応募候補の運用方針を追加。
 - 管理画面ヘルプに `限定レビュー` の資料表示項目を追加。
 - 管理画面の短いヘルプに、賞応募候補は公開版に置かない注意を追加。
 - キャッシュ更新用に `v0.1.62` へ更新。
@@ -948,7 +948,7 @@ Root directory: 空欄
 - `rg "limited-review-operation|限定レビュー|awardCandidate|reviewOnly"`: 追加箇所を確認。
 - Playwright Chromium / local `admin.html`:
   - `管理ヘルプ` の短いヘルプに限定レビューの注意が出ることを確認。
-  - `限定レビュー` ボタンから `docs/limited-review-operation.md` を読み込めることを確認。
+  - `限定レビュー` ボタンから `docs/06-limited-review-operation.md` を読み込めることを確認。
   - 読み込んだ資料内に `Cloudflare Access` と `公開版Readerには置かない` が含まれることを確認。
 
 ### 追記
@@ -956,7 +956,7 @@ Root directory: 空欄
 - commit: `0a12c0e add limited review operations guide`
 - `main` へpush済み。
 - Cloudflare Pages公開側で `js/version.js` が `APP_VERSION = "0.1.62"` を返すことを確認。
-- 公開側 `docs/limited-review-operation.md` がHTTP 200で読めることを確認。
+- 公開側 `docs/06-limited-review-operation.md` がHTTP 200で読めることを確認。
 - 公開側 `admin.html` に限定レビュー資料へのヘルプ導線が含まれることを確認。
 
 ## 2026-05-19 限定レビューの個別許可メモとAccess読書ログ
@@ -1005,7 +1005,7 @@ Root directory: 空欄
 - Cloudflare Pages公開側で `js/version.js` が `APP_VERSION = "0.1.63"` を返すことを確認。
 - 公開側 `admin.html` に `限定レビュー許可メモ` と `アクセス許可` ヘルプ導線が含まれることを確認。
 - 公開側 `/api/admin/review-access` が未認証でHTTP 401を返すことを確認。
-- 公開側 `docs/reader-analytics-design.md` に `TSUKUYOMI_ACCESS_IDENTITY_ANALYTICS` と `Access別読書ログ` の説明が反映されていることを確認。
+- 公開側 `docs/10-reader-analytics-design.md` に `TSUKUYOMI_ACCESS_IDENTITY_ANALYTICS` と `Access別読書ログ` の説明が反映されていることを確認。
 
 ## 2026-05-19 限定レビュー読書ログの用途説明補正
 
@@ -1029,7 +1029,7 @@ Root directory: 空欄
 - `main` へpush済み。
 - Cloudflare Pages公開側で `js/version.js` が `APP_VERSION = "0.1.64"` を返すことを確認。
 - 公開側 `js/admin.js` に `Access別読書ログ（管理用）` と、読者同士に進捗を公開しない説明が反映されていることを確認。
-- 公開側 `docs/reader-analytics-design.md` と `docs/limited-review-operation.md` に、管理側の一元保管・将来分析用途の説明が反映されていることを確認。
+- 公開側 `docs/10-reader-analytics-design.md` と `docs/06-limited-review-operation.md` に、管理側の一元保管・将来分析用途の説明が反映されていることを確認。
 
 ## 2026-05-19 限定レビューの閲覧保留
 
@@ -1067,13 +1067,13 @@ Root directory: 空欄
 - Cloudflare Pages公開側で `js/version.js` が `APP_VERSION = "0.1.65"` を返すことを確認。
 - 公開側 `admin.html` に `閲覧保留` の選択肢と説明が反映されていることを確認。
 - 公開側 `js/admin.js` に `TSUKUYOMI_REVIEW_ACCESS_SOFT_BLOCK` のヘルプが反映されていることを確認。
-- 公開側 `docs/limited-review-operation.md` に閲覧保留の説明が反映されていることを確認。
+- 公開側 `docs/06-limited-review-operation.md` に閲覧保留の説明が反映されていることを確認。
 
 ## 2026-05-19 初期設定チェックリスト
 
 ### 対応
 
-- `docs/tachiyomi-initial-setup.md` を追加。
+- `docs/01-tachiyomi-initial-setup.md` を追加。
   - Pages、R2、管理トークンの必須設定を整理。
   - D1、Cloudflare Access、Access読書ログ、閲覧保留、公開停止を任意設定として整理。
   - 未設定時の影響を表で整理。
@@ -1093,7 +1093,7 @@ Root directory: 空欄
 
 ### 対応
 
-- `docs/dialogueassembler-mobile-pdf-export-spec.md` を追加。
+- `docs/30-dialogueassembler-mobile-pdf-export-spec.md` を追加。
   - DialogueAssembler側でスマホ縦長PDFを出力する方針を整理。
   - フォントサイズ、ページ比率、圧縮PDF、ファイル命名、確認項目を記載。
 - 管理画面ヘルプに `PDF出力` 資料ボタンを追加。
@@ -1127,7 +1127,7 @@ Root directory: 空欄
 - 公開側 `admin.html` にPDF登録UI、`PDF出力` 資料リンク、初期設定資料リンクが反映されていることを確認。
 - 公開側 `js/library.js` にPDF読み込み処理が反映されていることを確認。
 - 公開側 `js/reader.js` に固定レイアウトPDF表示処理が反映されていることを確認。
-- 公開側 `docs/dialogueassembler-mobile-pdf-export-spec.md` がHTTP 200で読めることを確認。
+- 公開側 `docs/30-dialogueassembler-mobile-pdf-export-spec.md` がHTTP 200で読めることを確認。
 
 ## 2026-05-25 管理画面の作品削除と表紙削除
 
@@ -1179,3 +1179,357 @@ Root directory: 空欄
   - 例: `/api/books を読み込めません（HTTP 500: R2 bucket binding が未設定です）`
 - `fetch()` 自体が失敗した場合も、接続失敗としてエラー内容を表示するようにした。
 - キャッシュ更新用に `v0.1.69` へ更新し、Service Worker cache nameも更新した。
+
+## 2026-05-27 限定レビューのReader内パスワード認証
+
+### 開始
+
+- Cloudflare Access認証が安定しない場合の代替として、メールアドレス+パスワードのReader内認証を追加する。
+- 管理画面から読者ごとのパスワード発行、無効化、認証ログ確認をできるようにする。
+- 作品一覧、本文API、表紙APIは、認証有効時に未ログインで読めないようにする。
+
+### 対応
+
+- `TSUKUYOMI_REVIEW_PASSWORD_AUTH=true` で有効になるReader内パスワード認証を追加。
+- `POST /api/review-auth/session` と `GET /api/review-auth/status` を追加。
+  - ログイン成功時はHttpOnly Cookieでセッションを発行。
+  - セッション署名とパスワードハッシュには `TSUKUYOMI_REVIEW_AUTH_SECRET` を使用。未設定時は管理トークンにフォールバック。
+- `functions/_shared/review-auth.js` を追加。
+  - パスワードはPBKDF2ハッシュでR2へ保存し、平文は発行時だけ返す。
+  - 認証ログは `_tsukuyomi/review-auth-log.json` に保存。
+- 既存の `_tsukuyomi/review-access-list.json` を拡張。
+  - `hasPassword`、`passwordIssuedAt`、`lastLoginAt`、`lastFailedAt`、`failedLoginCount` を管理表示。
+  - 管理画面の通常保存でパスワードハッシュが消えないよう、サーバー側で認証用フィールドを保持。
+- 管理API `POST /api/admin/review-access/password` を追加。
+  - `issue`: パスワード発行・再発行。
+  - `revoke`: パスワード無効化と停止済み化。
+- Reader起動時に認証状態を確認し、必要なら `templates/auth.html` のログイン画面を表示。
+- 管理画面の `限定レビュー認証管理` に、PW発行、PW再発行、PW無効化、発行結果、認証ログを追加。
+- 読書ログへReader内パスワード認証メールを紐づける任意設定 `TSUKUYOMI_REVIEW_PASSWORD_IDENTITY_ANALYTICS=true` を追加。
+- README、初期設定、更新マニュアル、限定レビュー運用資料、Reader Analytics設計を更新。
+- キャッシュ更新用に `v0.1.70` へ更新し、Service Worker cache nameも更新。
+
+### 検証
+
+- `node --check js/admin.js`: OK
+- `node --check js/app.js`: OK
+- `node --check js/version.js`: OK
+- `node --check sw.js`: OK
+- `node --check functions/_shared/review-access.js`: OK
+- `node --check functions/_shared/review-auth.js`: OK
+- `node --check functions/api/review-auth/status.js`: OK
+- `node --check functions/api/review-auth/session.js`: OK
+- `node --check functions/api/admin/review-access/index.js`: OK
+- `node --check functions/api/admin/review-access/password.js`: OK
+- `node --check functions/api/books/index.js`: OK
+- `node --check functions/api/books/[id]/content.js`: OK
+- `node --check functions/api/books/[id]/cover.js`: OK
+- `node --check functions/api/analytics/event.js`: OK
+- `git diff --check -- .`: OK
+- モックR2検証:
+  - 許可メモ登録後にPW発行できることを確認。
+  - 発行パスワードでログインできることを確認。
+  - Cookieセッションで認証判定が通ることを確認。
+  - PW無効化後、既存セッションが拒否されることを確認。
+
+### 次にやること
+
+- Pages環境変数に `TSUKUYOMI_REVIEW_PASSWORD_AUTH=true` と `TSUKUYOMI_REVIEW_AUTH_SECRET` を設定して再デプロイする。
+- 管理画面で対象メールアドレスにPW発行し、実機でReaderログインと作品表示を確認する。
+
+## 2026-05-27 限定レビュー認証の事前防御強化
+
+### 開始
+
+- Reader内パスワード認証の実運用前に、総当たり対策、パスワード期限、同時利用検知、本文キャッシュ対策を入れる。
+
+### 対応
+
+- ログインAPI `POST /api/review-auth/session` に `review_auth` レート制限を追加。
+  - 標準: 60秒に6回まで、超過時は5分ブロック。
+  - `TSUKUYOMI_RATE_LIMIT_REVIEW_AUTH`、`TSUKUYOMI_RATE_LIMIT_REVIEW_AUTH_WINDOW_SECONDS`、`TSUKUYOMI_RATE_LIMIT_REVIEW_AUTH_BLOCK_SECONDS` で調整可能。
+- メールアドレス単位のロックアウトを追加。
+  - 標準: 5回失敗で15分ロック。
+  - `TSUKUYOMI_REVIEW_LOGIN_FAILURE_LIMIT`、`TSUKUYOMI_REVIEW_LOGIN_LOCK_MINUTES` で調整可能。
+- 発行パスワードに期限を追加。
+  - 標準: 発行から30日。
+  - `TSUKUYOMI_REVIEW_PASSWORD_DAYS` で調整可能。
+  - APIアクセス時にも期限を確認し、ログイン済みCookieが残っていても期限切れなら拒否。
+- セッションIDをログイントークンに追加。
+- `_tsukuyomi/review-session-activity.json` にセッション活動を記録。
+  - 同じメールアドレスで10分以内に複数セッションが動いた場合、認証ログへ `concurrent-session` を記録。
+  - `TSUKUYOMI_REVIEW_CONCURRENT_WINDOW_MINUTES` で判定窓を調整可能。
+- 限定レビュー認証が有効な場合、本文HTMLのローカルキャッシュ保存・復元を抑制。
+- 管理画面に `PW期限`、`ロック中`、`同時利用検知` 表示を追加。
+- README、初期設定、更新マニュアル、限定レビュー運用資料を更新。
+- キャッシュ更新用に `v0.1.71` へ更新し、Service Worker cache nameも更新。
+
+### 検証
+
+- `node --check functions/_shared/review-auth.js`: OK
+- `node --check functions/_shared/review-access.js`: OK
+- `node --check functions/_shared/rate-limit.js`: OK
+- `node --check functions/api/review-auth/session.js`: OK
+- `node --check functions/api/books/index.js`: OK
+- `node --check functions/api/books/[id]/content.js`: OK
+- `node --check functions/api/books/[id]/cover.js`: OK
+- `node --check functions/api/analytics/event.js`: OK
+- `node --check js/app.js`: OK
+- `node --check js/admin.js`: OK
+- モックR2検証:
+  - パスワード誤入力3回でロックされ、正しいパスワードでもログイン拒否になることを確認。
+  - ロック解除後、正しいパスワードでログインできることを確認。
+  - 2つのセッションIDが同じメールアドレスで動いた時、`concurrent-session` が認証ログに残ることを確認。
+  - `passwordExpiresAt` が過去日の場合、既存セッションでも `password-expired` として拒否されることを確認。
+
+### 次にやること
+
+- Pages環境変数に必要値を設定して、管理画面からPW発行と期限表示を実R2で確認する。
+
+## 2026-05-27 限定レビューの仮ID作成と紐づけ
+
+### 開始
+
+- メールアドレスだけでなく、管理用の仮IDを作成し、PW発行・認証ログ・同時利用検知へ紐づける。
+
+### 対応
+
+- 許可メモの各エントリに `reviewerId` を追加。
+  - 既存エントリには決定的な `rv-xxxxxxxx` 形式の仮IDを補完。
+  - 新規エントリでは管理画面からランダム仮IDを作成可能。
+- Readerログイン画面を `メールアドレス / 仮ID` 入力に変更。
+  - 読者はメールアドレスまたは仮IDとパスワードでログイン可能。
+- PW発行・無効化APIをメールアドレスまたは仮IDで対象指定できるようにした。
+- セッショントークンに `reviewerId` を含めるようにした。
+- 認証ログと同時利用検知ログに仮IDを保存・表示。
+- 管理画面の `限定レビュー認証管理` に仮ID欄、作成ボタン、一覧表示、ログ表示を追加。
+- README、初期設定、更新マニュアル、限定レビュー運用資料を更新。
+- キャッシュ更新用に `v0.1.72` へ更新し、Service Worker cache nameも更新。
+
+### 検証
+
+- `node --check functions/_shared/review-auth.js`: OK
+- `node --check functions/_shared/review-access.js`: OK
+- `node --check functions/api/review-auth/session.js`: OK
+- `node --check functions/api/admin/review-access/password.js`: OK
+- `node --check js/admin.js`: OK
+- `node --check js/app.js`: OK
+- モックR2検証:
+  - `reviewerId` 指定でPW発行できることを確認。
+  - 仮IDログインとメールログインの両方で認証できることを確認。
+  - セッション判定に `reviewerId` が含まれることを確認。
+  - 同時利用検知ログに `reviewerId` が残ることを確認。
+
+### 次にやること
+
+- 実R2の管理画面で仮ID作成、PW発行、仮IDログイン、ログ表示を確認する。
+
+## 2026-05-27 限定レビュー認証ログの分化
+
+### 開始
+
+- 認証ログを後から振り返れる情報に絞る。
+- 未知IDへの総当たりリストは見ても意味が薄いため、生のIDを詳細ログに残さない。
+- 有効なIDに対するPW失敗、ロック、期限切れなど、流出や妨害の判断材料になるものだけを詳細化する。
+
+### 対応
+
+- `_tsukuyomi/review-auth-summary.json` を追加。
+  - 存在しないメールアドレスまたは仮IDへのログイン試行は、未知ID失敗として件数だけ日別集計。
+  - 未知IDの生値は保存しない。
+- `_tsukuyomi/review-auth-log.json` の詳細イベントを整理。
+  - `valid-id-password-mismatch`: 登録済みIDへのPW失敗。
+  - `account-locked`: 失敗回数が閾値に達したロック。
+  - `password-expired`: 期限切れPWでのログイン試行。
+  - `valid-id-login-denied`: 登録済みIDだが未発行、未適用、保留、停止などで拒否。
+  - `password-issued`、`password-revoked`、`concurrent-session` は継続。
+- 成功ログインとログアウトは詳細イベントに積まず、各エントリの `lastLoginAt` で確認する方針に変更。
+- 管理画面に `認証振り返り` を追加。
+  - 未知ID失敗の総数、今日の件数、最終発生時刻を表示。
+  - 詳細イベントは、意味のある認証イベントだけを表示。
+- 仮IDだけの運用でも認証用フィールドが通常保存で消えないよう、既存フィールドの引き継ぎを `reviewerId` でも照合するようにした。
+- README、初期設定、更新マニュアル、限定レビュー運用資料を更新。
+- キャッシュ更新用に `v0.1.73` へ更新し、Service Worker cache nameも更新。
+
+### 検証
+
+- `node --check functions/_shared/review-auth.js`: OK
+- `node --check functions/_shared/review-access.js`: OK
+- `node --check functions/api/admin/review-access/index.js`: OK
+- `node --check functions/api/admin/review-access/password.js`: OK
+- `node --check js/admin.js`: OK
+- `node --check js/version.js`: OK
+- `node --check sw.js`: OK
+- `git diff --check -- .`: OK（CRLF変換警告のみ）
+- モックR2検証:
+  - 未知IDのPW失敗が `authSummary.unknownIdentifierFailures.total` に加算され、詳細ログへは残らないことを確認。
+  - 登録済み仮IDのPW失敗が `valid-id-password-mismatch` として詳細ログに残ることを確認。
+  - 失敗閾値到達時に `account-locked` が残ることを確認。
+  - 成功ログインは `lastLoginAt` を更新し、詳細ログへログイン成功イベントを追加しないことを確認。
+
+### 次にやること
+
+- 実R2の管理画面で、未知ID集計、有効IDのPW失敗イベント、ロック表示、PW発行/無効化イベントを確認する。
+
+## 2026-05-28 限定レビュー認証クイックガイド
+
+### 開始
+
+- 詳細資料だけだと実運用時に辿りにくいため、操作順に沿った短い資料を追加する。
+
+### 対応
+
+- `docs/05-limited-review-auth-quick-guide.md` を追加。
+  - Cloudflare Pages環境変数。
+  - 管理画面での仮ID作成、PW発行、読者案内。
+  - 自分での確認手順。
+  - 認証振り返り、認証イベントの見方。
+  - 保留、停止、PW再発行の手順。
+  - 読者へ送る案内文テンプレ。
+- READMEのマニュアル一覧へリンクを追加。
+- `06-limited-review-operation.md` からクイックガイドを参照する一文を追加。
+
+### 検証
+
+- 資料内容が現在の実装と一致していることを確認。
+
+## 2026-05-28 マニュアルファイル名の通し番号化
+
+### 開始
+
+- `docs/` 配下の資料名が増えて、どれから読むべきか分かりにくくなってきた。
+- ファイル名自体に通し番号を付け、READMEと管理画面ヘルプからも番号順に辿れるようにする。
+
+### 対応
+
+- `docs/00-manual-index.md` を追加。
+- 主要資料を番号付きファイル名へ変更。
+  - `01-tachiyomi-initial-setup.md`
+  - `02-tachiyomi-update-manual.md`
+  - `03-tachiyomi-reader-manual.md`
+  - `04-tachiyomi-device-checklist.md`
+  - `05-limited-review-auth-quick-guide.md`
+  - `06-limited-review-operation.md`
+  - `10-reader-analytics-design.md`
+  - `20-cloudflare-usage-guard-design.md`
+  - `21-cloudflare-f5-defense-design.md`
+  - `30-dialogueassembler-mobile-pdf-export-spec.md`
+  - `99-work-progress-log.md`
+- READMEのマニュアル一覧を番号順に整理。
+- 管理画面ヘルプの資料読み込み先を番号付きファイル名へ更新。
+
+### 検証
+
+- 旧ファイル名への参照が残っていないことを確認。
+
+## 2026-05-28 Cloudflare Access設定失敗の調査メモ
+
+### 開始
+
+- Cloudflare Accessの運用ができなかったため、代替認証を進めつつ、失敗理由を後から検証できるようにする。
+
+### 対応
+
+- `docs/07-cloudflare-access-investigation.md` を追加。
+  - Pagesの `Enable access policy` が標準ではプレビューDeployment向けで、本番 `<project>.pages.dev` とは別扱いになる点を最有力候補として整理。
+  - One-time PINは許可済みメールにだけ送信され、未許可でも画面上は送信済みに見える点を整理。
+  - Access applicationのPublic hostname、Allow policy、Include/Require、Bypass/Service Auth、カスタムドメイン検証の確認項目を整理。
+  - 再調査時に必要な情報と、最小構成での再挑戦手順を追加。
+- README、マニュアル索引、管理画面ヘルプに調査メモへの導線を追加。
+
+### 検証
+
+- Cloudflare公式ドキュメントの現行仕様を確認。
+- 調査メモが現在の代替認証方針と矛盾しないことを確認。
+
+## 2026-05-28 管理者認証と復旧設計
+
+### 開始
+
+- 管理者トークンを忘れた場合や漏洩した場合に備え、マスターパスワードなしの復旧方針を整理する。
+
+### 対応
+
+- `docs/08-admin-auth-recovery-design.md` を追加。
+  - 現状の `TSUKUYOMI_ADMIN_TOKEN` 方式の限界を整理。
+  - 管理者メールOTPを本命認証にする案を整理。
+  - 管理トークンはBreak-glass用に残し、漏洩時はCloudflare Dashboardで環境変数を変更する方針を明記。
+  - `TSUKUYOMI_ADMIN_AUTH_SECRET` と `TSUKUYOMI_REVIEW_AUTH_SECRET` を分ける必要を明記。
+  - OTP API、保存先、レート制限、Cookie、ログ方針を実装候補として整理。
+- README、マニュアル索引、管理画面ヘルプに導線を追加。
+
+### 検証
+
+- 現在の管理API実装がサーバー側リセット機能を持たないことを確認。
+- Cloudflare Email Service / Email Routing の現行ドキュメントを確認。
+
+### 追記
+
+- 無料枠だけで運用する前提では、管理者OTPメール送信の第一候補を `Resend` にする方針を追加。
+  - Free planの `100 emails/day`、`3,000 emails/month` は管理者OTP用途には十分。
+  - Brevoは `300 emails/day` と大きいが、今回の用途では実装の単純さを優先。
+  - Cloudflare Email ServiceのOutbound送信はWorkers Paid前提のため、完全無料運用では第一候補から外す。
+- `TSUKUYOMI_ADMIN_EMAIL_PROVIDER=resend` を採用方針として明記。
+- BrevoはResendで問題が出た場合の代替候補として残す。
+- 送信処理は `sendAdminOtpEmail()` に閉じ込め、将来Brevoへ差し替えやすい形にする。
+
+## 2026-05-28 管理者メールOTP実装
+
+### 開始
+
+- Resend無料枠を使い、管理画面ログインを管理者メールOTP方式へ対応させる。
+- 既存の管理トークン方式は `token` モードとして互換維持する。
+- SMS、マスターパスワード、アプリ内の管理トークン再発行APIは実装しない。
+
+### 対応
+
+- `_shared/admin-auth.js` を追加。
+  - `TSUKUYOMI_ADMIN_AUTH_MODE=token` / `email_otp` を切替。
+  - 許可管理者メール3件を扱う。
+  - OTPは6桁、10分有効、1回限り、最大5回試行。
+  - OTP平文は保存せず、R2にはハッシュとsaltを保存。
+  - 管理セッションは `tsukuyomi_admin_session` HttpOnly Cookieで発行。
+  - `TSUKUYOMI_ADMIN_AUTH_SECRET` 変更で既存管理セッションを失効。
+  - Resend送信を `sendAdminOtpEmail()` に分離。
+- `/api/admin-auth/status`、`request`、`verify`、`logout` を追加。
+- 既存管理APIの `requireAdmin()` を非同期化し、全管理APIで `await requireAdmin(...)` へ変更。
+- `rate-limit.js` に `admin_auth_request` と `admin_auth_verify` を追加。
+  - OTP要求: 5回/10分、30分ブロック。
+  - OTP検証: 10回/10分、30分ブロック。
+- `admin.html` / `js/admin.js` を更新。
+  - `email_otp` モードではメール入力、コード送信、コード入力、ログアウトを表示。
+  - `token` モードでは従来の管理トークン入力を表示。
+  - OTPログイン後はCookie認証で管理APIを呼ぶ。
+- バージョンとService Worker cache nameを `0.1.74` に更新。
+- README、初期設定、更新マニュアル、実機確認、限定レビュークイックガイド、管理者認証資料を更新。
+  - Resendを採用。
+  - Brevoは代替候補として資料に残す。
+
+### 検証
+
+- `node --check functions/_shared/admin-auth.js`: OK
+- `node --check functions/_shared/books.js`: OK
+- `node --check functions/_shared/rate-limit.js`: OK
+- `node --check functions/api/admin-auth/status.js`: OK
+- `node --check functions/api/admin-auth/request.js`: OK
+- `node --check functions/api/admin-auth/verify.js`: OK
+- `node --check functions/api/admin-auth/logout.js`: OK
+- `node --check functions/api/admin/books/index.js`: OK
+- `node --check functions/api/admin/books/[id].js`: OK
+- `node --check functions/api/admin/storage/index.js`: OK
+- `node --check functions/api/admin/analytics/index.js`: OK
+- `node --check functions/api/admin/review-access/index.js`: OK
+- `node --check functions/api/admin/review-access/password.js`: OK
+- `node --check js/admin.js`: OK
+- `node --check js/version.js`: OK
+- `node --check sw.js`: OK
+- モックR2 + モックResend検証:
+  - 許可メールでOTP要求するとResend APIが1回呼ばれることを確認。
+  - 許可外メールでは同じ成功レスポンスだがResend APIが呼ばれないことを確認。
+  - 同じ管理者メールで新しいOTPを発行すると、古い未使用OTPが無効になることを確認。
+  - 正しいOTPで管理セッションCookieを検証できることを確認。
+  - 間違ったOTP、期限切れOTP、使用済みOTPが拒否されることを確認。
+  - `TSUKUYOMI_ADMIN_AUTH_SECRET` を変えると既存セッションが無効になることを確認。
+  - `token` モードでは既存Bearer認証が通ることを確認。
+  - `email_otp` モードではBearerだけでは管理APIを通さないことを確認。
+- `git diff --check -- .`: OK

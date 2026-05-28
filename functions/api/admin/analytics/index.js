@@ -3,7 +3,7 @@ import { analyticsDisabled, analyticsErrorResponse, getAnalyticsDb } from "../..
 import { liteAnalyticsToAdminPayload, readLiteAnalytics } from "../../../_shared/analytics-lite.js";
 
 export async function onRequestGet(context) {
-  const auth = requireAdmin(context.request, context.env);
+  const auth = await requireAdmin(context.request, context.env);
   if (!auth.ok) return auth.response;
 
   const db = getAnalyticsDb(context.env);

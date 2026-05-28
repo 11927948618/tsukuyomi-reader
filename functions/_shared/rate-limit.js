@@ -6,7 +6,20 @@ const DEFAULT_LIMITS = {
   manifest: 60,
   content: 12,
   cover: 60,
-  analytics: 120
+  analytics: 120,
+  review_auth: 6,
+  admin_auth_request: 5,
+  admin_auth_verify: 10
+};
+const DEFAULT_WINDOWS = {
+  review_auth: 60,
+  admin_auth_request: 600,
+  admin_auth_verify: 600
+};
+const DEFAULT_BLOCKS = {
+  review_auth: 300,
+  admin_auth_request: 1800,
+  admin_auth_verify: 1800
 };
 
 const buckets = new Map();
@@ -63,12 +76,12 @@ export function getRateLimitConfig(env, profile = "manifest") {
   const windowSeconds = readPositiveInteger(
     env,
     [`TSUKUYOMI_RATE_LIMIT_${normalizedProfile}_WINDOW_SECONDS`, "TSUKUYOMI_RATE_LIMIT_WINDOW_SECONDS"],
-    DEFAULT_WINDOW_SECONDS
+    DEFAULT_WINDOWS[profile] || DEFAULT_WINDOW_SECONDS
   );
   const blockSeconds = readPositiveInteger(
     env,
     [`TSUKUYOMI_RATE_LIMIT_${normalizedProfile}_BLOCK_SECONDS`, "TSUKUYOMI_RATE_LIMIT_BLOCK_SECONDS"],
-    DEFAULT_BLOCK_SECONDS
+    DEFAULT_BLOCKS[profile] || DEFAULT_BLOCK_SECONDS
   );
 
   return {

@@ -20,6 +20,8 @@ const DEFAULT_SITE_CONFIG = {
   showCopyright: true,
   copyright: "© 2026 hal the juggernaut. All rights reserved.",
   booksManifest: "./books/manifest.json",
+  reviewAuthStatusEndpoint: "/api/review-auth/status",
+  reviewAuthSessionEndpoint: "/api/review-auth/session",
   analyticsEnabled: false,
   analyticsEndpoint: "/api/analytics/event",
   analyticsRespectDoNotTrack: true,
@@ -53,6 +55,7 @@ const appState = {
   settings: { ...DEFAULT_SETTINGS },
   progress: { ...DEFAULT_PROGRESS },
   siteConfig: { ...DEFAULT_SITE_CONFIG },
+  reviewAuth: { authRequired: false, authenticated: true },
   openSettingsOnReader: false,
   helpReturnScreen: "library"
 };
@@ -67,6 +70,14 @@ async function loadTemplate(name) {
 }
 
 async function render(screen) {
+  if (screen === "auth") {
+    await loadTemplate("auth");
+    applyTheme(appState.settings.theme);
+    applySiteChrome();
+    initReviewAuthScreen();
+    return;
+  }
+
   if (screen === "library") {
     await loadTemplate("library");
     applyTheme(appState.settings.theme);
@@ -93,6 +104,7 @@ async function render(screen) {
         render("reader");
       }
     });
+    bindReviewAuthControls();
     if (appState.startupMessage) {
       const status = qs("#statusMessage");
       if (status) {
@@ -161,6 +173,88 @@ function initHelpScreen() {
   });
 }
 
+function initReviewAuthScreen() {
+  const form = document.getElementById("reviewAuthForm");
+  const identifierInput = document.getElementById("reviewAuthIdentifier");
+  const passwordInput = document.getElementById("reviewAuthPassword");
+  const submitBtn = document.getElementById("reviewAuthSubmitBtn");
+  const status = document.getElementById("reviewAuthStatus");
+  if (!form || !identifierInput || !passwordInput) return;
+
+  const setAuthStatus = (message, type = "") => {
+    if (!status) return;
+    status.textContent = message;
+    status.className = `status ${type}`.trim();
+  };
+
+  if (appState.reviewAuth?.error) {
+    setAuthStatus(appState.reviewAuth.error, "error");
+  } else {
+    setAuthStatus("メールアドレスまたは仮IDとパスワードを入力してください");
+  }
+
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const identifier = String(identifierInput.value || "").trim().toLowerCase();
+    const password = String(passwordInput.value || "");
+    if (!identifier || !password) {
+      setAuthStatus("メールアドレスまたは仮IDとパスワードを入力してください", "error");
+      return;
+    }
+
+    if (submitBtn) submitBtn.disabled = true;
+    setAuthStatus("認証中...");
+    try {
+      const endpoint = appState.siteConfig?.reviewAuthSessionEndpoint || DEFAULT_SITE_CONFIG.reviewAuthSessionEndpoint;
+      const res = await fetch(endpoint, {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ identifier, password })
+      });
+      const payload = await readResponseJson(res);
+      if (!res.ok) throw new Error(payload?.error || "認証に失敗しました");
+
+      appState.reviewAuth = {
+        authRequired: payload?.authRequired === true,
+        authenticated: true,
+        email: payload?.email || "",
+        reviewerId: payload?.reviewerId || "",
+        expiresAt: payload?.expiresAt || ""
+      };
+      passwordInput.value = "";
+      await render("library");
+    } catch (err) {
+      setAuthStatus(err.message || "認証に失敗しました", "error");
+    } finally {
+      if (submitBtn) submitBtn.disabled = false;
+    }
+  });
+}
+
+function bindReviewAuthControls() {
+  const logoutBtn = document.getElementById("reviewLogoutBtn");
+  if (!logoutBtn) return;
+
+  logoutBtn.hidden = appState.reviewAuth?.authRequired !== true;
+  logoutBtn.addEventListener("click", async () => {
+    logoutBtn.disabled = true;
+    try {
+      const endpoint = appState.siteConfig?.reviewAuthSessionEndpoint || DEFAULT_SITE_CONFIG.reviewAuthSessionEndpoint;
+      await fetch(endpoint, {
+        method: "DELETE",
+        credentials: "same-origin"
+      }).catch(() => {});
+    } finally {
+      appState.currentBook = null;
+      appState.currentBookId = null;
+      clearCachedBookData();
+      appState.reviewAuth = { authRequired: true, authenticated: false };
+      await render("auth");
+    }
+  });
+}
+
 function applyBook(book) {
   appState.currentBook = book;
   appState.currentBookId = buildBookId(book);
@@ -194,6 +288,11 @@ function buildBookId(book) {
 
 function persistLastOpened() {
   if (!appState.currentBook || !appState.currentBookId) return;
+  if (appState.reviewAuth?.authRequired === true) {
+    clearCachedBookData();
+    return;
+  }
+
   const source = getBookSource(appState.currentBook);
 
   const lastOpened = {
@@ -235,6 +334,15 @@ function saveProgress(bookId, progress) {
   const ok = saveJSON(`tsukiyomi:progress:${bookId}`, payload);
   if (!ok) {
     appState.startupMessage = "進捗保存に失敗しました（容量不足の可能性）";
+  }
+}
+
+function clearCachedBookData() {
+  try {
+    localStorage.removeItem("tsukiyomi:lastOpened");
+    localStorage.removeItem("tsukiyomi:lastBookCache");
+  } catch (err) {
+    // Cache cleanup is best-effort.
   }
 }
 
@@ -303,10 +411,44 @@ function applySiteConfig(config) {
   applyDistributionGuards(appState.siteConfig);
 }
 
+async function loadReviewAuthStatus() {
+  const endpoint = appState.siteConfig?.reviewAuthStatusEndpoint || DEFAULT_SITE_CONFIG.reviewAuthStatusEndpoint;
+  try {
+    const res = await fetch(endpoint, {
+      cache: "no-store",
+      credentials: "same-origin"
+    });
+    const payload = await readResponseJson(res);
+    if (res.status === 404) {
+      return { authRequired: false, authenticated: true };
+    }
+    if (!res.ok) {
+      return {
+        authRequired: true,
+        authenticated: false,
+        error: payload?.error || `認証状態を確認できません（HTTP ${res.status}）`
+      };
+    }
+
+    const authRequired = payload?.authRequired === true;
+    return {
+      authRequired,
+      authenticated: authRequired ? payload?.authenticated === true : true,
+      email: payload?.email || "",
+      status: payload?.status || "",
+      expiresAt: payload?.expiresAt || ""
+    };
+  } catch (err) {
+    return { authRequired: false, authenticated: true };
+  }
+}
+
 function applySiteChrome() {
   const config = appState.siteConfig || DEFAULT_SITE_CONFIG;
   const siteName = document.getElementById("librarySiteName");
   if (siteName && config.siteName) siteName.textContent = config.siteName;
+  const reviewAuthSiteName = document.getElementById("reviewAuthSiteName");
+  if (reviewAuthSiteName && config.siteName) reviewAuthSiteName.textContent = config.siteName;
 
   applyCopyright(config);
   applyAnalyticsNotice(config);
@@ -484,9 +626,28 @@ function normalizeManifestPath(path) {
     .replace(/\/+/g, "/");
 }
 
+async function readResponseJson(res) {
+  try {
+    return await res.json();
+  } catch (err) {
+    return null;
+  }
+}
+
 async function bootstrap() {
   applySiteConfig(await loadSiteConfig());
+  appState.reviewAuth = await loadReviewAuthStatus();
+  if (appState.reviewAuth.authRequired && !appState.reviewAuth.authenticated) {
+    clearCachedBookData();
+    await render("auth");
+    return;
+  }
   registerServiceWorker();
+  if (appState.reviewAuth.authRequired) {
+    clearCachedBookData();
+    await render("library");
+    return;
+  }
   const restored = await tryRestoreLastBook();
   if (!restored) {
     render("library");

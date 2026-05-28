@@ -1,3 +1,3 @@
-export const APP_VERSION = "0.1.69";
-export const BUILD_TIME = "2026-05-25 00:20";
-export const COMMIT = "api-error-detail";
+export const APP_VERSION = "0.1.74";
+export const BUILD_TIME = "2026-05-27 00:00";
+export const COMMIT = "review-auth-retrospective-log";

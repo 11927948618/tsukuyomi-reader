@@ -9,6 +9,12 @@ import {
   sha256Hex
 } from "../../_shared/analytics.js";
 import { recordLiteAnalytics } from "../../_shared/analytics-lite.js";
+import {
+  getReviewAuthAnalyticsEmail,
+  recordReviewSessionActivity,
+  requireReviewPasswordAuth,
+  reviewPasswordAuthEnabled
+} from "../../_shared/review-auth.js";
 
 const EVENT_TYPES = new Set(["open", "progress", "finish"]);
 
@@ -19,10 +25,17 @@ export async function onRequestPost(context) {
   const db = getAnalyticsDb(context.env);
   const bucket = getBucket(context.env);
   if (!db && !bucket) return new Response(null, { status: 204 });
+  if (!bucket && reviewPasswordAuthEnabled(context.env)) return error("R2 bucket binding が未設定です", 500);
 
   if (!isSameOriginRequest(context.request)) {
     return error("許可されていない送信元です", 403);
   }
+
+  const reviewAuth = bucket
+    ? await requireReviewPasswordAuth(context.request, bucket, context.env)
+    : { ok: true, email: "" };
+  if (!reviewAuth.ok) return reviewAuth.response;
+  if (bucket) await recordReviewSessionActivity(bucket, context.request, reviewAuth, context.env, "analytics");
 
   let payload = null;
   try {
@@ -43,7 +56,9 @@ export async function onRequestPost(context) {
 
   const salt = normalizeAnalyticsText(context.env?.TSUKUYOMI_ANALYTICS_SALT || context.env?.ANALYTICS_SALT, 256);
   const userAgent = normalizeAnalyticsText(context.request.headers.get("user-agent"), 512);
-  const accessEmail = getAccessAnalyticsEmail(context.request, context.env);
+  const accessEmail =
+    getAccessAnalyticsEmail(context.request, context.env) ||
+    getReviewAuthAnalyticsEmail(reviewAuth, context.env);
   const readerIdHash = await sha256Hex(`${salt}:reader:${readerId}`);
   const userAgentHash = userAgent ? await sha256Hex(`${salt}:ua:${userAgent}`) : "";
   const accessEmailHash = accessEmail ? await sha256Hex(`${salt}:access-email:${accessEmail}`) : "";

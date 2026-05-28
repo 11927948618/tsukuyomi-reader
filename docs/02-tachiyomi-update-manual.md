@@ -20,7 +20,7 @@ https://tsukuyomi-reader-tachiyomi.pages.dev/
 https://tsukuyomi-reader-tachiyomi.pages.dev/admin.html
 ```
 
-管理メニューは検索エンジンに出さない想定ですが、URLを知っているだけで操作できる設計にはしません。Cloudflare Pagesの環境変数 `TSUKUYOMI_ADMIN_TOKEN` と、管理画面で入力する管理トークンが一致した場合だけ操作できます。
+管理メニューは検索エンジンに出さない想定ですが、URLを知っているだけで操作できる設計にはしません。未設定時は既存互換の管理トークン方式を使い、推奨設定では管理者メールOTPでログインします。
 
 ## Pagesプロジェクトを作成する
 
@@ -79,12 +79,46 @@ https://tsukuyomi-reader-tachiyomi.pages.dev/
 - 公開版Readerには、賞応募に使わない作品だけ置きます。
 - 賞応募候補作品は、公開版Readerで `published: true` にしません。
 - 限定レビュー版Readerを別Pagesプロジェクトまたは別サブドメインで用意します。
-- 限定レビュー版ReaderはCloudflare Access等でサイト/API全体を認証必須にします。
+- 限定レビュー版ReaderはCloudflare Access、またはReader内メールアドレス+パスワード認証でサイト/API全体を認証必須にします。
 - `reviewOnly` や `awardCandidate` のようなフラグだけでは保護になりません。未認証URLで読めないことを優先します。
 
-現時点では、作品別IDや鍵付きURLを自前実装するより、Cloudflare Access等で限定レビュー版全体を守る運用を推奨します。
+現時点では、作品別IDや鍵付きURLを自前実装するより、Cloudflare Access等で限定レビュー版全体を守る運用を推奨します。Cloudflare Accessが安定しない場合は、Reader内パスワード認証を使います。
 
-個別アクセス許可はCloudflare Access側で行います。TsukuyomiReaderの管理画面にある `限定レビュー許可メモ` は、Accessへ許可を実行する機能ではなく、許可・停止した相手を記録する欄です。
+Reader内パスワード認証を使う場合は、Pages環境変数に以下を設定します。
+
+```text
+TSUKUYOMI_REVIEW_PASSWORD_AUTH=true
+TSUKUYOMI_REVIEW_AUTH_SECRET=十分に長いランダム文字列
+```
+
+管理画面の `限定レビュー認証管理` で仮IDを作成し、相手のメールアドレスと紐づけます。`PW発行` で表示されたパスワードを個別に送ります。パスワードの平文は発行時だけ表示され、R2にはハッシュだけを保存します。`PW無効化` でパスワードと既存セッションを停止できます。
+
+読者は、メールアドレスまたは仮IDとパスワードでログインできます。認証イベント、同時利用検知、読書ログの管理表示では仮IDを併記します。
+
+標準の防御設定:
+
+- ログインAPIは60秒に6回まで。超過時は5分ブロック
+- 同じメールアドレスで5回失敗すると15分ロック
+- 発行パスワードは30日で期限切れ
+- ログインセッションは14日で期限切れ
+- 同じメールアドレスまたは仮IDで10分以内に複数セッションが動いた場合、管理画面の認証イベントに `同時利用検知` を残す
+- 有効IDのPW失敗、ロック、期限切れ、PW発行/無効化、同時利用検知だけを詳細イベントに残し、未知IDへの試行は件数集計だけにする
+- 限定レビュー認証が有効な場合、Reader本文のローカルキャッシュ保存・復元を抑制する
+
+調整する場合:
+
+```text
+TSUKUYOMI_RATE_LIMIT_REVIEW_AUTH=6
+TSUKUYOMI_RATE_LIMIT_REVIEW_AUTH_WINDOW_SECONDS=60
+TSUKUYOMI_RATE_LIMIT_REVIEW_AUTH_BLOCK_SECONDS=300
+TSUKUYOMI_REVIEW_LOGIN_FAILURE_LIMIT=5
+TSUKUYOMI_REVIEW_LOGIN_LOCK_MINUTES=15
+TSUKUYOMI_REVIEW_PASSWORD_DAYS=30
+TSUKUYOMI_REVIEW_AUTH_SESSION_DAYS=14
+TSUKUYOMI_REVIEW_CONCURRENT_WINDOW_MINUTES=10
+```
+
+Cloudflare Accessを使う場合、個別アクセス許可はCloudflare Access側で行います。TsukuyomiReaderの管理画面は、Accessへ許可を実行する機能ではなく、許可・停止した相手を記録する欄としても使えます。
 
 限定レビュー版で、管理側が「誰がどの作品をどこまで読んだか」を一元保管・集計する場合は、Access認証済みメールアドレスを読書ログへ紐づける設定を有効にします。
 
@@ -102,20 +136,26 @@ migrations/0002_access_identity_analytics.sql
 
 Cloudflare Accessの許可リスト全員が自動で管理画面に出るわけではありません。読書ログに出るのは、実際にAccess認証を通ってReaderへアクセスした人です。
 
+Reader内パスワード認証のメールアドレスを読書ログへ紐づける場合は、以下を設定します。
+
+```text
+TSUKUYOMI_REVIEW_PASSWORD_IDENTITY_ANALYTICS=true
+```
+
 許可ユーザーを一時的に目立たず保留にする場合は、Access許可を残したままReader側で作品一覧を空にする `閲覧保留` を使えます。
 
 ```text
 TSUKUYOMI_REVIEW_ACCESS_SOFT_BLOCK=true
 ```
 
-この環境変数を有効にした限定レビュー版では、管理画面の `限定レビュー許可メモ` で状態を `閲覧保留` または `停止済み` にしたメールアドレスへ、`/api/books` が空の作品一覧を返します。本文APIと表紙APIも見つからない扱いになります。
+この環境変数を有効にした限定レビュー版では、管理画面の `限定レビュー認証管理` で状態を `閲覧保留` または `停止済み` にしたメールアドレスへ、`/api/books` が空の作品一覧を返します。本文APIと表紙APIも見つからない扱いになります。
 
 Cloudflare Accessから外すと拒否画面が出やすいため、目立たせず保留したい場合はAccess許可を残し、Reader側の `閲覧保留` を使います。
 
 詳細:
 
 ```text
-docs/limited-review-operation.md
+docs/06-limited-review-operation.md
 ```
 
 ## 重要なファイル
@@ -186,7 +226,7 @@ Web管理メニューを使う場合は、Cloudflare Pages Functions と R2 を�
 最初に必要な設定だけ確認したい場合は、以下のチェックリストを使います。
 
 ```text
-docs/tachiyomi-initial-setup.md
+docs/01-tachiyomi-initial-setup.md
 ```
 
 R2は無料枠つきの従量課金です。Standard storageの場合、毎月10GB保存、Class A操作100万回、Class B操作1000万回までは無料です。無料枠を超えた分は後払いで課金されます。立ち読み用の小規模運用なら通常は無料枠内に収まる想定ですが、絶対に課金を発生させたくない場合はR2を使わず、`books/` 配下をGitHubへpushする静的ファイル運用にします。
@@ -195,7 +235,7 @@ R2は無料枠つきの従量課金です。Standard storageの場合、毎月10
 
 1. R2バケットを作る
 2. 立ち読み用PagesプロジェクトにR2を紐づける
-3. 管理トークンを環境変数に入れる
+3. 管理者認証の環境変数を入れる
 4. 再デプロイする
 5. `/admin.html` から作品を登録する
 
@@ -224,10 +264,24 @@ Variable name: TSUKUYOMI_BOOKS_BUCKET
 R2 bucket: tsukuyomi-reader-books
 ```
 
-4. `Settings > Environment variables` に管理トークンを追加します。
+4. `Settings > Environment variables` に管理者認証を追加します。
+
+既存互換の管理トークン方式:
 
 ```text
+TSUKUYOMI_ADMIN_AUTH_MODE=token
 TSUKUYOMI_ADMIN_TOKEN=十分に長いランダム文字列
+```
+
+推奨の管理者メールOTP方式:
+
+```text
+TSUKUYOMI_ADMIN_AUTH_MODE=email_otp
+TSUKUYOMI_ADMIN_EMAILS=halthejuggernaut@gmail.com,haltherock@yahoo.com,weezartherock@gmail.com
+TSUKUYOMI_ADMIN_AUTH_SECRET=十分に長いランダム文字列
+TSUKUYOMI_ADMIN_EMAIL_PROVIDER=resend
+TSUKUYOMI_ADMIN_EMAIL_FROM=Resendで有効な送信元
+RESEND_API_KEY=Resend APIキー
 ```
 
 5. 再デプロイします。
@@ -239,7 +293,7 @@ TSUKUYOMI_ADMIN_TOKEN=十分に長いランダム文字列
 R2のClass B操作が増えすぎた場合に備えて、使用量ガードを用意しています。設計の詳細は以下を参照します。
 
 ```text
-docs/cloudflare-usage-guard-design.md
+docs/20-cloudflare-usage-guard-design.md
 ```
 
 ガード状態はR2内の以下に保存されます。
@@ -323,7 +377,7 @@ TSUKUYOMI_RATE_LIMIT_DISABLED=true
 詳細:
 
 ```text
-docs/cloudflare-f5-defense-design.md
+docs/21-cloudflare-f5-defense-design.md
 ```
 
 ## PDF固定レイアウト作品
@@ -342,7 +396,7 @@ DialogueAssembler等で作成したバブルチャット形式の作品は、PDF
 DialogueAssembler側へ渡す出力方針:
 
 ```text
-docs/dialogueassembler-mobile-pdf-export-spec.md
+docs/30-dialogueassembler-mobile-pdf-export-spec.md
 ```
 
 ## 匿名読書ログ
@@ -360,7 +414,7 @@ finish: 95%以上に到達した
 詳細:
 
 ```text
-docs/reader-analytics-design.md
+docs/10-reader-analytics-design.md
 ```
 
 D1を使う場合は、CloudflareでD1 databaseを作成し、PagesプロジェクトにD1 bindingを追加します。
@@ -439,7 +493,7 @@ Cloudflare PagesがGitHub連携されていれば、このpushで自動デプロ
 https://tsukuyomi-reader-tachiyomi.pages.dev/admin.html
 ```
 
-5. `TSUKUYOMI_ADMIN_TOKEN` と同じ管理トークンを入力し、「保存」を押します。
+5. 管理者認証を通します。`token` モードでは `TSUKUYOMI_ADMIN_TOKEN` と同じ管理トークンを入力し、「保存」を押します。`email_otp` モードでは管理者メールへコードを送り、6桁コードでログインします。
 
 6. タイトル、作者、紹介文、本文ファイル、表紙画像を入力して保存します。
 
@@ -459,9 +513,11 @@ Surface Goなど、開発環境とは完全に別の端末では、この方法�
 https://tsukuyomi-reader-tachiyomi.pages.dev/admin.html
 ```
 
-2. 管理トークンを入力して「保存」を押します。
+2. 管理者認証を通します。
 
-管理トークンはブラウザのlocalStorageに保存されます。共有PCや不特定多数が触れる端末では保存しないでください。
+`token` モードでは管理トークンを入力して「保存」を押します。管理トークンはブラウザのlocalStorageに保存されます。共有PCや不特定多数が触れる端末では保存しないでください。
+
+`email_otp` モードでは管理者メールを入力して `コード送信` を押し、届いた6桁コードでログインします。ログイン後はHttpOnly Cookieで管理APIを使うため、管理トークンをブラウザに保存しません。
 
 3. 作品を追加または差し替えます。
 
@@ -665,9 +721,11 @@ Cloudflare Pagesでは2つのプロジェクトを作り、それぞれ監視ブ
 
 管理メニューで認証に失敗する場合:
 
-- Cloudflareの環境変数 `TSUKUYOMI_ADMIN_TOKEN` と入力値が一致しているか確認します。
+- `token` モードでは、Cloudflareの環境変数 `TSUKUYOMI_ADMIN_TOKEN` と入力値が一致しているか確認します。
+- `email_otp` モードでは、`TSUKUYOMI_ADMIN_AUTH_SECRET`、`TSUKUYOMI_ADMIN_EMAILS`、`TSUKUYOMI_ADMIN_EMAIL_FROM`、`RESEND_API_KEY` が設定されているか確認します。
+- 許可メールは `halthejuggernaut@gmail.com`、`haltherock@yahoo.com`、`weezartherock@gmail.com` の3件です。
 - 環境変数を追加したあとに再デプロイしたか確認します。
-- 管理トークンの前後に空白が入っていないか確認します。
+- `token` モードでは、管理トークンの前後に空白が入っていないか確認します。
 
 更新したのに古い内容が出る場合:
 

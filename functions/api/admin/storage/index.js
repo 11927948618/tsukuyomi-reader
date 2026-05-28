@@ -6,7 +6,7 @@ const DEFAULT_FREE_STORAGE_BYTES = 10 * 1024 * 1024 * 1024;
 const DEFAULT_SCAN_LIMIT = 10000;
 
 export async function onRequestGet(context) {
-  const auth = requireAdmin(context.request, context.env);
+  const auth = await requireAdmin(context.request, context.env);
   if (!auth.ok) return auth.response;
 
   const bucket = getBucket(context.env);

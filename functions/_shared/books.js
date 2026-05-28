@@ -1,3 +1,5 @@
+import { verifyAdminRequest } from "./admin-auth.js";
+
 export const MANIFEST_KEY = "_tsukuyomi/books-manifest.json";
 
 export function json(data, init = {}) {
@@ -19,21 +21,13 @@ export function getBucket(env) {
   return env.TSUKUYOMI_BOOKS_BUCKET || env.BOOKS_BUCKET || env.BUCKET || null;
 }
 
-export function requireAdmin(request, env) {
-  const expected = env.TSUKUYOMI_ADMIN_TOKEN || env.ADMIN_TOKEN || "";
-  if (!expected) {
-    return { ok: false, response: error("TSUKUYOMI_ADMIN_TOKEN が未設定です", 500) };
-  }
-
-  const auth = request.headers.get("authorization") || "";
-  const bearer = auth.toLowerCase().startsWith("bearer ") ? auth.slice(7).trim() : "";
-  const headerToken = request.headers.get("x-admin-token") || "";
-  const actual = bearer || headerToken;
-
-  if (!actual || actual !== expected) {
-    return { ok: false, response: error("管理トークンが違います", 401) };
-  }
-  return { ok: true };
+export async function requireAdmin(request, env) {
+  const decision = await verifyAdminRequest(request, env);
+  if (decision.ok) return decision;
+  return {
+    ...decision,
+    response: error(decision.error || "管理者認証が必要です", decision.status || 401)
+  };
 }
 
 export async function readCatalog(bucket) {
