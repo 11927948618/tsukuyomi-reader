@@ -14,6 +14,7 @@ import {
   contentTypeForExt
 } from "../../../_shared/books.js";
 import { readUsageGuard, shouldBlockPublishing } from "../../../_shared/usage-guard.js";
+import { adminOperationActor, recordAdminOperationEvent } from "../../../_shared/admin-operation-log.js";
 
 export async function onRequestGet(context) {
   const auth = await requireAdmin(context.request, context.env);
@@ -55,12 +56,23 @@ export async function onRequestPost(context) {
   const nextPublished = boolValue(form.get("published"));
   const guard = await readUsageGuard(bucket, context.env);
   if (shouldBlockPublishing(guard, current.published === true, nextPublished)) {
+    await recordAdminOperationEvent(bucket, {
+      type: "book-save-failed",
+      result: "failed",
+      actor: adminOperationActor(auth),
+      bookId: id,
+      title,
+      reason: "usage-guard",
+      details: { published: nextPublished }
+    });
     return error("使用量ガードにより、新規公開は一時停止中です。非公開保存は可能です。", 403);
   }
 
   let contentKey = current.contentKey || "";
   let coverKey = current.coverKey || "";
   let format = current.format || "epub";
+  let contentUploaded = false;
+  let coverUploaded = false;
 
   if (bookFile && typeof bookFile.arrayBuffer === "function" && bookFile.size > 0) {
     const ext = extFromFile(bookFile, "epub");
@@ -71,6 +83,7 @@ export async function onRequestPost(context) {
     await bucket.put(contentKey, await bookFile.arrayBuffer(), {
       httpMetadata: { contentType: contentTypeForExt(ext) }
     });
+    contentUploaded = true;
   }
 
   if (cover && typeof cover.arrayBuffer === "function" && cover.size > 0) {
@@ -83,6 +96,7 @@ export async function onRequestPost(context) {
     await bucket.put(coverKey, await cover.arrayBuffer(), {
       httpMetadata: { contentType: contentTypeForExt(ext) }
     });
+    coverUploaded = true;
   }
 
   if (!contentKey) return error("初回登録では本文ファイルが必須です");
@@ -107,5 +121,21 @@ export async function onRequestPost(context) {
 
   await writeCatalog(bucket, { books: nextBooks });
   const cleanup = await deleteR2Keys(bucket, staleKeys);
+  await recordAdminOperationEvent(bucket, {
+    type: current.id ? "book-updated" : "book-created",
+    result: cleanup.failed.length ? "warn" : "ok",
+    actor: adminOperationActor(auth),
+    bookId: id,
+    title: nextBook.title,
+    reason: cleanup.failed.length ? "cleanup-partial" : "admin",
+    details: {
+      format,
+      published: nextPublished,
+      contentUploaded,
+      coverUploaded,
+      staleKeys: staleKeys.length,
+      cleanupFailed: cleanup.failed.length
+    }
+  });
   return json({ ok: true, book: toPublicManifestEntry(nextBook), cleanup });
 }

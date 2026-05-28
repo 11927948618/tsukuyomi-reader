@@ -64,7 +64,7 @@ export async function getReviewAuthDecision(request, bucket, env) {
       ok: false,
       authRequired: true,
       reason: "secret-missing",
-      response: error("TSUKUYOMI_REVIEW_AUTH_SECRET または TSUKUYOMI_ADMIN_TOKEN が未設定です", 500)
+      response: error(reviewAuthSecretMissingMessage(env), 500)
     };
   }
 
@@ -157,11 +157,29 @@ export async function issueReviewPassword(bucket, identifier, env) {
   if (!normalized.email && !normalized.reviewerId) return { ok: false, error: "メールアドレスまたは仮IDが必要です" };
 
   const secret = getReviewAuthSecret(env);
-  if (!secret) return { ok: false, error: "TSUKUYOMI_REVIEW_AUTH_SECRET または TSUKUYOMI_ADMIN_TOKEN が未設定です" };
+  if (!secret) {
+    await recordReviewAuthEvent(bucket, {
+      type: "password-issue-failed",
+      result: "failed",
+      email: normalized.email,
+      reviewerId: normalized.reviewerId,
+      reason: "secret-missing"
+    });
+    return { ok: false, error: reviewAuthSecretMissingMessage(env) };
+  }
 
   const list = await readReviewAccessList(bucket, { includeSecrets: true });
   const index = list.entries.findIndex((entry) => matchesReviewIdentifier(entry, normalized));
-  if (index < 0) return { ok: false, error: "対象メールアドレスまたは仮IDが認証管理にありません" };
+  if (index < 0) {
+    await recordReviewAuthEvent(bucket, {
+      type: "password-issue-failed",
+      result: "failed",
+      email: normalized.email,
+      reviewerId: normalized.reviewerId,
+      reason: "target-not-found"
+    });
+    return { ok: false, error: "対象メールアドレスまたは仮IDが認証管理にありません" };
+  }
 
   const now = new Date().toISOString();
   const passwordExpiresAt = reviewPasswordExpiresAt(env, now);
@@ -201,7 +219,16 @@ export async function revokeReviewPassword(bucket, identifier) {
 
   const list = await readReviewAccessList(bucket, { includeSecrets: true });
   const index = list.entries.findIndex((entry) => matchesReviewIdentifier(entry, normalized));
-  if (index < 0) return { ok: false, error: "対象メールアドレスまたは仮IDが認証管理にありません" };
+  if (index < 0) {
+    await recordReviewAuthEvent(bucket, {
+      type: "password-revoke-failed",
+      result: "failed",
+      email: normalized.email,
+      reviewerId: normalized.reviewerId,
+      reason: "target-not-found"
+    });
+    return { ok: false, error: "対象メールアドレスまたは仮IDが認証管理にありません" };
+  }
 
   const now = new Date().toISOString();
   const current = list.entries[index];
@@ -548,6 +575,14 @@ function reviewLoginFailureEventType(reason) {
     return "valid-id-login-denied";
   }
   return "";
+}
+
+function reviewAuthSecretMissingMessage(env) {
+  const adminAuthMode = String(env?.TSUKUYOMI_ADMIN_AUTH_MODE || env?.ADMIN_AUTH_MODE || "").trim().toLowerCase();
+  if (adminAuthMode === "email_otp") {
+    return "限定レビューPW発行には TSUKUYOMI_REVIEW_AUTH_SECRET が必要です。管理者メールOTP用の TSUKUYOMI_ADMIN_AUTH_SECRET とは別に設定してください。";
+  }
+  return "TSUKUYOMI_REVIEW_AUTH_SECRET または TSUKUYOMI_ADMIN_TOKEN が未設定です";
 }
 
 async function recordUnknownReviewIdentifierFailure(bucket, reason = "unknown-identifier") {

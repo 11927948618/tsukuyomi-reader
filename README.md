@@ -57,6 +57,7 @@
 - [限定レビュー運用資料](docs/06-limited-review-operation.md)
 - [Cloudflare Access調査メモ](docs/07-cloudflare-access-investigation.md)
 - [管理者認証と復旧設計](docs/08-admin-auth-recovery-design.md)
+- [ログ確認早見表](docs/09-log-coverage-guide.md)
 - [Reader Analytics設計](docs/10-reader-analytics-design.md)
 - [Cloudflare R2 Usage Guard設計](docs/20-cloudflare-usage-guard-design.md)
 - [Cloudflare F5 Defense設計](docs/21-cloudflare-f5-defense-design.md)

@@ -347,7 +347,7 @@ async function recordAdminAuthEvent(bucket, event) {
   }
 }
 
-async function readAdminAuthLog(bucket) {
+export async function readAdminAuthLog(bucket) {
   if (!bucket) return { events: [], updatedAt: "" };
   try {
     const object = await bucket.get(ADMIN_AUTH_LOG_KEY);

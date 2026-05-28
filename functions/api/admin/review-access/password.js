@@ -20,8 +20,13 @@ export async function onRequestPost(context) {
     ? await revokeReviewPassword(bucket, identifier)
     : await issueReviewPassword(bucket, identifier, context.env);
 
-  if (!result.ok) return error(result.error || "パスワード操作に失敗しました", 400);
   const authLog = await readReviewAuthLog(bucket);
   const authSummary = await readReviewAuthSummary(bucket);
+  if (!result.ok) {
+    return json(
+      { error: result.error || "パスワード操作に失敗しました", authLog, authSummary },
+      { status: 400 }
+    );
+  }
   return json({ ok: true, action: action === "revoke" ? "revoke" : "issue", ...result, authLog, authSummary });
 }

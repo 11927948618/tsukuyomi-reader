@@ -10,6 +10,9 @@ const sendAdminOtpBtn = document.getElementById("sendAdminOtpBtn");
 const verifyAdminOtpBtn = document.getElementById("verifyAdminOtpBtn");
 const adminOtpLogoutBtn = document.getElementById("adminOtpLogoutBtn");
 const adminOtpNote = document.getElementById("adminOtpNote");
+const adminAuthLogBlock = document.getElementById("adminAuthLogBlock");
+const adminAuthLog = document.getElementById("adminAuthLog");
+const downloadAdminAuthLogBtn = document.getElementById("downloadAdminAuthLogBtn");
 const saveTokenBtn = document.getElementById("saveTokenBtn");
 const clearTokenBtn = document.getElementById("clearTokenBtn");
 const bookForm = document.getElementById("bookForm");
@@ -35,6 +38,7 @@ const generateReviewerIdBtn = document.getElementById("generateReviewerIdBtn");
 const reviewPasswordResult = document.getElementById("reviewPasswordResult");
 const reviewAuthSummary = document.getElementById("reviewAuthSummary");
 const reviewAuthLog = document.getElementById("reviewAuthLog");
+const downloadReviewAuthLogBtn = document.getElementById("downloadReviewAuthLogBtn");
 const analyticsStatus = document.getElementById("analyticsStatus");
 const analyticsSummary = document.getElementById("analyticsSummary");
 const analyticsRecent = document.getElementById("analyticsRecent");
@@ -49,6 +53,7 @@ let reviewAccessEntries = [];
 let reviewAuthSummaryData = null;
 let reviewAuthLogEvents = [];
 let reviewAuthLogUpdatedAt = "";
+let adminAuthLogEvents = [];
 let adminAuthMode = "token";
 let adminAuthenticated = false;
 let adminOtpChallengeId = "";
@@ -98,6 +103,7 @@ saveTokenBtn?.addEventListener("click", () => {
   loadStorage();
   loadAnalytics();
   loadReviewAccess();
+  loadAdminAuthLog();
 });
 
 clearTokenBtn?.addEventListener("click", () => {
@@ -105,6 +111,7 @@ clearTokenBtn?.addEventListener("click", () => {
   adminToken.value = "";
   adminAuthenticated = false;
   setStatus("管理トークンを消去しました");
+  clearAdminAuthLog();
   clearStorage();
   clearAnalytics();
   clearReviewAccess();
@@ -112,6 +119,8 @@ clearTokenBtn?.addEventListener("click", () => {
 sendAdminOtpBtn?.addEventListener("click", requestAdminOtp);
 verifyAdminOtpBtn?.addEventListener("click", verifyAdminOtp);
 adminOtpLogoutBtn?.addEventListener("click", logoutAdminOtp);
+downloadAdminAuthLogBtn?.addEventListener("click", downloadAdminAuthLog);
+downloadReviewAuthLogBtn?.addEventListener("click", downloadReviewAuthLog);
 
 reloadBooksBtn?.addEventListener("click", loadBooks);
 reloadAnalyticsBtn?.addEventListener("click", loadAnalytics);
@@ -381,6 +390,7 @@ async function saveReviewAccessEntries(successMessage = "保存しました") {
     const payload = await readJson(res);
     if (!res.ok) throw new Error(payload?.error || "限定レビュー認証管理の保存に失敗しました");
     reviewAccessEntries = Array.isArray(payload?.entries) ? payload.entries : [];
+    applyReviewAuthDiagnostics(payload);
     renderReviewAccess(payload?.updatedAt || "");
     setReviewAccessStatus(successMessage, "ok");
   } catch (err) {
@@ -564,8 +574,20 @@ async function postReviewPasswordAction(entry, action) {
     body: JSON.stringify({ email: entry?.email || "", reviewerId: entry?.reviewerId || "", action })
   });
   const payload = await readJson(res);
-  if (!res.ok) throw new Error(payload?.error || "パスワード操作に失敗しました");
+  if (!res.ok) {
+    applyReviewAuthDiagnostics(payload);
+    throw new Error(payload?.error || "パスワード操作に失敗しました");
+  }
   return payload;
+}
+
+function applyReviewAuthDiagnostics(payload) {
+  if (!payload || typeof payload !== "object") return;
+  if (payload.authSummary) reviewAuthSummaryData = payload.authSummary;
+  if (Array.isArray(payload.authLog?.events)) reviewAuthLogEvents = payload.authLog.events;
+  if (payload.authLog?.updatedAt) reviewAuthLogUpdatedAt = payload.authLog.updatedAt;
+  renderReviewAuthSummary();
+  renderReviewAuthLog();
 }
 
 function renderReviewPasswordResult(entry, password) {
@@ -645,7 +667,7 @@ function renderReviewAuthSummary() {
     <div class="admin-auth-summary-row">
       <span class="admin-analytics-label">詳細イベント</span>
       <strong>${(Array.isArray(reviewAuthLogEvents) ? reviewAuthLogEvents.length : 0).toLocaleString()}件</strong>
-      <span>有効IDのPW失敗、ロック、期限切れ、PW発行/無効化、同時利用</span>
+      <span>閲覧許可、PW発行、PW失敗、ロック、期限切れ、同時利用</span>
       <span>更新 ${escapeHtml(updatedAtText)}</span>
     </div>
   `;
@@ -677,6 +699,11 @@ function authLogTypeLabel(type, result) {
   if (type === "logout") return "ログアウト";
   if (type === "password-issued") return "PW発行";
   if (type === "password-revoked") return "PW無効化";
+  if (type === "password-issue-failed") return "PW発行失敗";
+  if (type === "password-revoke-failed") return "PW無効化失敗";
+  if (type === "review-access-added") return "閲覧者追加";
+  if (type === "review-access-status-changed") return "閲覧状態変更";
+  if (type === "review-access-removed") return "閲覧者削除";
   if (type === "concurrent-session") return "同時利用検知";
   if (type === "valid-id-password-mismatch") return "有効IDのPW失敗";
   if (type === "account-locked") return "ロック発生";
@@ -1042,11 +1069,13 @@ async function initAdminAuth() {
     loadStorage();
     loadAnalytics();
     loadReviewAccess();
+    loadAdminAuthLog();
   } else {
     setStatus(adminAuthRequiredMessage());
     clearStorage(adminAuthRequiredMessage());
     clearAnalytics(adminAuthRequiredMessage());
     clearReviewAccess(adminAuthRequiredMessage());
+    clearAdminAuthLog();
   }
 }
 
@@ -1124,6 +1153,7 @@ async function verifyAdminOtp() {
     loadStorage();
     loadAnalytics();
     loadReviewAccess();
+    loadAdminAuthLog();
   } catch (err) {
     setStatus(err.message || "ログインに失敗しました", "error");
   }
@@ -1140,9 +1170,134 @@ async function logoutAdminOtp() {
   if (adminOtpCode) adminOtpCode.value = "";
   renderAdminAuth(null);
   setStatus("ログアウトしました");
+  clearAdminAuthLog();
   clearStorage(adminAuthRequiredMessage());
   clearAnalytics(adminAuthRequiredMessage());
   clearReviewAccess(adminAuthRequiredMessage());
+}
+
+async function loadAdminAuthLog() {
+  if (!adminAuthLog) return;
+  const token = getToken();
+  if (!token) {
+    clearAdminAuthLog();
+    return;
+  }
+
+  try {
+    const res = await fetch("./api/admin-auth/log", {
+      headers: authHeaders(token),
+      cache: "no-store"
+    });
+    const payload = await readJson(res);
+    if (!res.ok) throw new Error(payload?.error || "管理者認証ログの読み込みに失敗しました");
+    adminAuthLogEvents = Array.isArray(payload?.authLog?.events) ? payload.authLog.events : [];
+    renderAdminAuthLog();
+  } catch (err) {
+    adminAuthLogEvents = [];
+    renderAdminAuthLog(err.message || "管理者認証ログの読み込みに失敗しました");
+  }
+}
+
+async function downloadAdminAuthLog() {
+  const token = getToken();
+  if (!token) {
+    setStatus(adminAuthRequiredMessage(), "error");
+    return;
+  }
+
+  try {
+    const res = await fetch("./api/admin-auth/log", {
+      headers: authHeaders(token),
+      cache: "no-store"
+    });
+    const payload = await readJson(res);
+    if (!res.ok) throw new Error(payload?.error || "管理者認証ログの取得に失敗しました");
+    adminAuthLogEvents = Array.isArray(payload?.authLog?.events) ? payload.authLog.events : [];
+    renderAdminAuthLog();
+    downloadJsonFile(`tsukuyomi-admin-auth-log-${todayStamp()}.json`, {
+      exportedAt: new Date().toISOString(),
+      source: "admin-auth",
+      authLog: payload?.authLog || { events: [], updatedAt: "" }
+    });
+    setStatus("管理者認証ログを取得しました", "ok");
+  } catch (err) {
+    setStatus(err.message || "管理者認証ログの取得に失敗しました", "error");
+  }
+}
+
+async function downloadReviewAuthLog() {
+  const token = getToken();
+  if (!token) {
+    setReviewAccessStatus(adminAuthRequiredMessage(), "error");
+    return;
+  }
+
+  try {
+    const res = await fetch("./api/admin/review-access", {
+      headers: authHeaders(token),
+      cache: "no-store"
+    });
+    const payload = await readJson(res);
+    if (!res.ok) throw new Error(payload?.error || "限定レビュー認証ログの取得に失敗しました");
+    reviewAccessEntries = Array.isArray(payload?.entries) ? payload.entries : reviewAccessEntries;
+    applyReviewAuthDiagnostics(payload);
+    renderReviewAccess(payload?.updatedAt || "");
+    downloadJsonFile(`tsukuyomi-review-auth-log-${todayStamp()}.json`, {
+      exportedAt: new Date().toISOString(),
+      source: "review-auth",
+      updatedAt: payload?.updatedAt || "",
+      entries: Array.isArray(payload?.entries) ? payload.entries : [],
+      authSummary: payload?.authSummary || null,
+      authLog: payload?.authLog || { events: [], updatedAt: "" }
+    });
+    setReviewAccessStatus("限定レビュー認証ログを取得しました", "ok");
+  } catch (err) {
+    setReviewAccessStatus(err.message || "限定レビュー認証ログの取得に失敗しました", "error");
+  }
+}
+
+function clearAdminAuthLog() {
+  adminAuthLogEvents = [];
+  renderAdminAuthLog("");
+}
+
+function renderAdminAuthLog(message = "") {
+  if (adminAuthLogBlock) adminAuthLogBlock.hidden = !isAdminReady();
+  if (!adminAuthLog) return;
+  if (!isAdminReady()) {
+    adminAuthLog.innerHTML = "";
+    return;
+  }
+  if (message) {
+    adminAuthLog.innerHTML = `<p class="admin-note">${escapeHtml(message)}</p>`;
+    return;
+  }
+  const events = adminAuthLogEvents.slice(0, 20);
+  if (!events.length) {
+    adminAuthLog.innerHTML = `<p class="admin-note">管理者認証ログはまだありません。</p>`;
+    return;
+  }
+  adminAuthLog.innerHTML = events
+    .map((event) => `
+      <div class="admin-auth-log-row">
+        <span>${escapeHtml(formatDateTime(event.createdAt))}</span>
+        <strong>${escapeHtml(adminAuthLogTypeLabel(event.type, event.result))}</strong>
+        <span>${escapeHtml(event.email || "-")}</span>
+        <span>${escapeHtml(event.reason || "")}</span>
+      </div>
+    `)
+    .join("");
+}
+
+function adminAuthLogTypeLabel(type, result) {
+  const suffix = result === "failed" ? "失敗" : result === "ok" ? "成功" : result || "";
+  if (type === "otp-sent") return "OTP送信";
+  if (type === "otp-send-failed") return "OTP送信失敗";
+  if (type === "otp-verified") return "OTP検証成功";
+  if (type === "otp-verify-failed") return "OTP検証失敗";
+  if (type === "logout") return "管理ログアウト";
+  return `${type || "-"}${suffix ? ` ${suffix}` : ""}`;
 }
 
 function getToken() {
@@ -1165,6 +1320,22 @@ function isAdminReady() {
 
 function adminAuthRequiredMessage() {
   return adminAuthMode === "email_otp" ? "管理者メールでログインしてください" : "管理トークンを入力してください";
+}
+
+function downloadJsonFile(filename, data) {
+  const blob = new Blob([`${JSON.stringify(data, null, 2)}\n`], { type: "application/json;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function todayStamp() {
+  return new Date().toISOString().slice(0, 10);
 }
 
 async function readJson(res) {

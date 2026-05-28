@@ -11,6 +11,7 @@ import {
   boolValue
 } from "../../../_shared/books.js";
 import { readUsageGuard, shouldBlockPublishing } from "../../../_shared/usage-guard.js";
+import { adminOperationActor, recordAdminOperationEvent } from "../../../_shared/admin-operation-log.js";
 
 export async function onRequestPatch(context) {
   const auth = await requireAdmin(context.request, context.env);
@@ -33,6 +34,15 @@ export async function onRequestPatch(context) {
   const removeCover = boolValue(patch.removeCover);
   const guard = await readUsageGuard(bucket, context.env);
   if (shouldBlockPublishing(guard, current.published === true, nextPublished)) {
+    await recordAdminOperationEvent(bucket, {
+      type: "book-publish-failed",
+      result: "failed",
+      actor: adminOperationActor(auth),
+      bookId: id,
+      title: current.title || "",
+      reason: "usage-guard",
+      details: { fromPublished: current.published === true, toPublished: nextPublished }
+    });
     return error("使用量ガードにより、新規公開は一時停止中です。非公開保存は可能です。", 403);
   }
 
@@ -51,6 +61,25 @@ export async function onRequestPatch(context) {
   nextBooks[index] = next;
   await writeCatalog(bucket, { books: nextBooks });
   const cleanup = await deleteR2Keys(bucket, removeCover ? [current.coverKey] : []);
+  const type = removeCover
+    ? "book-cover-removed"
+    : current.published === nextPublished
+      ? "book-metadata-updated"
+      : "book-publish-changed";
+  await recordAdminOperationEvent(bucket, {
+    type,
+    result: cleanup.failed.length ? "warn" : "ok",
+    actor: adminOperationActor(auth),
+    bookId: id,
+    title: next.title || "",
+    reason: cleanup.failed.length ? "cleanup-partial" : "admin",
+    details: {
+      fromPublished: current.published === true,
+      toPublished: nextPublished,
+      removeCover,
+      cleanupFailed: cleanup.failed.length
+    }
+  });
   return json({ ok: true, book: toPublicManifestEntry(next), cleanup });
 }
 
@@ -71,6 +100,19 @@ export async function onRequestDelete(context) {
   const nextBooks = books.filter((entry) => entry.id !== id);
   await writeCatalog(bucket, { books: nextBooks });
   const cleanup = await deleteR2Keys(bucket, [removed.contentKey, removed.coverKey]);
+  await recordAdminOperationEvent(bucket, {
+    type: "book-deleted",
+    result: cleanup.failed.length ? "warn" : "ok",
+    actor: adminOperationActor(auth),
+    bookId: removed.id,
+    title: removed.title || "",
+    reason: cleanup.failed.length ? "cleanup-partial" : "admin",
+    details: {
+      contentKey: removed.contentKey || "",
+      coverKey: removed.coverKey || "",
+      cleanupFailed: cleanup.failed.length
+    }
+  });
 
   return json({
     ok: true,

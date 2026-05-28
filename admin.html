@@ -47,6 +47,13 @@
         </div>
         <p class="admin-note" id="adminOtpNote">許可された管理者メールにだけログインコードを送信します。</p>
       </div>
+      <div id="adminAuthLogBlock" hidden>
+        <div class="admin-list-head">
+          <h3 class="admin-subhead">管理者認証イベント</h3>
+          <button class="button ghost" id="downloadAdminAuthLogBtn" type="button">ログ取得</button>
+        </div>
+        <div id="adminAuthLog" class="admin-auth-log"></div>
+      </div>
     </section>
 
     <section class="admin-layout">
@@ -154,7 +161,10 @@
       <div id="reviewAccessList" class="admin-review-access-list"></div>
       <h3 class="admin-subhead">認証振り返り</h3>
       <div id="reviewAuthSummary" class="admin-auth-summary"></div>
-      <h3 class="admin-subhead">認証イベント</h3>
+      <div class="admin-list-head">
+        <h3 class="admin-subhead">認証イベント</h3>
+        <button class="button ghost" id="downloadReviewAuthLogBtn" type="button">ログ取得</button>
+      </div>
       <div id="reviewAuthLog" class="admin-auth-log"></div>
     </section>
 
@@ -203,6 +213,7 @@
           <button class="button ghost" type="button" data-help-doc="./docs/06-limited-review-operation.md">限定詳細</button>
           <button class="button ghost" type="button" data-help-doc="./docs/07-cloudflare-access-investigation.md">Access調査</button>
           <button class="button ghost" type="button" data-help-doc="./docs/08-admin-auth-recovery-design.md">管理復旧</button>
+          <button class="button ghost" type="button" data-help-doc="./docs/09-log-coverage-guide.md">ログ確認</button>
           <button class="button ghost" type="button" data-help-doc="./docs/30-dialogueassembler-mobile-pdf-export-spec.md">PDF出力</button>
           <button class="button ghost" type="button" data-help-doc="./docs/99-work-progress-log.md">作業ログ</button>
         </nav>

@@ -25,6 +25,8 @@
   - Cloudflare Accessがうまく設定できなかった原因候補と再調査手順。
 - `08-admin-auth-recovery-design.md`
   - 管理者トークン忘れ・漏洩時の復旧設計。管理者メールOTP仕様。
+- `09-log-coverage-guide.md`
+  - 管理者認証、限定レビュー認証、読書ログの保存先と取得方法。
 
 ## 設計資料
 

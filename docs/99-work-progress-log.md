@@ -1226,6 +1226,79 @@ Root directory: 空欄
 - `node --check functions/api/books/[id]/cover.js`: OK
 - `node --check functions/api/analytics/event.js`: OK
 - `git diff --check -- .`: OK
+
+## 2026-05-28 ログ取得とログカバレッジ棚卸し
+
+### 開始
+
+- エラー調査時に、ログが残るかどうかを毎回コードから探さなくてよいようにする。
+- 管理画面に表示されるログを、JSONとして取得できる導線を追加する。
+
+### 対応
+
+- 管理者認証ログを管理画面に表示。
+  - `GET /api/admin-auth/log` を追加。
+  - `認証 > 管理者認証イベント` に表示。
+  - `ログ取得` ボタンで `tsukuyomi-admin-auth-log-YYYY-MM-DD.json` をダウンロード。
+- 限定レビュー認証ログに管理操作イベントを追加。
+  - `review-access-added`: 閲覧者追加。
+  - `review-access-status-changed`: 閲覧許可、保留、停止などの状態変更。
+  - `review-access-removed`: 閲覧者削除。
+- 限定レビュー認証ログの取得ボタンを追加。
+  - `限定レビュー認証管理 > 認証イベント > ログ取得`。
+  - `tsukuyomi-review-auth-log-YYYY-MM-DD.json` として、閲覧者一覧、認証集計、認証イベントをまとめて保存。
+- `docs/09-log-coverage-guide.md` を追加。
+  - 管理者認証、限定レビュー認証、読書ログの保存先、表示場所、取得方法を整理。
+  - あえて残さないログと、まだ詳細ログ化していないものも明記。
+- README、マニュアル索引、管理画面ヘルプに `ログ確認` の導線を追加。
+
+### 検証
+
+- `node --check functions/_shared/admin-auth.js`: OK
+- `node --check functions/_shared/review-auth.js`: OK
+- `node --check functions/api/admin-auth/log.js`: OK
+- `node --check functions/api/admin/review-access/index.js`: OK
+- `node --check js/admin.js`: OK
+- モックR2検証:
+  - 閲覧者追加が `review-access-added` として残ることを確認。
+  - 閲覧許可への変更が `review-access-status-changed / pending->applied` として残ることを確認。
+  - 管理者OTP送信ログを `/api/admin-auth/log` から取得できることを確認。
+- `git diff --check -- .`: OK
+
+## 2026-05-28 限定レビューPW発行失敗ログの解析
+
+### 開始
+
+- 管理画面で閲覧許可後に `PW発行` がエラーになったため、管理操作ログとコード経路を確認する。
+
+### 解析
+
+- `PW発行` は `POST /api/admin/review-access/password` から `issueReviewPassword()` を呼ぶ。
+- `issueReviewPassword()` は、読者用パスワードのハッシュと読者セッション署名に `TSUKUYOMI_REVIEW_AUTH_SECRET` を使う。
+- `TSUKUYOMI_REVIEW_AUTH_SECRET` が未設定の場合、旧互換として `TSUKUYOMI_ADMIN_TOKEN` にフォールバックする。
+- 管理者認証を `email_otp` モードへ移行し、`TSUKUYOMI_ADMIN_TOKEN` も未設定または未使用にしている環境では、閲覧許可の保存は通るが `PW発行` は失敗する。
+- この場合の原因は、管理者OTP用の `TSUKUYOMI_ADMIN_AUTH_SECRET` と、限定レビューPW用の `TSUKUYOMI_REVIEW_AUTH_SECRET` を別に設定する必要があること。
+
+### 対応
+
+- `TSUKUYOMI_ADMIN_AUTH_MODE=email_otp` で読者用秘密鍵が未設定の場合、エラーメッセージに `TSUKUYOMI_REVIEW_AUTH_SECRET` を明示するようにした。
+- `PW発行` 失敗時に `password-issue-failed` を `_tsukuyomi/review-auth-log.json` へ残すようにした。
+  - `secret-missing`: `TSUKUYOMI_REVIEW_AUTH_SECRET` 未設定。
+  - `target-not-found`: 対象メールアドレスまたは仮IDが認証管理にない。
+- `PW無効化` 失敗時も `password-revoke-failed` を残すようにした。
+- 管理画面の `認証イベント` で `PW発行失敗`、`PW無効化失敗` として表示するようにした。
+- PW操作APIが失敗レスポンスを返す場合も、最新の認証イベントを管理画面へ返して表示更新できるようにした。
+- クイックガイド、限定レビュー運用資料、管理者認証資料にトラブルシュートを追記。
+
+### 検証
+
+- `node --check functions/_shared/review-auth.js`: OK
+- `node --check functions/api/admin/review-access/password.js`: OK
+- `node --check js/admin.js`: OK
+- `git diff --check -- .`: OK
+- モックR2検証:
+  - `email_otp` モードかつ `TSUKUYOMI_REVIEW_AUTH_SECRET` 未設定で `PW発行` が失敗することを確認。
+  - `password-issue-failed / secret-missing` が認証イベントへ残ることを確認。
 - モックR2検証:
   - 許可メモ登録後にPW発行できることを確認。
   - 発行パスワードでログインできることを確認。
