@@ -35,7 +35,7 @@ GET /api/admin-auth/log
 | 表示 | type | 意味 |
 |---|---|---|
 | OTP送信 | `otp-sent` | 許可済み管理者メールへOTPを送った |
-| OTP送信失敗 | `otp-send-failed` | Resend設定、APIキー、送信元などで送信失敗 |
+| OTP送信失敗 | `otp-send-failed` | Mailjet設定、APIキー、送信元などで送信失敗 |
 | OTP検証成功 | `otp-verified` | 正しいOTPで管理ログインした |
 | OTP検証失敗 | `otp-verify-failed` | OTP不一致、期限切れ、使用済み、試行上限 |
 | 管理ログアウト | `logout` | 管理画面からログアウトした |
@@ -121,9 +121,9 @@ R2 fallback: _tsukuyomi/analytics-lite.json
   - 操作責任の追跡が必要になったら、管理操作ログとして追加します。
 - R2使用状況の取得失敗
   - 管理画面のエラーメッセージとCloudflare側のログで確認します。
-- Resend側の配送詳細
+- Mailjet側の配送詳細
   - TsukuyomiReader側には送信要求の成功/失敗だけ残します。
-  - 到達性はResend Dashboardで確認します。
+  - 到達性はMailjet Dashboardで確認します。
 
 ## 調査時の見方
 
@@ -138,5 +138,5 @@ PW発行が失敗した場合:
 
 1. 管理トークン方式か、管理者メールOTP方式かを確認する
 2. `email_otp` モードなら `管理者認証イベント` を見る
-3. `OTP送信失敗` ならResend設定を確認する
+3. `OTP送信失敗` ならMailjet設定を確認する
 4. `OTP検証失敗` なら期限切れ、使用済み、入力ミス、再発行済みコードを疑う

@@ -32,15 +32,16 @@ TSUKUYOMI_ADMIN_TOKEN=管理画面用の長いランダム文字列
 TSUKUYOMI_ADMIN_AUTH_MODE=email_otp
 TSUKUYOMI_ADMIN_EMAILS=halthejuggernaut@gmail.com,haltherock@yahoo.com,weezartherock@gmail.com
 TSUKUYOMI_ADMIN_AUTH_SECRET=十分に長いランダム文字列
-TSUKUYOMI_ADMIN_EMAIL_PROVIDER=resend
-TSUKUYOMI_ADMIN_EMAIL_FROM=Resendで有効な送信元
-RESEND_API_KEY=Resend APIキー
+TSUKUYOMI_ADMIN_EMAIL_PROVIDER=mailjet
+TSUKUYOMI_ADMIN_EMAIL_FROM=Mailjetで認証済みの送信元
+MAILJET_API_KEY=Mailjet API Key
+MAILJET_SECRET_KEY=Mailjet Secret Key
 ```
 
 必要に応じて設定します。
 
 ```text
-TSUKUYOMI_REVIEW_PASSWORD_DAYS=30
+TSUKUYOMI_REVIEW_PASSWORD_DAYS=7
 TSUKUYOMI_REVIEW_AUTH_SESSION_DAYS=14
 TSUKUYOMI_REVIEW_LOGIN_FAILURE_LIMIT=5
 TSUKUYOMI_REVIEW_LOGIN_LOCK_MINUTES=15
@@ -56,19 +57,20 @@ TSUKUYOMI_REVIEW_CONCURRENT_WINDOW_MINUTES=10
 3. `email_otp` モードでは管理者メールを入力して `コード送信` を押し、届いた6桁コードでログインする
 4. `限定レビュー認証管理` が読み込まれることを確認する
 
-## 3. 読者を登録する
+## 3. 読者へパスワードを発行する
 
 1. `名前` に管理用の呼び名を入れる
-2. `仮ID` の `作成` を押す
-3. メールアドレスを使う場合は `メールアドレス` も入れる
-4. `状態` は `閲覧許可` にする
-5. `一覧に追加` を押す
+2. メールアドレスを使う場合は `メールアドレス` も入れる
+3. メールアドレスを使わない場合は `仮ID` の `作成` を押す
+4. `PW発行` を押す
+5. 表示された平文パスワードを控える
+6. 読者へ、限定レビュー版URL、仮IDまたはメールアドレス、パスワードを送る
 
-メールアドレスを伏せたい場合は、仮IDだけで運用できます。
+`PW発行` は、対象者を一覧に登録し、状態を `閲覧許可` にして、Reader用パスワードを発行します。メールアドレスを伏せたい場合は、仮IDだけで運用できます。
 
-## 4. パスワードを発行する
+## 4. 登録済み読者のパスワードを再発行する
 
-1. 対象者の行で `PW発行` を押す
+1. 対象者の行で `PW発行` または `PW再発行` を押す
 2. 表示された平文パスワードを控える
 3. 読者へ、限定レビュー版URL、仮IDまたはメールアドレス、パスワードを送る
 

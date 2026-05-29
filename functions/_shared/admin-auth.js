@@ -25,7 +25,7 @@ export async function verifyAdminRequest(request, env) {
 export function adminAuthPublicConfig(env) {
   return {
     mode: adminAuthMode(env),
-    emailProvider: safeText(env?.TSUKUYOMI_ADMIN_EMAIL_PROVIDER || "resend", "resend").toLowerCase(),
+    emailProvider: safeText(env?.TSUKUYOMI_ADMIN_EMAIL_PROVIDER || "mailjet", "mailjet").toLowerCase(),
     allowedEmailCount: getAdminAllowedEmails(env).length
   };
 }
@@ -100,7 +100,7 @@ export async function requestAdminOtp(bucket, env, email) {
     type: "otp-sent",
     result: "ok",
     email: normalizedEmail,
-    reason: "resend"
+    reason: sent.provider || "email"
   });
   return { ok: true, challengeId, sent: true, expiresAt };
 }
@@ -251,14 +251,16 @@ function verifyAdminTokenRequest(request, env) {
 }
 
 async function sendAdminOtpEmail(env, email, otp) {
-  const provider = safeText(env?.TSUKUYOMI_ADMIN_EMAIL_PROVIDER || "resend", "resend").toLowerCase();
-  if (provider !== "resend") return { ok: false, error: `未対応のメール送信方式です: ${provider}` };
-
-  const apiKey = safeText(env?.RESEND_API_KEY, "");
+  const provider = safeText(env?.TSUKUYOMI_ADMIN_EMAIL_PROVIDER || "mailjet", "mailjet").toLowerCase();
   const from = safeText(env?.TSUKUYOMI_ADMIN_EMAIL_FROM, "");
-  if (!apiKey) return { ok: false, error: "RESEND_API_KEY が未設定です" };
   if (!from) return { ok: false, error: "TSUKUYOMI_ADMIN_EMAIL_FROM が未設定です" };
 
+  const message = createAdminOtpMessage(env, otp);
+  if (provider === "mailjet") return sendAdminOtpEmailWithMailjet(env, email, from, message);
+  return { ok: false, error: `未対応のメール送信方式です: ${provider}` };
+}
+
+function createAdminOtpMessage(env, otp) {
   const subject = "TsukuyomiReader 管理ログインコード";
   const text = [
     "TsukuyomiReader 管理画面のログインコードです。",
@@ -268,29 +270,68 @@ async function sendAdminOtpEmail(env, email, otp) {
     `${adminOtpMinutes(env)}分以内に入力してください。`,
     "このメールに心当たりがない場合は破棄してください。"
   ].join("\n");
+  return { subject, text };
+}
+
+async function sendAdminOtpEmailWithMailjet(env, email, from, message) {
+  const apiKey = safeText(env?.MAILJET_API_KEY, "");
+  const secretKey = safeText(env?.MAILJET_SECRET_KEY, "");
+  if (!apiKey) return { ok: false, error: "MAILJET_API_KEY が未設定です" };
+  if (!secretKey) return { ok: false, error: "MAILJET_SECRET_KEY が未設定です" };
 
   try {
-    const res = await fetch("https://api.resend.com/emails", {
+    const res = await fetch("https://api.mailjet.com/v3.1/send", {
       method: "POST",
       headers: {
-        authorization: `Bearer ${apiKey}`,
+        authorization: basicAuthHeader(apiKey, secretKey),
         "content-type": "application/json"
       },
       body: JSON.stringify({
-        from,
-        to: [email],
-        subject,
-        text
+        Messages: [
+          {
+            From: { Email: from },
+            To: [{ Email: email }],
+            Subject: message.subject,
+            TextPart: message.text
+          }
+        ]
       })
     });
-    if (!res.ok) {
-      const payload = await res.json().catch(() => null);
-      return { ok: false, error: payload?.message || `Resend HTTP ${res.status}` };
+    const payload = await res.json().catch(() => null);
+    const mailjetStatus = payload?.Messages?.[0]?.Status || "";
+    if (!res.ok || (mailjetStatus && mailjetStatus !== "success")) {
+      const error = mailjetErrorMessage(payload) || `Mailjet HTTP ${res.status}`;
+      logAdminEmailSendFailure("mailjet", res.status, error);
+      return { ok: false, error };
     }
-    return { ok: true };
+    return { ok: true, provider: "mailjet" };
   } catch (err) {
-    return { ok: false, error: err?.message || "Resend送信に失敗しました" };
+    const error = err?.message || "Mailjet送信に失敗しました";
+    logAdminEmailSendFailure("mailjet", 0, error);
+    return { ok: false, error };
   }
+}
+
+function mailjetErrorMessage(payload) {
+  const topLevel = safeText(payload?.ErrorMessage || payload?.ErrorInfo, "");
+  if (topLevel) return topLevel;
+  const messages = Array.isArray(payload?.Messages) ? payload.Messages : [];
+  for (const message of messages) {
+    const errors = Array.isArray(message?.Errors) ? message.Errors : [];
+    for (const error of errors) {
+      const detail = safeText(error?.ErrorMessage || error?.ErrorCode || error?.StatusCode, "");
+      if (detail) return detail;
+    }
+  }
+  return "";
+}
+
+function logAdminEmailSendFailure(provider, status, error) {
+  console.warn("[admin-auth] OTP email send failed", {
+    provider,
+    status,
+    error: safeText(error, "send-failed").slice(0, 160)
+  });
 }
 
 async function readAdminChallenges(bucket) {
@@ -546,6 +587,21 @@ function secondsToIso(seconds) {
   if (!number) return "";
   const date = new Date(number * 1000);
   return Number.isNaN(date.getTime()) ? "" : date.toISOString();
+}
+
+function basicAuthHeader(username, password) {
+  return `Basic ${base64FromString(`${username}:${password}`)}`;
+}
+
+function base64FromString(value) {
+  const bytes = new TextEncoder().encode(String(value || ""));
+  let binary = "";
+  bytes.forEach((byte) => {
+    binary += String.fromCharCode(byte);
+  });
+  if (typeof btoa === "function") return btoa(binary);
+  if (typeof Buffer !== "undefined") return Buffer.from(bytes).toString("base64");
+  return "";
 }
 
 function base64UrlFromString(value) {

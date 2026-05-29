@@ -91,7 +91,7 @@ TSUKUYOMI_REVIEW_PASSWORD_AUTH=true
 TSUKUYOMI_REVIEW_AUTH_SECRET=十分に長いランダム文字列
 ```
 
-管理画面の `限定レビュー認証管理` で仮IDを作成し、相手のメールアドレスと紐づけます。`PW発行` で表示されたパスワードを個別に送ります。パスワードの平文は発行時だけ表示され、R2にはハッシュだけを保存します。`PW無効化` でパスワードと既存セッションを停止できます。
+管理画面の `限定レビュー認証管理` で名前、仮ID、メールアドレスのいずれかを入力し、`PW発行` を押します。対象者の登録、閲覧許可、Reader用パスワード発行をまとめて実行します。パスワードの平文は発行時だけ表示され、R2にはハッシュだけを保存します。`PW無効化` でパスワードと既存セッションを停止できます。
 
 読者は、メールアドレスまたは仮IDとパスワードでログインできます。認証イベント、同時利用検知、読書ログの管理表示では仮IDを併記します。
 
@@ -99,7 +99,7 @@ TSUKUYOMI_REVIEW_AUTH_SECRET=十分に長いランダム文字列
 
 - ログインAPIは60秒に6回まで。超過時は5分ブロック
 - 同じメールアドレスで5回失敗すると15分ロック
-- 発行パスワードは30日で期限切れ
+- 発行パスワードは7日で期限切れ
 - ログインセッションは14日で期限切れ
 - 同じメールアドレスまたは仮IDで10分以内に複数セッションが動いた場合、管理画面の認証イベントに `同時利用検知` を残す
 - 有効IDのPW失敗、ロック、期限切れ、PW発行/無効化、同時利用検知だけを詳細イベントに残し、未知IDへの試行は件数集計だけにする
@@ -113,7 +113,7 @@ TSUKUYOMI_RATE_LIMIT_REVIEW_AUTH_WINDOW_SECONDS=60
 TSUKUYOMI_RATE_LIMIT_REVIEW_AUTH_BLOCK_SECONDS=300
 TSUKUYOMI_REVIEW_LOGIN_FAILURE_LIMIT=5
 TSUKUYOMI_REVIEW_LOGIN_LOCK_MINUTES=15
-TSUKUYOMI_REVIEW_PASSWORD_DAYS=30
+TSUKUYOMI_REVIEW_PASSWORD_DAYS=7
 TSUKUYOMI_REVIEW_AUTH_SESSION_DAYS=14
 TSUKUYOMI_REVIEW_CONCURRENT_WINDOW_MINUTES=10
 ```
@@ -279,9 +279,10 @@ TSUKUYOMI_ADMIN_TOKEN=十分に長いランダム文字列
 TSUKUYOMI_ADMIN_AUTH_MODE=email_otp
 TSUKUYOMI_ADMIN_EMAILS=halthejuggernaut@gmail.com,haltherock@yahoo.com,weezartherock@gmail.com
 TSUKUYOMI_ADMIN_AUTH_SECRET=十分に長いランダム文字列
-TSUKUYOMI_ADMIN_EMAIL_PROVIDER=resend
-TSUKUYOMI_ADMIN_EMAIL_FROM=Resendで有効な送信元
-RESEND_API_KEY=Resend APIキー
+TSUKUYOMI_ADMIN_EMAIL_PROVIDER=mailjet
+TSUKUYOMI_ADMIN_EMAIL_FROM=Mailjetで認証済みの送信元
+MAILJET_API_KEY=Mailjet API Key
+MAILJET_SECRET_KEY=Mailjet Secret Key
 ```
 
 5. 再デプロイします。
@@ -722,7 +723,7 @@ Cloudflare Pagesでは2つのプロジェクトを作り、それぞれ監視ブ
 管理メニューで認証に失敗する場合:
 
 - `token` モードでは、Cloudflareの環境変数 `TSUKUYOMI_ADMIN_TOKEN` と入力値が一致しているか確認します。
-- `email_otp` モードでは、`TSUKUYOMI_ADMIN_AUTH_SECRET`、`TSUKUYOMI_ADMIN_EMAILS`、`TSUKUYOMI_ADMIN_EMAIL_FROM`、`RESEND_API_KEY` が設定されているか確認します。
+- `email_otp` モードでは、`TSUKUYOMI_ADMIN_AUTH_SECRET`、`TSUKUYOMI_ADMIN_EMAILS`、`TSUKUYOMI_ADMIN_EMAIL_FROM`、`MAILJET_API_KEY`、`MAILJET_SECRET_KEY` が設定されているか確認します。
 - 許可メールは `halthejuggernaut@gmail.com`、`haltherock@yahoo.com`、`weezartherock@gmail.com` の3件です。
 - 環境変数を追加したあとに再デプロイしたか確認します。
 - `token` モードでは、管理トークンの前後に空白が入っていないか確認します。

@@ -34,6 +34,7 @@ const reviewEmail = document.getElementById("reviewEmail");
 const reviewStatus = document.getElementById("reviewStatus");
 const reviewNote = document.getElementById("reviewNote");
 const addReviewAccessBtn = document.getElementById("addReviewAccessBtn");
+const quickIssueReviewPasswordBtn = document.getElementById("quickIssueReviewPasswordBtn");
 const generateReviewerIdBtn = document.getElementById("generateReviewerIdBtn");
 const reviewPasswordResult = document.getElementById("reviewPasswordResult");
 const reviewAuthSummary = document.getElementById("reviewAuthSummary");
@@ -130,6 +131,7 @@ resetFormBtn?.addEventListener("click", resetForm);
 openAdminHelpBtn?.addEventListener("click", openAdminHelp);
 closeAdminHelpBtn?.addEventListener("click", closeAdminHelp);
 addReviewAccessBtn?.addEventListener("click", addReviewAccessEntry);
+quickIssueReviewPasswordBtn?.addEventListener("click", quickIssueReviewPassword);
 generateReviewerIdBtn?.addEventListener("click", () => {
   if (reviewerId) reviewerId.value = createReviewerId();
 });
@@ -335,34 +337,105 @@ async function loadReviewAccess() {
 }
 
 async function addReviewAccessEntry() {
-  const name = String(reviewName?.value || "").trim();
-  const reviewerIdValue = normalizeReviewerId(reviewerId?.value || "") || createReviewerId();
-  const email = String(reviewEmail?.value || "").trim().toLowerCase();
-  const status = reviewStatus?.value || "pending";
-  const note = String(reviewNote?.value || "").trim();
-
-  if (!name && !email && !reviewerIdValue) {
+  const draft = createReviewAccessDraft({ autoReviewerId: true });
+  if (!draft) {
     setReviewAccessStatus("名前、仮ID、メールアドレスのいずれかを入力してください", "error");
     return;
   }
 
-  const now = new Date().toISOString();
-  reviewAccessEntries = [
-    ...reviewAccessEntries,
-    {
-      id: `${email || name}-${Date.now()}`,
-      reviewerId: reviewerIdValue,
-      name,
-      email,
-      status,
-      note,
-      addedAt: now,
-      appliedAt: status === "applied" ? now : "",
-      mutedAt: status === "muted" ? now : "",
-      revokedAt: status === "revoked" ? now : ""
+  reviewAccessEntries = [...reviewAccessEntries, draft];
+  const saved = await saveReviewAccessEntries("一覧に追加しました");
+  if (saved) resetReviewAccessForm();
+}
+
+async function quickIssueReviewPassword() {
+  const draft = createReviewAccessDraft({ autoReviewerId: true, status: "applied" });
+  if (!draft) {
+    setReviewAccessStatus("名前、仮ID、メールアドレスのいずれかを入力してください", "error");
+    return;
+  }
+
+  let index = findReviewAccessEntryIndex(draft);
+  if (index >= 0) {
+    const existing = reviewAccessEntries[index];
+    const label = existing.email || existing.reviewerId;
+    if (existing.hasPassword && !window.confirm(`${label} のパスワードを再発行します。古いパスワードと既存セッションは無効になります。`)) {
+      return;
     }
-  ];
-  await saveReviewAccessEntries("一覧に追加しました");
+    reviewAccessEntries = reviewAccessEntries.map((entry, itemIndex) => (
+      itemIndex === index ? mergeReviewAccessDraft(entry, draft) : entry
+    ));
+  } else {
+    reviewAccessEntries = [...reviewAccessEntries, draft];
+  }
+
+  const saved = await saveReviewAccessEntries("閲覧許可を保存しました");
+  if (!saved) return;
+
+  index = findReviewAccessEntryIndex(draft);
+  if (index < 0) {
+    setReviewAccessStatus("パスワード発行対象を保存後に見つけられませんでした", "error");
+    return;
+  }
+
+  const issued = await issueReviewPassword(index, {
+    clearForm: true,
+    skipConfirm: true,
+    successMessage: "閲覧許可とパスワードを発行しました。平文はこの表示で控えてください。"
+  });
+  if (!issued) return;
+}
+
+function createReviewAccessDraft(options = {}) {
+  const name = String(reviewName?.value || "").trim();
+  const email = normalizeReviewEmail(reviewEmail?.value || "");
+  const note = String(reviewNote?.value || "").trim();
+  const hasAnyInput = Boolean(name || email || String(reviewerId?.value || "").trim());
+  let reviewerIdValue = normalizeReviewerId(reviewerId?.value || "");
+  if (!reviewerIdValue && options.autoReviewerId && hasAnyInput) reviewerIdValue = createReviewerId();
+  if (!name && !email && !reviewerIdValue) return null;
+
+  const now = new Date().toISOString();
+  const status = options.status || reviewStatus?.value || "pending";
+  return {
+    id: `${email || reviewerIdValue || name}-${Date.now()}`,
+    reviewerId: reviewerIdValue,
+    name,
+    email,
+    status,
+    note,
+    addedAt: now,
+    appliedAt: status === "applied" ? now : "",
+    mutedAt: status === "muted" ? now : "",
+    revokedAt: status === "revoked" ? now : ""
+  };
+}
+
+function mergeReviewAccessDraft(entry, draft) {
+  const now = new Date().toISOString();
+  return {
+    ...entry,
+    reviewerId: entry.reviewerId || draft.reviewerId,
+    name: draft.name || entry.name,
+    email: draft.email || entry.email,
+    note: draft.note || entry.note,
+    status: "applied",
+    appliedAt: entry.appliedAt || now,
+    mutedAt: "",
+    revokedAt: ""
+  };
+}
+
+function findReviewAccessEntryIndex(target) {
+  const email = normalizeReviewEmail(target?.email || "");
+  const reviewerIdValue = normalizeReviewerId(target?.reviewerId || "");
+  return reviewAccessEntries.findIndex((entry) => (
+    (email && normalizeReviewEmail(entry.email || "") === email) ||
+    (reviewerIdValue && normalizeReviewerId(entry.reviewerId || "") === reviewerIdValue)
+  ));
+}
+
+function resetReviewAccessForm() {
   if (reviewName) reviewName.value = "";
   if (reviewerId) reviewerId.value = "";
   if (reviewEmail) reviewEmail.value = "";
@@ -374,7 +447,7 @@ async function saveReviewAccessEntries(successMessage = "保存しました") {
   const token = getToken();
   if (!token) {
     setReviewAccessStatus(adminAuthRequiredMessage(), "error");
-    return;
+    return null;
   }
 
   setReviewAccessStatus("限定レビュー認証管理を保存中...");
@@ -393,8 +466,10 @@ async function saveReviewAccessEntries(successMessage = "保存しました") {
     applyReviewAuthDiagnostics(payload);
     renderReviewAccess(payload?.updatedAt || "");
     setReviewAccessStatus(successMessage, "ok");
+    return payload;
   } catch (err) {
     setReviewAccessStatus(err.message || "限定レビュー認証管理の保存に失敗しました", "error");
+    return null;
   }
 }
 
@@ -508,15 +583,15 @@ async function updateReviewAccessEntry(index, action) {
   await saveReviewAccessEntries(message);
 }
 
-async function issueReviewPassword(index) {
+async function issueReviewPassword(index, options = {}) {
   const entry = reviewAccessEntries[index];
   if (!entry?.email && !entry?.reviewerId) {
     setReviewAccessStatus("パスワード発行にはメールアドレスまたは仮IDが必要です", "error");
-    return;
+    return false;
   }
   const label = entry.email || entry.reviewerId;
-  if (entry.hasPassword && !window.confirm(`${label} のパスワードを再発行します。古いパスワードと既存セッションは無効になります。`)) {
-    return;
+  if (!options.skipConfirm && entry.hasPassword && !window.confirm(`${label} のパスワードを再発行します。古いパスワードと既存セッションは無効になります。`)) {
+    return false;
   }
 
   setReviewAccessStatus("パスワードを発行中...");
@@ -530,9 +605,12 @@ async function issueReviewPassword(index) {
     renderReviewAuthSummary();
     renderReviewAuthLog();
     renderReviewPasswordResult(entry, payload?.password || "");
-    setReviewAccessStatus("パスワードを発行しました。平文はこの表示で控えてください。", "ok");
+    if (options.clearForm) resetReviewAccessForm();
+    setReviewAccessStatus(options.successMessage || "パスワードを発行しました。平文はこの表示で控えてください。", "ok");
+    return true;
   } catch (err) {
     setReviewAccessStatus(err.message || "パスワード発行に失敗しました", "error");
+    return false;
   }
 }
 
@@ -1395,6 +1473,10 @@ function normalizeReviewerId(value) {
     .replace(/[^a-z0-9_-]+/g, "-")
     .replace(/^-+|-+$/g, "")
     .slice(0, 40);
+}
+
+function normalizeReviewEmail(value) {
+  return String(value || "").trim().toLowerCase().slice(0, 160);
 }
 
 initAdminAuth();

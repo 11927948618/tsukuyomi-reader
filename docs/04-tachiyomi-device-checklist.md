@@ -16,7 +16,7 @@ Cloudflare側で以下が完了していることを確認します。
   - `TSUKUYOMI_BOOKS_BUCKET`
 - 管理者認証の環境変数がある
   - `token` モード: `TSUKUYOMI_ADMIN_TOKEN`
-  - `email_otp` モード: `TSUKUYOMI_ADMIN_AUTH_SECRET`、`TSUKUYOMI_ADMIN_EMAILS`、`RESEND_API_KEY`
+  - `email_otp` モード: `TSUKUYOMI_ADMIN_AUTH_SECRET`、`TSUKUYOMI_ADMIN_EMAILS`、`TSUKUYOMI_ADMIN_EMAIL_PROVIDER`、`TSUKUYOMI_ADMIN_EMAIL_FROM`、`MAILJET_API_KEY`、`MAILJET_SECRET_KEY`
 - 最新コードがデプロイ済み
 - ブラウザでキャッシュが残っている場合は、Readerの「強制同期（キャッシュ破棄）」を使える状態にしておく
 

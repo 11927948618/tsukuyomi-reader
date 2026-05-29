@@ -115,9 +115,9 @@ TSUKUYOMI_REVIEW_AUTH_SECRET=十分に長いランダム文字列
 
 運用手順:
 
-1. 管理画面の `限定レビュー認証管理` で仮IDを作成する
-2. 必要に応じて名前とメールアドレスを紐づける
-3. `PW発行` を押し、表示されたパスワードを個別に送る
+1. 管理画面の `限定レビュー認証管理` で名前、仮ID、メールアドレスのいずれかを入力する
+2. `PW発行` を押し、対象者の登録、閲覧許可、パスワード発行をまとめて行う
+3. 表示されたパスワードを個別に送る
 4. 読者はReader起動時にメールアドレスまたは仮IDとパスワードを入力する
 5. 停止時は `PW無効化`、または状態を `閲覧保留` / `停止済み` にする
 
@@ -129,7 +129,7 @@ TSUKUYOMI_REVIEW_AUTH_SECRET=十分に長いランダム文字列
 
 - ログインAPIは60秒に6回まで。超過時は5分ブロック
 - メールアドレスまたは仮ID単位で5回失敗すると15分ロック
-- パスワードは発行から30日で期限切れ
+- パスワードは発行から7日で期限切れ
 - ログインセッションは14日で期限切れ
 - 同じメールアドレスまたは仮IDで10分以内に複数セッションが動いた場合、認証イベントへ `同時利用検知` を残す
 - 限定レビュー認証が有効な場合、本文HTMLのローカルキャッシュ保存・復元を抑制する
@@ -150,7 +150,7 @@ TSUKUYOMI_RATE_LIMIT_REVIEW_AUTH_WINDOW_SECONDS=60
 TSUKUYOMI_RATE_LIMIT_REVIEW_AUTH_BLOCK_SECONDS=300
 TSUKUYOMI_REVIEW_LOGIN_FAILURE_LIMIT=5
 TSUKUYOMI_REVIEW_LOGIN_LOCK_MINUTES=15
-TSUKUYOMI_REVIEW_PASSWORD_DAYS=30
+TSUKUYOMI_REVIEW_PASSWORD_DAYS=7
 TSUKUYOMI_REVIEW_AUTH_SESSION_DAYS=14
 TSUKUYOMI_REVIEW_CONCURRENT_WINDOW_MINUTES=10
 ```

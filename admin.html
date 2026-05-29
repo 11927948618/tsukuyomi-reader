@@ -154,7 +154,10 @@
           <span class="label">メモ</span>
           <input class="input" id="reviewNote" type="text" placeholder="例: 5/20に案内済み" />
         </label>
-        <button class="button" id="addReviewAccessBtn" type="button">一覧に追加</button>
+        <div class="admin-review-form-actions">
+          <button class="button" id="quickIssueReviewPasswordBtn" type="button">PW発行</button>
+          <button class="button ghost" id="addReviewAccessBtn" type="button">一覧に追加</button>
+        </div>
       </div>
       <div id="reviewPasswordResult" class="admin-auth-result" hidden></div>
       <div id="reviewAccessStatus" class="status">認証後に読み込みます</div>

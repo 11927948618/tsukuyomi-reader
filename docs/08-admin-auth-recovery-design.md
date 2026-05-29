@@ -49,9 +49,10 @@ TSUKUYOMI_ADMIN_EMAILS=halthejuggernaut@gmail.com,haltherock@yahoo.com,weezarthe
 TSUKUYOMI_ADMIN_AUTH_MODE=email_otp
 TSUKUYOMI_ADMIN_EMAILS=halthejuggernaut@gmail.com,haltherock@yahoo.com,weezartherock@gmail.com
 TSUKUYOMI_ADMIN_AUTH_SECRET=十分に長いランダム文字列
-TSUKUYOMI_ADMIN_EMAIL_PROVIDER=resend
-TSUKUYOMI_ADMIN_EMAIL_FROM=Resendで有効な送信元
-RESEND_API_KEY=Resend APIキー
+TSUKUYOMI_ADMIN_EMAIL_PROVIDER=mailjet
+TSUKUYOMI_ADMIN_EMAIL_FROM=Mailjetで認証済みの送信元
+MAILJET_API_KEY=Mailjet API Key
+MAILJET_SECRET_KEY=Mailjet Secret Key
 ```
 
 任意の調整値:
@@ -152,23 +153,21 @@ OTPの平文は保存しません。保存するのはハッシュ、salt、期�
 
 1. Cloudflare Dashboardで `TSUKUYOMI_ADMIN_AUTH_SECRET` を変更する
 2. `TSUKUYOMI_ADMIN_TOKEN` も別値へ変更する
-3. `RESEND_API_KEY` 漏洩疑いがある場合はResend側でAPIキーを失効し、新しいキーを設定する
+3. `MAILJET_API_KEY` / `MAILJET_SECRET_KEY` 漏洩疑いがある場合はMailjet側でAPIキーを失効し、新しいキーを設定する
 4. 再デプロイする
 5. 管理画面で作品、限定レビューPW発行状況、認証イベントを確認する
 
 ## メール送信
 
-初期実装はResendだけに対応します。
+実装は `mailjet` のみに対応します。
 
-無料枠だけで運用する場合の採用方針は `Resend` です。
+無料枠だけで運用する場合の採用方針は `Mailjet` です。
 
 理由:
 
-- Free planがあり、管理者OTP用途には十分な `100 emails/day` と `3,000 emails/month` がある
+- Free planがあり、管理者OTP用途には十分な `200 emails/day` と `6,000 emails/month` がある
 - Pages FunctionsからREST APIを `fetch()` で呼ぶだけで実装できる
 - 管理者OTPは通常1日数通以下なので、無料枠を超えにくい
-
-Brevoも無料枠が大きく、`300 emails/day` まで使えます。Resendのアカウント制限、到達性、独自ドメイン設定で問題が出た場合の代替候補として残します。ただし、今回の初期実装には含めません。
 
 SMS認証は原則有料になりやすいため、今回の実装対象外です。
 
@@ -176,7 +175,7 @@ SMS認証は原則有料になりやすいため、今回の実装対象外で�
 
 | Provider | 無料枠 | 位置づけ |
 |---|---:|---|
-| Resend | 100 emails/day, 3,000 emails/month | 採用 |
+| Mailjet | 200 emails/day, 6,000 emails/month | 採用 |
 | Brevo | 300 emails/day | 代替候補 |
 | Mailgun | 100 messages/day | 予備候補 |
 | Cloudflare Email Service | Outbound送信はWorkers Paid前提 | 完全無料では採用しない |

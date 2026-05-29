@@ -1325,7 +1325,7 @@ Root directory: 空欄
   - 標準: 5回失敗で15分ロック。
   - `TSUKUYOMI_REVIEW_LOGIN_FAILURE_LIMIT`、`TSUKUYOMI_REVIEW_LOGIN_LOCK_MINUTES` で調整可能。
 - 発行パスワードに期限を追加。
-  - 標準: 発行から30日。
+  - 標準: 発行から7日。
   - `TSUKUYOMI_REVIEW_PASSWORD_DAYS` で調整可能。
   - APIアクセス時にも期限を確認し、ログイン済みCookieが残っていても期限切れなら拒否。
 - セッションIDをログイントークンに追加。
@@ -1538,19 +1538,19 @@ Root directory: 空欄
 
 ### 追記
 
-- 無料枠だけで運用する前提では、管理者OTPメール送信の第一候補を `Resend` にする方針を追加。
+- 無料枠だけで運用する前提で、管理者OTPメール送信Providerの候補を整理。
   - Free planの `100 emails/day`、`3,000 emails/month` は管理者OTP用途には十分。
   - Brevoは `300 emails/day` と大きいが、今回の用途では実装の単純さを優先。
   - Cloudflare Email ServiceのOutbound送信はWorkers Paid前提のため、完全無料運用では第一候補から外す。
-- `TSUKUYOMI_ADMIN_EMAIL_PROVIDER=resend` を採用方針として明記。
-- BrevoはResendで問題が出た場合の代替候補として残す。
+- メールProviderを環境変数で切り替える案を記録。
+- Brevoは代替候補として残す。
 - 送信処理は `sendAdminOtpEmail()` に閉じ込め、将来Brevoへ差し替えやすい形にする。
 
 ## 2026-05-28 管理者メールOTP実装
 
 ### 開始
 
-- Resend無料枠を使い、管理画面ログインを管理者メールOTP方式へ対応させる。
+- 無料メールProviderを使い、管理画面ログインを管理者メールOTP方式へ対応させる。
 - 既存の管理トークン方式は `token` モードとして互換維持する。
 - SMS、マスターパスワード、アプリ内の管理トークン再発行APIは実装しない。
 
@@ -1563,7 +1563,7 @@ Root directory: 空欄
   - OTP平文は保存せず、R2にはハッシュとsaltを保存。
   - 管理セッションは `tsukuyomi_admin_session` HttpOnly Cookieで発行。
   - `TSUKUYOMI_ADMIN_AUTH_SECRET` 変更で既存管理セッションを失効。
-  - Resend送信を `sendAdminOtpEmail()` に分離。
+  - メール送信を `sendAdminOtpEmail()` に分離。
 - `/api/admin-auth/status`、`request`、`verify`、`logout` を追加。
 - 既存管理APIの `requireAdmin()` を非同期化し、全管理APIで `await requireAdmin(...)` へ変更。
 - `rate-limit.js` に `admin_auth_request` と `admin_auth_verify` を追加。
@@ -1575,7 +1575,7 @@ Root directory: 空欄
   - OTPログイン後はCookie認証で管理APIを呼ぶ。
 - バージョンとService Worker cache nameを `0.1.74` に更新。
 - README、初期設定、更新マニュアル、実機確認、限定レビュークイックガイド、管理者認証資料を更新。
-  - Resendを採用。
+  - メールProviderの採用方針を資料に記録。
   - Brevoは代替候補として資料に残す。
 
 ### 検証
@@ -1596,9 +1596,9 @@ Root directory: 空欄
 - `node --check js/admin.js`: OK
 - `node --check js/version.js`: OK
 - `node --check sw.js`: OK
-- モックR2 + モックResend検証:
-  - 許可メールでOTP要求するとResend APIが1回呼ばれることを確認。
-  - 許可外メールでは同じ成功レスポンスだがResend APIが呼ばれないことを確認。
+- モックR2 + モックメール送信検証:
+  - 許可メールでOTP要求するとメール送信APIが1回呼ばれることを確認。
+  - 許可外メールでは同じ成功レスポンスだがメール送信APIが呼ばれないことを確認。
   - 同じ管理者メールで新しいOTPを発行すると、古い未使用OTPが無効になることを確認。
   - 正しいOTPで管理セッションCookieを検証できることを確認。
   - 間違ったOTP、期限切れOTP、使用済みOTPが拒否されることを確認。
@@ -1606,3 +1606,33 @@ Root directory: 空欄
   - `token` モードでは既存Bearer認証が通ることを確認。
   - `email_otp` モードではBearerだけでは管理APIを通さないことを確認。
 - `git diff --check -- .`: OK
+
+## 2026-05-29 管理者OTP送信ProviderをMailjet専用化
+
+### 対応
+
+- 独自ドメイン必須の運用に合わないため、メールOTP送信から旧Provider互換分岐を削除。
+- `sendAdminOtpEmail()` の既定Providerを `mailjet` に変更。
+- `mailjet` では `MAILJET_API_KEY` をBasic Auth username、`MAILJET_SECRET_KEY` をpasswordとして `https://api.mailjet.com/v3.1/send` を呼ぶ。
+- 成功時の管理者認証ログ `reason` は `mailjet` として記録。
+- 送信失敗時はR2の `otp-send-failed` に加え、CloudflareログへProvider、HTTP status、短縮エラーを出す。
+- 初期設定、更新マニュアル、実機確認、限定レビュークイックガイド、管理者認証設計、ログガイドをMailjet推奨に更新。
+- 管理画面の限定レビュー認証フォームに `PW発行` ボタンを追加。
+  - 入力した名前、仮ID、メールから一覧登録と閲覧許可、Reader用パスワード発行を一気に実行。
+  - 既存のメールまたは仮IDがある場合は重複追加せず、その行を閲覧許可にして再発行確認後に発行。
+- 直接発行したReader用パスワードの標準有効期限を7日に短縮。
+
+### 検証
+
+- `node --check tsukuyomi-reader/functions/_shared/admin-auth.js`: OK
+- `node --check tsukuyomi-reader/js/admin.js`: OK
+- `node --check tsukuyomi-reader/functions/api/admin-auth/request.js`: OK
+- `node --check tsukuyomi-reader/functions/api/admin-auth/status.js`: OK
+- `node --check tsukuyomi-reader/functions/api/admin-auth/verify.js`: OK
+- モックR2 + モックfetch検証:
+  - Mailjet Send API v3.1宛に1回送信要求することを確認。
+  - MailjetのBasic Authが `MAILJET_API_KEY:MAILJET_SECRET_KEY` から作られることを確認。
+  - Mailjet送信成功時の認証ログ `reason` が `mailjet` になることを確認。
+  - Mailjet送信失敗時はチャレンジを削除し、`otp-send-failed` を記録し、Cloudflareログ向けの `console.warn` が出ることを確認。
+  - Reader用パスワード発行で対象者が `閲覧許可` になり、パスワード済み状態になることを確認。
+  - Reader用パスワードの `passwordExpiresAt` が発行から7日後になることを確認。

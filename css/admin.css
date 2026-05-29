@@ -275,6 +275,19 @@
   color: var(--text);
 }
 
+.admin-review-form-actions {
+  display: grid;
+  grid-template-columns: auto auto;
+  gap: 6px;
+  align-items: end;
+}
+
+.admin-review-form-actions .button {
+  min-height: 2.45rem;
+  padding-inline: 12px;
+  white-space: nowrap;
+}
+
 .admin-inline-field {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
@@ -634,6 +647,10 @@ textarea.input {
 
   .admin-review-actions {
     justify-content: stretch;
+  }
+
+  .admin-review-form-actions {
+    grid-template-columns: 1fr;
   }
 
   .admin-review-actions .button {

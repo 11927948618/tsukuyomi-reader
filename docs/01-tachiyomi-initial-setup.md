@@ -73,9 +73,10 @@ TSUKUYOMI_ADMIN_TOKEN=十分に長いランダム文字列
 TSUKUYOMI_ADMIN_AUTH_MODE=email_otp
 TSUKUYOMI_ADMIN_EMAILS=halthejuggernaut@gmail.com,haltherock@yahoo.com,weezartherock@gmail.com
 TSUKUYOMI_ADMIN_AUTH_SECRET=十分に長いランダム文字列
-TSUKUYOMI_ADMIN_EMAIL_PROVIDER=resend
-TSUKUYOMI_ADMIN_EMAIL_FROM=Resendで有効な送信元
-RESEND_API_KEY=Resend APIキー
+TSUKUYOMI_ADMIN_EMAIL_PROVIDER=mailjet
+TSUKUYOMI_ADMIN_EMAIL_FROM=Mailjetで認証済みの送信元
+MAILJET_API_KEY=Mailjet API Key
+MAILJET_SECRET_KEY=Mailjet Secret Key
 ```
 
 設定後は再デプロイします。
@@ -148,7 +149,7 @@ TSUKUYOMI_REVIEW_AUTH_SECRET=十分に長いランダム文字列
 
 - ログインAPI: 60秒に6回まで。超過時は5分ブロック
 - メールアドレス単位: 5回失敗で15分ロック
-- パスワード期限: 発行から30日
+- パスワード期限: 発行から7日
 - セッション期限: 14日
 - 同時利用検知: 同じメールアドレスまたは仮IDで10分以内に複数セッションが動いた場合、認証イベントへ記録
 - 認証振り返り: 有効IDのPW失敗やロックは詳細イベント、未知IDへの試行は件数集計のみ
@@ -162,7 +163,7 @@ TSUKUYOMI_RATE_LIMIT_REVIEW_AUTH_WINDOW_SECONDS=60
 TSUKUYOMI_RATE_LIMIT_REVIEW_AUTH_BLOCK_SECONDS=300
 TSUKUYOMI_REVIEW_LOGIN_FAILURE_LIMIT=5
 TSUKUYOMI_REVIEW_LOGIN_LOCK_MINUTES=15
-TSUKUYOMI_REVIEW_PASSWORD_DAYS=30
+TSUKUYOMI_REVIEW_PASSWORD_DAYS=7
 TSUKUYOMI_REVIEW_AUTH_SESSION_DAYS=14
 TSUKUYOMI_REVIEW_CONCURRENT_WINDOW_MINUTES=10
 ```
@@ -207,7 +208,7 @@ TSUKUYOMI_PUBLICATION_PAUSED=true
 | R2 bucketはあるが作品未登録 | `/api/books` は `[]`。Readerは開くが作品一覧は空 |
 | `TSUKUYOMI_ADMIN_TOKEN` 未設定 | `token` モードでは管理APIが500。読者向け閲覧はR2設定済みなら動く |
 | `TSUKUYOMI_ADMIN_AUTH_SECRET` 未設定 | `email_otp` モードでは管理セッション作成・検証ができない |
-| `RESEND_API_KEY` または `TSUKUYOMI_ADMIN_EMAIL_FROM` 未設定 | `email_otp` モードでログインコードを送信できない |
+| `MAILJET_API_KEY`、`MAILJET_SECRET_KEY`、`TSUKUYOMI_ADMIN_EMAIL_FROM` 未設定 | `email_otp` モードでログインコードを送信できない |
 | 管理画面に入れたトークンが違う | 管理APIが401。作品追加や公開停止はできない |
 | D1未設定 | 本格分析は不可。ただしR2 bucketがあれば軽量読書ログにフォールバック |
 | D1 migration未実行 | 管理画面の読書ログが未設定扱い、またはAccessメール列だけ保存スキップ |
