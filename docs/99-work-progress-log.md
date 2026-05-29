@@ -1636,3 +1636,27 @@ Root directory: 空欄
   - Mailjet送信失敗時はチャレンジを削除し、`otp-send-failed` を記録し、Cloudflareログ向けの `console.warn` が出ることを確認。
   - Reader用パスワード発行で対象者が `閲覧許可` になり、パスワード済み状態になることを確認。
   - Reader用パスワードの `passwordExpiresAt` が発行から7日後になることを確認。
+
+## 2026-05-29 当面の認証運用を管理トークン + 直接発行PWに整理
+
+### 対応
+
+- 当面の推奨構成を `Admin=token`、`読者=Reader内直接発行PW` に整理。
+- 管理者メールOTPはメール送信設定を使う場合の将来オプションとして扱う。
+- 初期設定、更新マニュアル、限定レビュー認証クイックガイド、実機確認、復旧設計、ログガイド、READMEの表記を更新。
+- 管理画面ヘルプの認証説明を、管理トークン方式を当面の推奨として読める文面に変更。
+
+### 運用
+
+```text
+TSUKUYOMI_ADMIN_AUTH_MODE=token
+TSUKUYOMI_ADMIN_TOKEN=管理者用の長いランダム文字列
+TSUKUYOMI_REVIEW_PASSWORD_AUTH=true
+TSUKUYOMI_REVIEW_AUTH_SECRET=読者PW用の長いランダム文字列
+TSUKUYOMI_REVIEW_PASSWORD_DAYS=7
+```
+
+### 検証
+
+- `node --check tsukuyomi-reader/js/admin.js`: OK
+- `git diff --check -- .`: OK

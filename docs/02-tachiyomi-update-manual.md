@@ -20,7 +20,7 @@ https://tsukuyomi-reader-tachiyomi.pages.dev/
 https://tsukuyomi-reader-tachiyomi.pages.dev/admin.html
 ```
 
-管理メニューは検索エンジンに出さない想定ですが、URLを知っているだけで操作できる設計にはしません。未設定時は既存互換の管理トークン方式を使い、推奨設定では管理者メールOTPでログインします。
+管理メニューは検索エンジンに出さない想定ですが、URLを知っているだけで操作できる設計にはしません。当面は管理トークン方式で管理画面に入り、限定レビュー読者には直接発行パスワードを渡します。管理者メールOTPは、メール送信設定を使う場合の将来オプションです。
 
 ## Pagesプロジェクトを作成する
 
@@ -266,14 +266,14 @@ R2 bucket: tsukuyomi-reader-books
 
 4. `Settings > Environment variables` に管理者認証を追加します。
 
-既存互換の管理トークン方式:
+当面の推奨管理者認証:
 
 ```text
 TSUKUYOMI_ADMIN_AUTH_MODE=token
 TSUKUYOMI_ADMIN_TOKEN=十分に長いランダム文字列
 ```
 
-推奨の管理者メールOTP方式:
+管理者メールOTPを併用する場合:
 
 ```text
 TSUKUYOMI_ADMIN_AUTH_MODE=email_otp

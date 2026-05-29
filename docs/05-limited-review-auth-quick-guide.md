@@ -19,14 +19,14 @@ TSUKUYOMI_REVIEW_PASSWORD_AUTH=true
 TSUKUYOMI_REVIEW_AUTH_SECRET=十分に長いランダム文字列
 ```
 
-管理画面に入るための認証も設定します。既存互換の管理トークン方式なら以下です。
+管理画面に入るための認証も設定します。当面の推奨は管理トークン方式です。
 
 ```text
 TSUKUYOMI_ADMIN_AUTH_MODE=token
 TSUKUYOMI_ADMIN_TOKEN=管理画面用の長いランダム文字列
 ```
 
-推奨は管理者メールOTPです。
+管理者メールOTPは、メール送信設定を使う場合の将来オプションです。直接発行PW運用だけなら設定不要です。
 
 ```text
 TSUKUYOMI_ADMIN_AUTH_MODE=email_otp

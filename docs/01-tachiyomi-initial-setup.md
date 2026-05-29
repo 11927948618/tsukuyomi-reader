@@ -58,7 +58,7 @@ R2 bucket: tsukuyomi-reader-books
 
 Pagesプロジェクトの `Settings > Environment variables` に追加します。
 
-既存互換の最小構成:
+当面の推奨構成は、管理画面を管理トークンで守り、読者は直接発行パスワードで認証します。
 
 ```text
 TSUKUYOMI_ADMIN_AUTH_MODE=token
@@ -67,7 +67,7 @@ TSUKUYOMI_ADMIN_TOKEN=十分に長いランダム文字列
 
 `TSUKUYOMI_ADMIN_AUTH_MODE` を省略した場合も `token` モードです。
 
-推奨構成は管理者メールOTPです。
+管理者メールOTPは、メール送信設定を使う場合の将来オプションです。現時点の直接発行PW運用では不要です。
 
 ```text
 TSUKUYOMI_ADMIN_AUTH_MODE=email_otp

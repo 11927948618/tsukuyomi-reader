@@ -1,19 +1,19 @@
 # 管理者認証と復旧設計
 
 作成日: 2026-05-28
-更新日: 2026-05-28
+更新日: 2026-05-29
 
-管理トークンを忘れた場合、または漏洩した場合の復旧方針です。マスターパスワード方式は避け、管理者メールOTPとCloudflare環境変数を組み合わせます。ログの保存先と取得方法は `09-log-coverage-guide.md` を参照します。
+管理トークンを忘れた場合、または漏洩した場合の復旧方針です。マスターパスワード方式は避け、当面は管理トークンとCloudflare環境変数をRoot of Trustにします。管理者メールOTPはメール送信設定を使う場合の将来オプションです。ログの保存先と取得方法は `09-log-coverage-guide.md` を参照します。
 
 ## 結論
 
 管理画面は次の2モードに対応します。
 
 - `TSUKUYOMI_ADMIN_AUTH_MODE=token`
-  - 既存互換モード。未設定時のデフォルト。
+  - 当面の推奨モード。未設定時のデフォルト。
   - `Authorization: Bearer <TSUKUYOMI_ADMIN_TOKEN>` で管理APIを使う。
 - `TSUKUYOMI_ADMIN_AUTH_MODE=email_otp`
-  - 推奨モード。
+  - メール送信設定を併用する場合のオプション。
   - 許可済み管理者メールへ6桁OTPを送り、成功後はHttpOnly Cookieの管理セッションで管理APIを使う。
 
 漏洩時の最終停止権限はアプリ内に置かず、Cloudflare Dashboardの環境変数変更をRoot of Trustとして残します。
@@ -22,7 +22,7 @@
 
 - 漏洩した管理トークンで「リセットAPI」を叩ける設計にすると、攻撃者もリセットできる
 - マスターパスワードは、結局もう1つの漏洩対象になる
-- メールOTPなら、普段の管理者ログインは「管理メールの所有」で回復できる
+- メールOTPを併用する場合は、普段の管理者ログインを「管理メールの所有」に寄せられる
 - Cloudflareアカウントは、環境変数を変更できる最終権限として残せる
 
 ## 許可する管理者メール
@@ -43,7 +43,17 @@ TSUKUYOMI_ADMIN_EMAILS=halthejuggernaut@gmail.com,haltherock@yahoo.com,weezarthe
 
 ## 環境変数
 
-メールOTPを使う場合:
+当面の推奨構成:
+
+```text
+TSUKUYOMI_ADMIN_AUTH_MODE=token
+TSUKUYOMI_ADMIN_TOKEN=十分に長いランダム文字列
+TSUKUYOMI_REVIEW_PASSWORD_AUTH=true
+TSUKUYOMI_REVIEW_AUTH_SECRET=十分に長いランダム文字列
+TSUKUYOMI_REVIEW_PASSWORD_DAYS=7
+```
+
+管理者メールOTPを併用する場合:
 
 ```text
 TSUKUYOMI_ADMIN_AUTH_MODE=email_otp
@@ -66,13 +76,6 @@ TSUKUYOMI_RATE_LIMIT_ADMIN_AUTH_REQUEST_BLOCK_SECONDS=1800
 TSUKUYOMI_RATE_LIMIT_ADMIN_AUTH_VERIFY=10
 TSUKUYOMI_RATE_LIMIT_ADMIN_AUTH_VERIFY_WINDOW_SECONDS=600
 TSUKUYOMI_RATE_LIMIT_ADMIN_AUTH_VERIFY_BLOCK_SECONDS=1800
-```
-
-既存の管理トークン方式を使う場合:
-
-```text
-TSUKUYOMI_ADMIN_AUTH_MODE=token
-TSUKUYOMI_ADMIN_TOKEN=十分に長いランダム文字列
 ```
 
 `TSUKUYOMI_ADMIN_AUTH_MODE` を未設定にした場合も `token` モードです。
@@ -139,9 +142,9 @@ OTPの平文は保存しません。保存するのはハッシュ、salt、期�
 
 ### 管理トークンを忘れた場合
 
-`email_otp` モードなら、許可済み管理者メールでログインします。管理トークンを覚えておく必要はありません。
+当面の推奨構成では、Cloudflare Dashboardで管理トークンを新しい値へ変更します。
 
-メールOTPも使えない場合は、Cloudflare Dashboardで環境変数を変更します。
+管理者メールOTPを併用している場合は、許可済み管理者メールでログインできます。メールOTPも使えない場合は、Cloudflare Dashboardで環境変数を変更します。
 
 1. `TSUKUYOMI_ADMIN_AUTH_MODE=token` に切り替える
 2. `TSUKUYOMI_ADMIN_TOKEN` を新しい値へ変更する
@@ -153,7 +156,7 @@ OTPの平文は保存しません。保存するのはハッシュ、salt、期�
 
 1. Cloudflare Dashboardで `TSUKUYOMI_ADMIN_AUTH_SECRET` を変更する
 2. `TSUKUYOMI_ADMIN_TOKEN` も別値へ変更する
-3. `MAILJET_API_KEY` / `MAILJET_SECRET_KEY` 漏洩疑いがある場合はMailjet側でAPIキーを失効し、新しいキーを設定する
+3. メールOTP併用中で `MAILJET_API_KEY` / `MAILJET_SECRET_KEY` 漏洩疑いがある場合はMailjet側でAPIキーを失効し、新しいキーを設定する
 4. 再デプロイする
 5. 管理画面で作品、限定レビューPW発行状況、認証イベントを確認する
 

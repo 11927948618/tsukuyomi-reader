@@ -62,7 +62,7 @@ let adminOtpChallengeId = "";
 const QUICK_HELP_HTML = `
   <h3>管理画面でよく使う操作</h3>
   <ol>
-    <li><strong>管理者認証</strong>: <code>token</code> モードでは <code>TSUKUYOMI_ADMIN_TOKEN</code> を保存します。<code>email_otp</code> モードでは管理者メールへ届く6桁コードでログインします。</li>
+    <li><strong>管理者認証</strong>: 当面は <code>token</code> モードで <code>TSUKUYOMI_ADMIN_TOKEN</code> を保存します。<code>email_otp</code> モードはメール送信設定を使う場合のオプションです。</li>
     <li><strong>作品ID</strong>: 英数字、ハイフン、アンダースコアだけ使えます。空欄でも自動作成できます。差し替え時は同じIDを使います。</li>
     <li><strong>本文ファイル</strong>: EPUB、TXT、PDFを登録できます。PDFは固定レイアウト作品として表示します。表紙はJPG、PNG、WebPを指定できます。</li>
     <li><strong>公開停止</strong>: 作品一覧の「公開停止」で個別に非公開化できます。全体停止はCloudflare環境変数 <code>TSUKUYOMI_PUBLICATION_PAUSED=true</code> です。</li>
@@ -82,7 +82,7 @@ const ACCESS_HELP_HTML = `
     <li><strong>Cloudflare側で許可する</strong>: Cloudflare Accessを使う場合は、Dashboardで限定レビュー版Pagesを開き、Accessの許可ポリシーに相手のメールアドレスを追加します。</li>
     <li><strong>保護範囲を確認する</strong>: Reader画面だけでなく、<code>/api/books</code>、本文API、表紙APIも未認証で読めないようにします。</li>
     <li><strong>One-time PIN</strong>: 友人側にアカウント作成を求めない場合は、One-time PIN方式を使います。</li>
-    <li><strong>管理画面へ記録する</strong>: 下の「限定レビュー認証管理」に名前、仮ID、メール、状態を記入します。Reader内パスワード認証ではここから発行・無効化します。</li>
+    <li><strong>パスワードを発行する</strong>: 下の「限定レビュー認証管理」に名前、仮ID、メールのいずれかを入力し、<code>PW発行</code> で登録、閲覧許可、パスワード発行をまとめて行います。</li>
     <li><strong>読書ログへ紐づける</strong>: 限定レビュー版で <code>TSUKUYOMI_ACCESS_IDENTITY_ANALYTICS=true</code> を設定すると、Access認証済みメールと読書ログを管理用に紐づけます。</li>
     <li><strong>閲覧保留</strong>: <code>TSUKUYOMI_REVIEW_ACCESS_SOFT_BLOCK=true</code> を設定した限定レビュー版では、状態を「閲覧保留」にした相手へ作品一覧を空で返します。Access許可は残すため、ログイン拒否より気づかれにくい保留になります。</li>
     <li><strong>停止時</strong>: Cloudflare Accessから相手を外し、管理画面の記録も「停止済み」にします。</li>
