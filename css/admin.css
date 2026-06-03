@@ -114,6 +114,24 @@
   border-color: color-mix(in srgb, #c74c4c, var(--border) 42%);
 }
 
+.admin-promotion-summary {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, #2f73b7, var(--border) 42%);
+  border-radius: 10px;
+  color: #15528a;
+  background: color-mix(in srgb, #2f73b7, transparent 88%);
+  font-size: 0.88rem;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.admin-promotion-summary.warn {
+  color: #7a5a0b;
+  border-color: color-mix(in srgb, #d7a526, var(--border) 35%);
+  background: color-mix(in srgb, #d7a526, transparent 86%);
+}
+
 .admin-book-card {
   display: grid;
   grid-template-columns: 72px minmax(0, 1fr);
@@ -300,6 +318,16 @@
   padding-inline: 12px;
 }
 
+.button.public-action {
+  color: #15528a;
+  border-color: color-mix(in srgb, #2f73b7, var(--border) 35%);
+  background: color-mix(in srgb, #2f73b7, transparent 88%);
+}
+
+.button.public-action:hover {
+  background: color-mix(in srgb, #2f73b7, transparent 80%);
+}
+
 .admin-review-access-list {
   display: grid;
   gap: 8px;
@@ -459,6 +487,12 @@
   color: #155f28;
   background: color-mix(in srgb, #3faf5c, transparent 84%);
   border-color: color-mix(in srgb, #3faf5c, var(--border) 45%);
+}
+
+.admin-pill.public {
+  color: #15528a;
+  background: color-mix(in srgb, #2f73b7, transparent 84%);
+  border-color: color-mix(in srgb, #2f73b7, var(--border) 42%);
 }
 
 .admin-pill.private {

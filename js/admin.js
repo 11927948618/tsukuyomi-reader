@@ -23,6 +23,7 @@ const reloadStorageBtn = document.getElementById("reloadStorageBtn");
 const reloadReviewAccessBtn = document.getElementById("reloadReviewAccessBtn");
 const adminBookList = document.getElementById("adminBookList");
 const adminStatus = document.getElementById("adminStatus");
+const promotionSummary = document.getElementById("promotionSummary");
 const storageStatus = document.getElementById("storageStatus");
 const storageSummary = document.getElementById("storageSummary");
 const storagePrefixes = document.getElementById("storagePrefixes");
@@ -210,16 +211,27 @@ async function loadBooks() {
     if (!res.ok) throw new Error(payload?.error || "作品一覧の読み込みに失敗しました");
     loadedBookScope = normalizeBookScope(payload?.scope || scope);
     renderUsageGuard(payload?.guard || null);
+    renderPromotionSummary(payload, loadedBookScope);
     renderBooks(Array.isArray(payload?.books) ? payload.books : [], loadedBookScope);
-    setStatus(bookListStatus(payload, loadedBookScope), payload?.promotionSummary?.error ? "warn" : "ok");
+    setStatus(`${bookScopeLabel(loadedBookScope)} ${payload.books?.length || 0}件`, payload?.promotionSummary?.error ? "warn" : "ok");
   } catch (err) {
     adminBookList.innerHTML = "";
+    renderPromotionSummary(null, loadedBookScope);
     renderUsageGuard(null);
     setStatus(err.message || "作品一覧の読み込みに失敗しました", "error");
   }
 }
 
-function bookListStatus(payload, scope) {
+function renderPromotionSummary(payload, scope) {
+  if (!promotionSummary) return;
+  const text = promotionSummaryText(payload, scope);
+  promotionSummary.hidden = !text;
+  promotionSummary.textContent = text;
+  promotionSummary.className = `admin-promotion-summary ${payload?.promotionSummary?.error ? "warn" : ""}`.trim();
+}
+
+function promotionSummaryText(payload, scope) {
+  if (!payload || normalizeBookScope(scope) !== "limited") return "";
   const count = Array.isArray(payload?.books) ? payload.books.length : 0;
   const parts = [`${bookScopeLabel(scope)} ${count}件`];
   const summary = payload?.promotionSummary || null;
@@ -996,11 +1008,11 @@ function renderBooks(books, scope = selectedBookScope()) {
             ${promotionLabel ? `<p class="admin-book-meta">${escapeHtml(promotionLabel)}</p>` : ""}
             ${promotionUnchecked ? `<p class="admin-book-meta">一般公開: 未昇格または状態未確認</p>` : ""}
             <span class="admin-pill ${published ? "published" : "private"}">${published ? "公開中" : "非公開"}</span>
-            ${promoted ? `<span class="admin-pill ${promotionVisible ? "published" : "private"}">${promotionVisible ? "一般公開中" : "一般期限切れ"}</span>` : ""}
+            ${promoted ? `<span class="admin-pill ${promotionVisible ? "public" : "private"}">${promotionVisible ? "一般公開中" : "一般期限切れ"}</span>` : ""}
             <div class="admin-book-actions">
               <button class="button ghost" type="button" data-action="edit">編集に読み込む</button>
               <button class="button ghost" type="button" data-action="toggle">${published ? "一覧から外す" : "一覧に表示"}</button>
-              ${normalizedScope === "limited" ? `<button class="button ghost" type="button" data-action="promote">${promoted ? "一般公開を延長" : "一般公開へ昇格"}</button>` : ""}
+              ${normalizedScope === "limited" ? `<button class="button ghost ${promotionVisible ? "public-action" : ""}" type="button" data-action="promote">${promoted ? "延長" : "一般公開へ昇格"}</button>` : ""}
               ${hasCover ? `<button class="button ghost danger" type="button" data-action="remove-cover">表紙削除</button>` : ""}
               <button class="button ghost danger" type="button" data-action="delete">作品削除</button>
             </div>
