@@ -1,4 +1,4 @@
-import { getBucket, error, readCatalog, serveR2Object, contentTypeForExt } from "../../../_shared/books.js";
+import { getBucket, error, isBookVisible, readCatalog, serveR2Object, contentTypeForExt } from "../../../_shared/books.js";
 import { applyRateLimit } from "../../../_shared/rate-limit.js";
 import { getReviewAccessDecision, reviewAssetSoftBlockedResponse } from "../../../_shared/review-access.js";
 import { recordReviewSessionActivity, requireReviewPasswordAuth } from "../../../_shared/review-auth.js";
@@ -23,7 +23,7 @@ export async function onRequestGet(context) {
 
   const id = context.params.id;
   const catalog = await readCatalog(bucket);
-  const book = catalog.books.find((entry) => entry.id === id && entry.published === true);
+  const book = catalog.books.find((entry) => entry.id === id && isBookVisible(entry));
   if (!book || !book.contentKey) return error("作品が見つかりません", 404);
 
   const object = await bucket.get(book.contentKey);

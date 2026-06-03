@@ -1,8 +1,8 @@
 import {
-  getBucket,
   json,
   error,
   requireAdmin,
+  resolveAdminBooksBucket,
   readCatalog,
   writeCatalog,
   deleteR2Keys,
@@ -20,27 +20,30 @@ export async function onRequestGet(context) {
   const auth = await requireAdmin(context.request, context.env);
   if (!auth.ok) return auth.response;
 
-  const bucket = getBucket(context.env);
-  if (!bucket) return error("R2 bucket binding が未設定です", 500);
+  const target = resolveAdminBooksBucket(context.env, new URL(context.request.url).searchParams.get("scope"));
+  const bucket = target.bucket;
+  if (!bucket) return error(target.missingMessage, 500);
 
   const catalog = await readCatalog(bucket);
   const books = catalog.books.map((book) => ({
     ...toPublicManifestEntry(book),
     contentKey: book.contentKey || "",
-    coverKey: book.coverKey || ""
+    coverKey: book.coverKey || "",
+    scope: target.scope
   }));
   const guard = await readUsageGuard(bucket, context.env);
-  return json({ books, updatedAt: catalog.updatedAt || "", guard });
+  return json({ books, updatedAt: catalog.updatedAt || "", guard, scope: target.scope, scopeLabel: target.label });
 }
 
 export async function onRequestPost(context) {
   const auth = await requireAdmin(context.request, context.env);
   if (!auth.ok) return auth.response;
 
-  const bucket = getBucket(context.env);
-  if (!bucket) return error("R2 bucket binding が未設定です", 500);
-
   const form = await context.request.formData();
+  const target = resolveAdminBooksBucket(context.env, "limited");
+  const bucket = target.bucket;
+  if (!bucket) return error(target.missingMessage, 500);
+
   const title = safeText(form.get("title"), "");
   if (!title) return error("タイトルは必須です");
 

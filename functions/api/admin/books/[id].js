@@ -1,8 +1,8 @@
 import {
-  getBucket,
   json,
   error,
   requireAdmin,
+  resolveAdminBooksBucket,
   readCatalog,
   writeCatalog,
   deleteR2Keys,
@@ -17,8 +17,9 @@ export async function onRequestPatch(context) {
   const auth = await requireAdmin(context.request, context.env);
   if (!auth.ok) return auth.response;
 
-  const bucket = getBucket(context.env);
-  if (!bucket) return error("R2 bucket binding が未設定です", 500);
+  const target = resolveAdminBooksBucket(context.env, new URL(context.request.url).searchParams.get("scope"));
+  const bucket = target.bucket;
+  if (!bucket) return error(target.missingMessage, 500);
 
   const id = context.params.id;
   const patch = await context.request.json().catch(() => null);
@@ -87,8 +88,9 @@ export async function onRequestDelete(context) {
   const auth = await requireAdmin(context.request, context.env);
   if (!auth.ok) return auth.response;
 
-  const bucket = getBucket(context.env);
-  if (!bucket) return error("R2 bucket binding が未設定です", 500);
+  const target = resolveAdminBooksBucket(context.env, new URL(context.request.url).searchParams.get("scope"));
+  const bucket = target.bucket;
+  if (!bucket) return error(target.missingMessage, 500);
 
   const id = context.params.id;
   const catalog = await readCatalog(bucket);

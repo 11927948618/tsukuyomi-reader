@@ -1,4 +1,4 @@
-import { getBucket, json, error, readCatalog, toPublicManifestEntry } from "../../_shared/books.js";
+import { getBucket, json, error, isBookVisible, readCatalog, toPublicManifestEntry } from "../../_shared/books.js";
 import { applyRateLimit } from "../../_shared/rate-limit.js";
 import { getReviewAccessDecision, reviewManifestSoftBlockedResponse } from "../../_shared/review-access.js";
 import { recordReviewSessionActivity, requireReviewPasswordAuth } from "../../_shared/review-auth.js";
@@ -23,7 +23,7 @@ export async function onRequestGet(context) {
 
   const catalog = await readCatalog(bucket);
   const books = catalog.books
-    .filter((book) => book.published === true)
+    .filter((book) => isBookVisible(book))
     .map(toPublicManifestEntry);
 
   return json(books, { headers: usageGuardHeaders(guard) });

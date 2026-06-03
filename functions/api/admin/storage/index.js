@@ -1,4 +1,4 @@
-import { error, getBucket, json, requireAdmin } from "../../../_shared/books.js";
+import { error, json, requireAdmin, resolveAdminBooksBucket } from "../../../_shared/books.js";
 import { readUsageGuard } from "../../../_shared/usage-guard.js";
 import { ANALYTICS_LITE_KEY } from "../../../_shared/analytics-lite.js";
 
@@ -9,8 +9,9 @@ export async function onRequestGet(context) {
   const auth = await requireAdmin(context.request, context.env);
   if (!auth.ok) return auth.response;
 
-  const bucket = getBucket(context.env);
-  if (!bucket) return error("R2 bucket binding が未設定です", 500);
+  const target = resolveAdminBooksBucket(context.env, new URL(context.request.url).searchParams.get("scope"));
+  const bucket = target.bucket;
+  if (!bucket) return error(target.missingMessage, 500);
 
   const scanLimit = normalizePositiveNumber(context.env?.TSUKUYOMI_STORAGE_SCAN_LIMIT, DEFAULT_SCAN_LIMIT);
   const freeBytes = normalizePositiveNumber(context.env?.TSUKUYOMI_R2_FREE_STORAGE_BYTES, DEFAULT_FREE_STORAGE_BYTES);
@@ -20,6 +21,8 @@ export async function onRequestGet(context) {
 
   return json({
     checkedAt: new Date().toISOString(),
+    scope: target.scope,
+    scopeLabel: target.label,
     storage: {
       freeTierBytes: freeBytes,
       usedBytes: usage.totalBytes,

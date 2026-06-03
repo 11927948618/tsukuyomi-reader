@@ -77,7 +77,9 @@ https://tsukuyomi-reader-tachiyomi.pages.dev/
 基本方針:
 
 - 公開版Readerには、賞応募に使わない作品だけ置きます。
-- 賞応募候補作品は、公開版Readerで `published: true` にしません。
+- 賞応募候補作品は、まず限定レビュー用R2にだけ保存します。
+- 一般公開したい場合は、管理画面の `一般公開へ昇格` で公開用R2へコピーします。
+- 昇格した作品は標準で7日後に一般作品一覧から自動的に消えます。
 - 限定レビュー版Readerを別Pagesプロジェクトまたは別サブドメインで用意します。
 - 限定レビュー版ReaderはCloudflare Access、またはReader内メールアドレス+パスワード認証でサイト/API全体を認証必須にします。
 - `reviewOnly` や `awardCandidate` のようなフラグだけでは保護になりません。未認証URLで読めないことを優先します。
@@ -262,6 +264,20 @@ tsukuyomi-reader-tachiyomi
 ```text
 Variable name: TSUKUYOMI_BOOKS_BUCKET
 R2 bucket: tsukuyomi-reader-books
+```
+
+限定レビュー管理画面から一般公開へ昇格する場合は、同じPagesプロジェクトに公開用R2 bindingも追加します。
+
+```text
+Variable name: TSUKUYOMI_PUBLIC_BOOKS_BUCKET
+R2 bucket: tsukuyomi-reader-public-books
+```
+
+一般公開用Pagesプロジェクト `tsukuyomi-reader.pages.dev` は、読者向け `/api/books` が公開用R2だけを読むようにします。
+
+```text
+Variable name: TSUKUYOMI_BOOKS_BUCKET
+R2 bucket: tsukuyomi-reader-public-books
 ```
 
 4. `Settings > Environment variables` に管理者認証を追加します。
@@ -531,7 +547,7 @@ https://tsukuyomi-reader-tachiyomi.pages.dev/admin.html
 - 更新日
 - 本文ファイル
 - 表紙画像
-- 公開する / 非公開
+- 限定レビューの作品一覧に表示する / 表示しない
 
 作品IDは、URLやR2保存名に使う管理用IDです。使える文字は英数字、ハイフン `-`、アンダースコア `_` です。数字だけでなく英文字も使えます。
 
@@ -544,6 +560,20 @@ lane_field_1
 ```
 
 日本語は使わないでください。空欄にすると自動IDを作ります。日本語タイトルだけの場合は `book-日時` のようなIDになることがあります。あとで同じ作品を差し替える場合は、同じ作品IDを使います。
+
+### 一般公開へ昇格する
+
+通常の作品追加・差し替えは限定レビュー用R2へ保存されます。一般公開する場合は、作品一覧の `一般公開へ昇格` を押します。
+
+昇格時の動き:
+
+- 限定レビュー用R2の本文ファイルと表紙を、公開用R2へコピーする
+- 公開用R2のmanifestへ `published: true` と `publicExpiresAt` を付けて登録する
+- 標準期限は7日
+- 期限切れ後は、一般用 `/api/books` と本文・表紙APIから見えなくなる
+- 限定レビュー用R2の元作品はそのまま残る
+
+誤公開を避けるため、昇格時は確認ダイアログで `PUBLIC` と入力します。賞応募候補や未発表稿は、一般公開してよいと判断した場合だけ昇格します。
 
 本文ファイルは `EPUB`、`TXT`、`PDF` を選択できます。PDFは固定レイアウト作品としてReader内に表示します。初回登録では本文ファイルが必須です。既存作品の説明文や公開状態だけを変える場合、本文ファイルと表紙画像は選ばなくてかまいません。
 

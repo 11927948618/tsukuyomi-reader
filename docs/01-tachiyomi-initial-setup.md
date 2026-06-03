@@ -47,11 +47,31 @@ R2 bucketを作成します。
 tsukuyomi-reader-books
 ```
 
+一般公開用と限定レビュー用を分ける場合は、公開用bucketも作成します。
+
+```text
+tsukuyomi-reader-public-books
+```
+
 Pagesプロジェクトの `Settings > Bindings` で、R2 bucket bindingを追加します。
 
 ```text
 Variable name: TSUKUYOMI_BOOKS_BUCKET
 R2 bucket: tsukuyomi-reader-books
+```
+
+一般公開用Pagesでは、`TSUKUYOMI_BOOKS_BUCKET` を公開用bucketに向けます。
+
+```text
+Variable name: TSUKUYOMI_BOOKS_BUCKET
+R2 bucket: tsukuyomi-reader-public-books
+```
+
+限定レビュー用Pagesの管理画面から一般公開へ昇格する場合は、公開用bucketも追加します。
+
+```text
+Variable name: TSUKUYOMI_PUBLIC_BOOKS_BUCKET
+R2 bucket: tsukuyomi-reader-public-books
 ```
 
 ### 管理者認証
@@ -144,6 +164,8 @@ TSUKUYOMI_REVIEW_AUTH_SECRET=十分に長いランダム文字列
 有効化後は、管理画面の `限定レビュー認証管理` で仮IDを作成し、メールアドレスと紐づけます。`PW発行` で表示されたパスワードを個別に送ります。
 
 読者は、メールアドレスまたは仮IDとパスワードでログインできます。メールアドレスを伏せたい相手には、仮IDとパスワードだけを案内できます。
+
+作品はまず限定レビュー用R2へ保存します。一般公開する場合は、管理画面の `一般公開へ昇格` で公開用R2へコピーします。昇格作品は標準7日で一般一覧から自動的に消えます。
 
 標準では次の事前対策を行います。
 

@@ -58,6 +58,7 @@ let adminAuthLogEvents = [];
 let adminAuthMode = "token";
 let adminAuthenticated = false;
 let adminOtpChallengeId = "";
+let loadedBookScope = "limited";
 
 const QUICK_HELP_HTML = `
   <h3>管理画面でよく使う操作</h3>
@@ -65,7 +66,7 @@ const QUICK_HELP_HTML = `
     <li><strong>管理者認証</strong>: 当面は <code>token</code> モードで <code>TSUKUYOMI_ADMIN_TOKEN</code> を保存します。<code>email_otp</code> モードはメール送信設定を使う場合のオプションです。</li>
     <li><strong>作品ID</strong>: 英数字、ハイフン、アンダースコアだけ使えます。空欄でも自動作成できます。差し替え時は同じIDを使います。</li>
     <li><strong>本文ファイル</strong>: EPUB、TXT、PDFを登録できます。PDFは固定レイアウト作品として表示します。表紙はJPG、PNG、WebPを指定できます。</li>
-    <li><strong>公開停止</strong>: 作品一覧の「公開停止」で個別に非公開化できます。全体停止はCloudflare環境変数 <code>TSUKUYOMI_PUBLICATION_PAUSED=true</code> です。</li>
+    <li><strong>一般公開</strong>: 作品は限定レビューへ保存し、一般公開する時だけ「一般公開へ昇格」で公開用R2へ7日間コピーします。全体停止はCloudflare環境変数 <code>TSUKUYOMI_PUBLICATION_PAUSED=true</code> です。</li>
     <li><strong>表紙削除・作品削除</strong>: 表紙だけ外す場合は「表紙削除」、本文ごとR2から消す場合は「作品削除」を使います。</li>
     <li><strong>R2使用状況</strong>: 保存容量の概算を確認できます。Class A/B操作数はCloudflare R2 Metricsで確認します。</li>
     <li><strong>読書ログ</strong>: 作品別の開始、読了、平均進捗を軽く確認できます。読者同士には公開せず、管理側で一元保管・集計して作品傾向や将来分析に使います。</li>
@@ -195,16 +196,18 @@ async function loadBooks() {
     return;
   }
 
-  setStatus("作品一覧を読み込み中...");
+  const scope = selectedBookScope();
+  setStatus(`${bookScopeLabel(scope)}の作品一覧を読み込み中...`);
   try {
-    const res = await fetch("./api/admin/books", {
+    const res = await fetch(`./api/admin/books?scope=${encodeURIComponent(scope)}`, {
       headers: authHeaders(token)
     });
     const payload = await readJson(res);
     if (!res.ok) throw new Error(payload?.error || "作品一覧の読み込みに失敗しました");
+    loadedBookScope = normalizeBookScope(payload?.scope || scope);
     renderUsageGuard(payload?.guard || null);
-    renderBooks(Array.isArray(payload?.books) ? payload.books : []);
-    setStatus(`${payload.books?.length || 0}件`, "ok");
+    renderBooks(Array.isArray(payload?.books) ? payload.books : [], loadedBookScope);
+    setStatus(`${bookScopeLabel(loadedBookScope)} ${payload.books?.length || 0}件`, "ok");
   } catch (err) {
     adminBookList.innerHTML = "";
     renderUsageGuard(null);
@@ -835,9 +838,10 @@ async function loadStorage() {
     return;
   }
 
-  setStorageStatus("R2使用状況を読み込み中...");
+  const scope = selectedBookScope();
+  setStorageStatus(`${bookScopeLabel(scope)}のR2使用状況を読み込み中...`);
   try {
-    const res = await fetch("./api/admin/storage", {
+    const res = await fetch(`./api/admin/storage?scope=${encodeURIComponent(scope)}`, {
       headers: authHeaders(token)
     });
     const payload = await readJson(res);
@@ -849,6 +853,7 @@ async function loadStorage() {
 }
 
 function renderStorage(payload) {
+  const scopeLabel = payload?.scopeLabel || bookScopeLabel(payload?.scope || selectedBookScope());
   const storage = payload?.storage || {};
   const usedBytes = Number(storage.usedBytes) || 0;
   const freeTierBytes = Number(storage.freeTierBytes) || 0;
@@ -857,7 +862,7 @@ function renderStorage(payload) {
   const objectCount = Number(storage.objectCount) || 0;
   const truncated = storage.truncated === true;
   setStorageStatus(
-    `${formatBytes(usedBytes)} 使用 / ${objectCount.toLocaleString()} objects${truncated ? " / 走査上限あり" : ""}`,
+    `${scopeLabel} ${formatBytes(usedBytes)} 使用 / ${objectCount.toLocaleString()} objects${truncated ? " / 走査上限あり" : ""}`,
     usedPercent >= 90 ? "error" : usedPercent >= 70 ? "warn" : "ok"
   );
 
@@ -931,12 +936,13 @@ function renderUsageGuard(guard) {
   usageGuardStatus.textContent = `${labels[guard.level] || guard.level}${projected}${reason}`;
 }
 
-function renderBooks(books) {
+function renderBooks(books, scope = selectedBookScope()) {
   if (!books.length) {
-    adminBookList.innerHTML = `<p class="admin-note">作品はまだ登録されていません。</p>`;
+    adminBookList.innerHTML = `<p class="admin-note">${escapeHtml(bookScopeLabel(scope))}の作品はまだ登録されていません。</p>`;
     return;
   }
 
+  const normalizedScope = normalizeBookScope(scope);
   adminBookList.innerHTML = books
     .map((book) => {
       const published = book.published === true;
@@ -950,6 +956,7 @@ function renderBooks(books) {
           <div class="admin-book-cover">${cover}</div>
           <div class="admin-book-info">
             <h3 class="admin-book-title">${escapeHtml(book.title || "Untitled")}</h3>
+            <p class="admin-book-meta">保存先: ${escapeHtml(bookScopeLabel(normalizedScope))}</p>
             <p class="admin-book-meta">${escapeHtml(book.author || "")}</p>
             <p class="admin-book-meta">${escapeHtml(book.description || "")}</p>
             <p class="admin-book-meta">ID: ${escapeHtml(book.id || "")} / 更新日: ${escapeHtml(book.updatedAt || "-")}</p>
@@ -957,7 +964,8 @@ function renderBooks(books) {
             <span class="admin-pill ${published ? "published" : "private"}">${published ? "公開中" : "非公開"}</span>
             <div class="admin-book-actions">
               <button class="button ghost" type="button" data-action="edit">編集に読み込む</button>
-              <button class="button ghost" type="button" data-action="toggle">${published ? "公開停止" : "公開する"}</button>
+              <button class="button ghost" type="button" data-action="toggle">${published ? "一覧から外す" : "一覧に表示"}</button>
+              ${normalizedScope === "limited" ? `<button class="button ghost" type="button" data-action="promote">一般公開へ昇格</button>` : ""}
               ${hasCover ? `<button class="button ghost danger" type="button" data-action="remove-cover">表紙削除</button>` : ""}
               <button class="button ghost danger" type="button" data-action="delete">作品削除</button>
             </div>
@@ -973,21 +981,58 @@ function renderBooks(books) {
       const id = card?.dataset.bookId || "";
       const book = books.find((entry) => entry.id === id);
       if (!book) return;
+      const actionScope = normalizedScope;
       const action = button.dataset.action;
       if (action === "edit") {
-        fillForm(book);
+        fillForm(book, actionScope);
       } else if (action === "toggle") {
-        togglePublished(book);
+        togglePublished(book, actionScope);
       } else if (action === "remove-cover") {
-        removeCover(book);
+        removeCover(book, actionScope);
       } else if (action === "delete") {
-        deleteBook(book);
+        deleteBook(book, actionScope);
+      } else if (action === "promote") {
+        promoteBook(book);
       }
     });
   });
 }
 
-async function togglePublished(book) {
+async function promoteBook(book) {
+  const token = getToken();
+  if (!token) {
+    setStatus(adminAuthRequiredMessage(), "error");
+    return;
+  }
+
+  const title = book.title || book.id || "この作品";
+  const confirmed = window.prompt(
+    `「${title}」を一般公開用R2へコピーし、7日間だけ一般作品一覧に表示します。\n限定レビュー認証は一般公開側には適用されません。\n続行するには PUBLIC と入力してください。`
+  );
+  if (confirmed !== "PUBLIC") {
+    setStatus("一般公開への昇格をキャンセルしました");
+    return;
+  }
+
+  setStatus("一般公開へ昇格中...");
+  try {
+    const res = await fetch(`./api/admin/books/${encodeURIComponent(book.id)}/promote`, {
+      method: "POST",
+      headers: {
+        ...authHeaders(token),
+        "content-type": "application/json"
+      },
+      body: JSON.stringify({})
+    });
+    const payload = await readJson(res);
+    if (!res.ok) throw new Error(payload?.error || "一般公開への昇格に失敗しました");
+    setStatus(`一般公開へ昇格しました（期限: ${formatDateTime(payload?.publicExpiresAt || "")}）`, "ok");
+  } catch (err) {
+    setStatus(err.message || "一般公開への昇格に失敗しました", "error");
+  }
+}
+
+async function togglePublished(book, scope = loadedBookScope) {
   const token = getToken();
   if (!token) {
     setStatus(adminAuthRequiredMessage(), "error");
@@ -995,9 +1040,9 @@ async function togglePublished(book) {
   }
 
   const nextPublished = book.published !== true;
-  setStatus(nextPublished ? "公開へ変更中..." : "公開停止中...");
+  setStatus(nextPublished ? "一覧へ表示中..." : "一覧から外しています...");
   try {
-    const res = await fetch(`./api/admin/books/${encodeURIComponent(book.id)}`, {
+    const res = await fetch(adminBookUrl(book.id, scope), {
       method: "PATCH",
       headers: {
         ...authHeaders(token),
@@ -1007,14 +1052,14 @@ async function togglePublished(book) {
     });
     const payload = await readJson(res);
     if (!res.ok) throw new Error(payload?.error || "公開状態の変更に失敗しました");
-    setStatus(nextPublished ? "公開しました" : "公開停止しました", "ok");
+    setStatus(nextPublished ? "作品一覧に表示しました" : "作品一覧から外しました", "ok");
     loadBooks();
   } catch (err) {
     setStatus(err.message || "公開状態の変更に失敗しました", "error");
   }
 }
 
-async function removeCover(book) {
+async function removeCover(book, scope = loadedBookScope) {
   const token = getToken();
   if (!token) {
     setStatus(adminAuthRequiredMessage(), "error");
@@ -1031,7 +1076,7 @@ async function removeCover(book) {
 
   setStatus("表紙を削除中...");
   try {
-    const res = await fetch(`./api/admin/books/${encodeURIComponent(book.id)}`, {
+    const res = await fetch(adminBookUrl(book.id, scope), {
       method: "PATCH",
       headers: {
         ...authHeaders(token),
@@ -1049,7 +1094,7 @@ async function removeCover(book) {
   }
 }
 
-async function deleteBook(book) {
+async function deleteBook(book, scope = loadedBookScope) {
   const token = getToken();
   if (!token) {
     setStatus(adminAuthRequiredMessage(), "error");
@@ -1062,7 +1107,7 @@ async function deleteBook(book) {
 
   setStatus("作品を削除中...");
   try {
-    const res = await fetch(`./api/admin/books/${encodeURIComponent(book.id)}`, {
+    const res = await fetch(adminBookUrl(book.id, scope), {
       method: "DELETE",
       headers: authHeaders(token)
     });
@@ -1083,7 +1128,24 @@ function cleanupStatus(message, payload) {
   return `${message}（一部R2ファイル削除は未完了です）`;
 }
 
-function fillForm(book) {
+function selectedBookScope() {
+  return normalizeBookScope(loadedBookScope);
+}
+
+function normalizeBookScope(value) {
+  return String(value || "").trim().toLowerCase() === "public" ? "public" : "limited";
+}
+
+function bookScopeLabel(scope) {
+  return normalizeBookScope(scope) === "public" ? "一般公開" : "限定レビュー";
+}
+
+function adminBookUrl(id, scope = selectedBookScope()) {
+  return `./api/admin/books/${encodeURIComponent(id)}?scope=${encodeURIComponent(normalizeBookScope(scope))}`;
+}
+
+function fillForm(book, scope = loadedBookScope) {
+  loadedBookScope = normalizeBookScope(scope);
   bookForm.elements.id.value = book.id || "";
   bookForm.elements.title.value = book.title || "";
   bookForm.elements.author.value = book.author || "";

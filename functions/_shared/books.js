@@ -1,6 +1,7 @@
 import { verifyAdminRequest } from "./admin-auth.js";
 
 export const MANIFEST_KEY = "_tsukuyomi/books-manifest.json";
+export const DEFAULT_PUBLIC_PROMOTION_DAYS = 7;
 
 export function json(data, init = {}) {
   return new Response(JSON.stringify(data), {
@@ -19,6 +20,60 @@ export function error(message, status = 400, init = {}) {
 
 export function getBucket(env) {
   return env.TSUKUYOMI_BOOKS_BUCKET || env.BOOKS_BUCKET || env.BUCKET || null;
+}
+
+export function getPublicBucket(env) {
+  return env.TSUKUYOMI_PUBLIC_BOOKS_BUCKET || env.PUBLIC_BOOKS_BUCKET || null;
+}
+
+export function getLimitedBucket(env) {
+  return env.TSUKUYOMI_LIMITED_BOOKS_BUCKET || env.LIMITED_BOOKS_BUCKET || getBucket(env);
+}
+
+export function resolveAdminBooksBucket(env, scope = "") {
+  const normalizedScope = normalizeBooksScope(scope);
+  const limitedBucket = getLimitedBucket(env);
+  const publicBucket = getPublicBucket(env);
+  if (normalizedScope === "public") {
+    return {
+      bucket: publicBucket,
+      scope: "public",
+      label: "一般公開",
+      missingMessage: "一般公開用 R2 bucket binding が未設定です"
+    };
+  }
+
+  return {
+    bucket: limitedBucket,
+    scope: "limited",
+    label: "限定レビュー",
+    missingMessage: "R2 bucket binding が未設定です"
+  };
+}
+
+export function normalizeBooksScope(scope) {
+  const value = String(scope || "").trim().toLowerCase();
+  return value === "public" ? "public" : "limited";
+}
+
+export function publicPromotionExpiresAt(env, from = new Date()) {
+  const days = normalizePositiveInteger(
+    env?.TSUKUYOMI_PUBLIC_PROMOTION_DAYS || env?.PUBLIC_PROMOTION_DAYS,
+    DEFAULT_PUBLIC_PROMOTION_DAYS
+  );
+  const fromMs = from instanceof Date ? from.getTime() : Date.parse(from);
+  const expiresAt = new Date(Number.isFinite(fromMs) ? fromMs : Date.now());
+  expiresAt.setUTCDate(expiresAt.getUTCDate() + days);
+  return expiresAt.toISOString();
+}
+
+export function isBookVisible(book, now = new Date()) {
+  if (book?.published !== true) return false;
+  const expiresAt = String(book?.publicExpiresAt || "").trim();
+  if (!expiresAt) return true;
+  const expiresMs = Date.parse(expiresAt);
+  if (!Number.isFinite(expiresMs)) return false;
+  return expiresMs > now.getTime();
 }
 
 export async function requireAdmin(request, env) {
@@ -81,6 +136,7 @@ export function toPublicManifestEntry(book) {
     path: `/api/books/${encodeURIComponent(book.id)}/content`,
     cover: book.coverKey ? `/api/books/${encodeURIComponent(book.id)}/cover` : "",
     published: book.published === true,
+    publicExpiresAt: book.publicExpiresAt || "",
     updatedAt: book.updatedAt || ""
   };
 }
@@ -105,6 +161,12 @@ export function boolValue(value) {
   if (typeof value === "boolean") return value;
   const normalized = String(value || "").toLowerCase();
   return normalized === "true" || normalized === "1" || normalized === "on" || normalized === "yes";
+}
+
+function normalizePositiveInteger(value, fallback) {
+  const number = Number(value);
+  if (!Number.isFinite(number) || number <= 0) return fallback;
+  return Math.floor(number);
 }
 
 export function extFromFile(file, fallback = "") {
