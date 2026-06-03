@@ -27,9 +27,10 @@ export async function onRequestGet(context) {
   if (!bucket) return error(target.missingMessage, 500);
 
   const catalog = await readCatalog(bucket);
-  const publicPromotions = target.scope === "limited"
+  const publicPromotionState = target.scope === "limited"
     ? await readPublicPromotionIndex(context.env)
-    : new Map();
+    : { promotions: new Map(), error: "" };
+  const publicPromotions = publicPromotionState.promotions;
   const books = catalog.books.map((book) => ({
     ...toPublicManifestEntry(book),
     contentKey: book.contentKey || "",
@@ -37,8 +38,16 @@ export async function onRequestGet(context) {
     scope: target.scope,
     publicPromotion: publicPromotions.get(book.id) || null
   }));
+  const promotionSummary = summarizePublicPromotions(books, publicPromotionState.error);
   const guard = await readUsageGuard(bucket, context.env);
-  return json({ books, updatedAt: catalog.updatedAt || "", guard, scope: target.scope, scopeLabel: target.label });
+  return json({
+    books,
+    updatedAt: catalog.updatedAt || "",
+    guard,
+    scope: target.scope,
+    scopeLabel: target.label,
+    promotionSummary
+  });
 }
 
 export async function onRequestPost(context) {
@@ -151,11 +160,11 @@ export async function onRequestPost(context) {
 
 async function readPublicPromotionIndex(env) {
   const publicBucket = getPublicBucket(env);
-  if (!publicBucket) return new Map();
+  if (!publicBucket) return { promotions: new Map(), error: "public-bucket-missing" };
 
   try {
     const catalog = await readCatalog(publicBucket);
-    return new Map((catalog.books || []).map((book) => [
+    const promotions = new Map((catalog.books || []).map((book) => [
       book.id,
       {
         published: book.published === true,
@@ -164,7 +173,33 @@ async function readPublicPromotionIndex(env) {
         promotedAt: book.promotedAt || ""
       }
     ]));
+    return { promotions, error: "" };
   } catch (err) {
-    return new Map();
+    return { promotions: new Map(), error: err?.message || String(err || "public-bucket-read-failed") };
   }
+}
+
+function summarizePublicPromotions(books, error = "") {
+  const nowMs = Date.now();
+  const promotions = books
+    .map((book) => book.publicPromotion)
+    .filter((promotion) => promotion?.published === true);
+  const active = promotions.filter((promotion) => promotion.visible === true);
+  const expired = promotions.filter((promotion) => promotion.visible !== true);
+  const activeExpireTimes = active
+    .map((promotion) => Date.parse(promotion.publicExpiresAt || ""))
+    .filter((expiresMs) => Number.isFinite(expiresMs) && expiresMs > nowMs);
+  const nearestExpiresAt = activeExpireTimes.length
+    ? new Date(Math.min(...activeExpireTimes)).toISOString()
+    : "";
+  const nearestRemainingDays = nearestExpiresAt
+    ? Math.max(0, Math.ceil((Date.parse(nearestExpiresAt) - nowMs) / 86400000))
+    : null;
+  return {
+    active: active.length,
+    expired: expired.length,
+    nearestExpiresAt,
+    nearestRemainingDays,
+    error
+  };
 }

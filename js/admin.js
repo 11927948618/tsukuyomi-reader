@@ -211,12 +211,31 @@ async function loadBooks() {
     loadedBookScope = normalizeBookScope(payload?.scope || scope);
     renderUsageGuard(payload?.guard || null);
     renderBooks(Array.isArray(payload?.books) ? payload.books : [], loadedBookScope);
-    setStatus(`${bookScopeLabel(loadedBookScope)} ${payload.books?.length || 0}件`, "ok");
+    setStatus(bookListStatus(payload, loadedBookScope), payload?.promotionSummary?.error ? "warn" : "ok");
   } catch (err) {
     adminBookList.innerHTML = "";
     renderUsageGuard(null);
     setStatus(err.message || "作品一覧の読み込みに失敗しました", "error");
   }
+}
+
+function bookListStatus(payload, scope) {
+  const count = Array.isArray(payload?.books) ? payload.books.length : 0;
+  const parts = [`${bookScopeLabel(scope)} ${count}件`];
+  const summary = payload?.promotionSummary || null;
+  if (summary) {
+    parts.push(`一般公開中 ${Number(summary.active) || 0}件`);
+    if (summary.nearestRemainingDays != null) {
+      parts.push(`最短残り${Number(summary.nearestRemainingDays) || 0}日`);
+    }
+    if (Number(summary.expired) > 0) {
+      parts.push(`期限切れ ${Number(summary.expired)}件`);
+    }
+    if (summary.error) {
+      parts.push(`公開用R2確認不可: ${summary.error}`);
+    }
+  }
+  return parts.join(" / ");
 }
 
 async function loadAnalytics() {
@@ -959,6 +978,7 @@ function renderBooks(books, scope = selectedBookScope()) {
           ? `一般公開中: ${formatDateTime(promotion.publicExpiresAt)}まで`
           : `一般公開期限切れ: ${formatDateTime(promotion.publicExpiresAt)}`
         : "";
+      const promotionUnchecked = normalizedScope === "limited" && !promotion;
       const cover = published && book.cover
         ? `<img src="${escapeHtml(book.cover)}" alt="${escapeHtml(book.title || "")} 表紙" />`
         : `<span class="admin-book-cover-label">${hasCover ? "表紙あり" : "表紙なし"}</span>`;
@@ -974,6 +994,7 @@ function renderBooks(books, scope = selectedBookScope()) {
             <p class="admin-book-meta">ID: ${escapeHtml(book.id || "")} / 更新日: ${escapeHtml(book.updatedAt || "-")}</p>
             <p class="admin-book-meta">形式: ${escapeHtml(format)} / 表紙: ${hasCover ? "あり" : "なし"}</p>
             ${promotionLabel ? `<p class="admin-book-meta">${escapeHtml(promotionLabel)}</p>` : ""}
+            ${promotionUnchecked ? `<p class="admin-book-meta">一般公開: 未昇格または状態未確認</p>` : ""}
             <span class="admin-pill ${published ? "published" : "private"}">${published ? "公開中" : "非公開"}</span>
             ${promoted ? `<span class="admin-pill ${promotionVisible ? "published" : "private"}">${promotionVisible ? "一般公開中" : "一般期限切れ"}</span>` : ""}
             <div class="admin-book-actions">
