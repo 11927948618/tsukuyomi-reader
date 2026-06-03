@@ -46,6 +46,7 @@ const analyticsRecent = document.getElementById("analyticsRecent");
 const usageGuardStatus = document.getElementById("usageGuardStatus");
 const updatedAt = document.getElementById("updatedAt");
 const openAdminHelpBtn = document.getElementById("openAdminHelpBtn");
+const copyReaderUrlBtn = document.getElementById("copyReaderUrlBtn");
 const closeAdminHelpBtn = document.getElementById("closeAdminHelpBtn");
 const adminHelpOverlay = document.getElementById("adminHelpOverlay");
 const adminHelpContent = document.getElementById("adminHelpContent");
@@ -67,6 +68,7 @@ const QUICK_HELP_HTML = `
     <li><strong>作品ID</strong>: 英数字、ハイフン、アンダースコアだけ使えます。空欄でも自動作成できます。差し替え時は同じIDを使います。</li>
     <li><strong>本文ファイル</strong>: EPUB、TXT、PDFを登録できます。PDFは固定レイアウト作品として表示します。表紙はJPG、PNG、WebPを指定できます。</li>
     <li><strong>一般公開</strong>: 作品は限定レビューへ保存し、一般公開する時だけ「一般公開へ昇格」で公開用R2へ7日間コピーします。全体停止はCloudflare環境変数 <code>TSUKUYOMI_PUBLICATION_PAUSED=true</code> です。</li>
+    <li><strong>限定レビュー案内</strong>: 作品を保存し、相手に <code>PW発行</code> した後、ヘッダーの「限定URLコピー」で読者画面URLをコピーして送ります。</li>
     <li><strong>表紙削除・作品削除</strong>: 表紙だけ外す場合は「表紙削除」、本文ごとR2から消す場合は「作品削除」を使います。</li>
     <li><strong>R2使用状況</strong>: 保存容量の概算を確認できます。Class A/B操作数はCloudflare R2 Metricsで確認します。</li>
     <li><strong>読書ログ</strong>: 作品別の開始、読了、平均進捗を軽く確認できます。読者同士には公開せず、管理側で一元保管・集計して作品傾向や将来分析に使います。</li>
@@ -80,6 +82,7 @@ const ACCESS_HELP_HTML = `
   <h3>個別アクセス許可の手順</h3>
   <ol>
     <li><strong>Reader内パスワード認証</strong>: <code>TSUKUYOMI_REVIEW_PASSWORD_AUTH=true</code> を設定し、管理画面で相手のメールアドレスまたは仮IDにパスワードを発行します。平文は発行時だけ表示されます。</li>
+    <li><strong>案内URL</strong>: ヘッダーの「限定URLコピー」で、この管理画面と同じPages projectの読者画面URLをコピーできます。仮IDまたはメールアドレス、発行パスワードと一緒に相手へ送ります。</li>
     <li><strong>Cloudflare側で許可する</strong>: Cloudflare Accessを使う場合は、Dashboardで限定レビュー版Pagesを開き、Accessの許可ポリシーに相手のメールアドレスを追加します。</li>
     <li><strong>保護範囲を確認する</strong>: Reader画面だけでなく、<code>/api/books</code>、本文API、表紙APIも未認証で読めないようにします。</li>
     <li><strong>One-time PIN</strong>: 友人側にアカウント作成を求めない場合は、One-time PIN方式を使います。</li>
@@ -130,6 +133,7 @@ reloadStorageBtn?.addEventListener("click", loadStorage);
 reloadReviewAccessBtn?.addEventListener("click", loadReviewAccess);
 resetFormBtn?.addEventListener("click", resetForm);
 openAdminHelpBtn?.addEventListener("click", openAdminHelp);
+copyReaderUrlBtn?.addEventListener("click", copyReaderUrl);
 closeAdminHelpBtn?.addEventListener("click", closeAdminHelp);
 addReviewAccessBtn?.addEventListener("click", addReviewAccessEntry);
 quickIssueReviewPasswordBtn?.addEventListener("click", quickIssueReviewPassword);
@@ -947,6 +951,14 @@ function renderBooks(books, scope = selectedBookScope()) {
     .map((book) => {
       const published = book.published === true;
       const hasCover = Boolean(book.coverKey || book.cover);
+      const promotion = book.publicPromotion || null;
+      const promoted = promotion?.published === true;
+      const promotionVisible = promotion?.visible === true;
+      const promotionLabel = promoted
+        ? promotionVisible
+          ? `一般公開中: ${formatDateTime(promotion.publicExpiresAt)}まで`
+          : `一般公開期限切れ: ${formatDateTime(promotion.publicExpiresAt)}`
+        : "";
       const cover = published && book.cover
         ? `<img src="${escapeHtml(book.cover)}" alt="${escapeHtml(book.title || "")} 表紙" />`
         : `<span class="admin-book-cover-label">${hasCover ? "表紙あり" : "表紙なし"}</span>`;
@@ -961,11 +973,13 @@ function renderBooks(books, scope = selectedBookScope()) {
             <p class="admin-book-meta">${escapeHtml(book.description || "")}</p>
             <p class="admin-book-meta">ID: ${escapeHtml(book.id || "")} / 更新日: ${escapeHtml(book.updatedAt || "-")}</p>
             <p class="admin-book-meta">形式: ${escapeHtml(format)} / 表紙: ${hasCover ? "あり" : "なし"}</p>
+            ${promotionLabel ? `<p class="admin-book-meta">${escapeHtml(promotionLabel)}</p>` : ""}
             <span class="admin-pill ${published ? "published" : "private"}">${published ? "公開中" : "非公開"}</span>
+            ${promoted ? `<span class="admin-pill ${promotionVisible ? "published" : "private"}">${promotionVisible ? "一般公開中" : "一般期限切れ"}</span>` : ""}
             <div class="admin-book-actions">
               <button class="button ghost" type="button" data-action="edit">編集に読み込む</button>
               <button class="button ghost" type="button" data-action="toggle">${published ? "一覧から外す" : "一覧に表示"}</button>
-              ${normalizedScope === "limited" ? `<button class="button ghost" type="button" data-action="promote">一般公開へ昇格</button>` : ""}
+              ${normalizedScope === "limited" ? `<button class="button ghost" type="button" data-action="promote">${promoted ? "一般公開を延長" : "一般公開へ昇格"}</button>` : ""}
               ${hasCover ? `<button class="button ghost danger" type="button" data-action="remove-cover">表紙削除</button>` : ""}
               <button class="button ghost danger" type="button" data-action="delete">作品削除</button>
             </div>
@@ -1006,15 +1020,18 @@ async function promoteBook(book) {
   }
 
   const title = book.title || book.id || "この作品";
+  const alreadyPromoted = book.publicPromotion?.published === true;
   const confirmed = window.prompt(
-    `「${title}」を一般公開用R2へコピーし、7日間だけ一般作品一覧に表示します。\n限定レビュー認証は一般公開側には適用されません。\n続行するには PUBLIC と入力してください。`
+    alreadyPromoted
+      ? `「${title}」の一般公開期限を7日後まで延長します。\n限定レビュー認証は一般公開側には適用されません。\n続行するには PUBLIC と入力してください。`
+      : `「${title}」を一般公開用R2へコピーし、7日間だけ一般作品一覧に表示します。\n限定レビュー認証は一般公開側には適用されません。\n続行するには PUBLIC と入力してください。`
   );
   if (confirmed !== "PUBLIC") {
     setStatus("一般公開への昇格をキャンセルしました");
     return;
   }
 
-  setStatus("一般公開へ昇格中...");
+  setStatus(alreadyPromoted ? "一般公開を延長中..." : "一般公開へ昇格中...");
   try {
     const res = await fetch(`./api/admin/books/${encodeURIComponent(book.id)}/promote`, {
       method: "POST",
@@ -1026,7 +1043,8 @@ async function promoteBook(book) {
     });
     const payload = await readJson(res);
     if (!res.ok) throw new Error(payload?.error || "一般公開への昇格に失敗しました");
-    setStatus(`一般公開へ昇格しました（期限: ${formatDateTime(payload?.publicExpiresAt || "")}）`, "ok");
+    setStatus(`${alreadyPromoted ? "一般公開を延長しました" : "一般公開へ昇格しました"}（期限: ${formatDateTime(payload?.publicExpiresAt || "")}）`, "ok");
+    loadBooks();
   } catch (err) {
     setStatus(err.message || "一般公開への昇格に失敗しました", "error");
   }
@@ -1126,6 +1144,20 @@ function cleanupStatus(message, payload) {
   const failed = Array.isArray(payload?.cleanup?.failed) ? payload.cleanup.failed : [];
   if (!failed.length) return message;
   return `${message}（一部R2ファイル削除は未完了です）`;
+}
+
+async function copyReaderUrl() {
+  try {
+    await copyTextToClipboard(readerUrl());
+    setStatus("限定レビューURLをコピーしました", "ok");
+    setReviewAccessStatus("限定レビューURLをコピーしました", "ok");
+  } catch (err) {
+    setStatus("URLをコピーできませんでした", "error");
+  }
+}
+
+function readerUrl() {
+  return new URL("./", window.location.href).href;
 }
 
 function selectedBookScope() {

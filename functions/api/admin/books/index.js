@@ -1,6 +1,8 @@
 import {
   json,
   error,
+  getPublicBucket,
+  isBookVisible,
   requireAdmin,
   resolveAdminBooksBucket,
   readCatalog,
@@ -25,11 +27,15 @@ export async function onRequestGet(context) {
   if (!bucket) return error(target.missingMessage, 500);
 
   const catalog = await readCatalog(bucket);
+  const publicPromotions = target.scope === "limited"
+    ? await readPublicPromotionIndex(context.env)
+    : new Map();
   const books = catalog.books.map((book) => ({
     ...toPublicManifestEntry(book),
     contentKey: book.contentKey || "",
     coverKey: book.coverKey || "",
-    scope: target.scope
+    scope: target.scope,
+    publicPromotion: publicPromotions.get(book.id) || null
   }));
   const guard = await readUsageGuard(bucket, context.env);
   return json({ books, updatedAt: catalog.updatedAt || "", guard, scope: target.scope, scopeLabel: target.label });
@@ -141,4 +147,24 @@ export async function onRequestPost(context) {
     }
   });
   return json({ ok: true, book: toPublicManifestEntry(nextBook), cleanup });
+}
+
+async function readPublicPromotionIndex(env) {
+  const publicBucket = getPublicBucket(env);
+  if (!publicBucket) return new Map();
+
+  try {
+    const catalog = await readCatalog(publicBucket);
+    return new Map((catalog.books || []).map((book) => [
+      book.id,
+      {
+        published: book.published === true,
+        visible: isBookVisible(book),
+        publicExpiresAt: book.publicExpiresAt || "",
+        promotedAt: book.promotedAt || ""
+      }
+    ]));
+  } catch (err) {
+    return new Map();
+  }
 }
