@@ -690,12 +690,43 @@ function renderReviewPasswordResult(entry, password) {
   `;
   reviewPasswordResult.querySelector("[data-copy-password]")?.addEventListener("click", async () => {
     try {
-      await navigator.clipboard.writeText(password);
+      await copyTextToClipboard(password);
       setReviewAccessStatus("パスワードをコピーしました", "ok");
     } catch (err) {
       setReviewAccessStatus("コピーできませんでした。表示されたパスワードを控えてください。", "error");
     }
   });
+}
+
+async function copyTextToClipboard(text) {
+  const value = String(text || "");
+  if (!value) throw new Error("copy text is empty");
+
+  if (navigator.clipboard?.writeText) {
+    try {
+      await navigator.clipboard.writeText(value);
+      return;
+    } catch (err) {
+      // Fall back for browsers or Access-wrapped pages that block Clipboard API.
+    }
+  }
+
+  const textarea = document.createElement("textarea");
+  textarea.value = value;
+  textarea.setAttribute("readonly", "");
+  textarea.style.position = "fixed";
+  textarea.style.top = "-1000px";
+  textarea.style.left = "-1000px";
+  document.body.appendChild(textarea);
+  textarea.focus();
+  textarea.select();
+
+  try {
+    const copied = document.execCommand("copy");
+    if (!copied) throw new Error("execCommand copy failed");
+  } finally {
+    textarea.remove();
+  }
 }
 
 function clearReviewAccess(message = adminAuthRequiredMessage(), type = "") {
