@@ -258,6 +258,10 @@ body.mode-paged .reader-content {
   overflow: visible;
 }
 
+body.mode-paged.page-columns-enabled .reader-content {
+  column-gap: var(--page-column-gap, 2.4em);
+}
+
 body.mode-paged .reader-content.force-vertical {
   inline-size: var(--paged-inline-size, 100%);
   block-size: var(--paged-block-size, auto);

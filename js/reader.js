@@ -122,16 +122,19 @@ export function initReader({
       const blockBase = mode === "horizontal" ? height : (pageColumns ? wrapped : width);
       const inlineSize = snapDownToStep(inlineBase, charAdvance, Math.max(120, charAdvance * 8));
       const blockSize = snapDownToStep(blockBase, lineAdvance, Math.max(120, lineAdvance * 4));
+      const columnGap = pageColumns ? Math.max(lineAdvance * 1.6, metrics.fontPx * 2.4) : 0;
 
       document.documentElement.style.setProperty("--page-width", `${Math.max(1, mode === "horizontal" ? inlineSize : blockSize)}px`);
       document.documentElement.style.setProperty("--paged-inline-size", `${Math.max(1, inlineSize)}px`);
       document.documentElement.style.setProperty("--paged-block-size", `${Math.max(1, blockSize)}px`);
+      document.documentElement.style.setProperty("--page-column-gap", `${Math.round(columnGap)}px`);
       return;
     }
 
     document.documentElement.style.setProperty("--page-width", `${Math.max(240, wrapped)}px`);
     document.documentElement.style.removeProperty("--paged-inline-size");
     document.documentElement.style.removeProperty("--paged-block-size");
+    document.documentElement.style.removeProperty("--page-column-gap");
   };
   const applyViewportMetrics = () => {
     const visualHeight = Number(window.visualViewport?.height) || Number(window.innerHeight) || 0;
@@ -519,6 +522,7 @@ export function initReader({
     structureAutoDetect = nextSettings.structureAutoDetect !== false;
     pageTurnEffect = normalizePageTurnEffect(nextSettings.pageTurnEffect);
     pageColumns = nextSettings.pageColumns === true;
+    document.body.classList.toggle("page-columns-enabled", pageColumns);
     wrapWidthPercent = normalizeWrapWidthPercent(nextSettings.wrapWidthPercent);
     writingModePreference = normalizeWritingModePreference(nextSettings.writingModePreference);
     applyWritingModePreference(writingModePreference);
