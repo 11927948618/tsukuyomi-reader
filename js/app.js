@@ -359,6 +359,17 @@ function exportCurrentBook() {
 }
 
 function buildBookId(book) {
+  const meta = book?.meta && typeof book.meta === "object" ? book.meta : {};
+  const sourceData = meta.sourceData && typeof meta.sourceData === "object" ? meta.sourceData : {};
+  const stableSourceId = [
+    meta.sourceType || "",
+    sourceData.manifestPath || "",
+    sourceData.id || "",
+    sourceData.path || "",
+    sourceData.filename || ""
+  ].filter(Boolean).join("::");
+  if (stableSourceId) return stableSourceId;
+
   const title = book?.title || "Untitled";
   const tocLength = Array.isArray(book?.toc) ? book.toc.length : 0;
   const htmlLength = (book?.html || "").length;

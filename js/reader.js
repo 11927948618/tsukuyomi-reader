@@ -53,6 +53,9 @@ export function initReader({
   const hardReloadBtn = qs("#hardReloadBtn");
   const displayModeRadios = Array.from(document.querySelectorAll('input[name="displayMode"]'));
   const scrollContainer = readerViewport || bookContent;
+  const bookFormat = getBookFormat(book);
+  const supportsStructureAutoDetect = bookFormat === "txt";
+  const hasInitialProgress = isReaderProgress(progress);
   let displayMode = normalizeDisplayMode(settings?.displayMode);
   let tapInScroll = Boolean(settings?.tapInScroll);
   let wheelPaging = Boolean(settings?.wheelPaging);
@@ -61,6 +64,7 @@ export function initReader({
   let wrapWidthPercent = normalizeWrapWidthPercent(settings?.wrapWidthPercent);
   let writingModePreference = normalizeWritingModePreference(settings?.writingModePreference);
   let pageDirection = writingModePreference === "vertical" ? "rtl" : "ltr";
+  let isInitialLayout = true;
   let skipNextTap = false;
   const refreshHScroll = setupHScroll(scrollContainer);
   const getViewportInnerSize = (axis = "x") => {
@@ -162,6 +166,15 @@ export function initReader({
     scrollToLogicalLeft(Math.max(0, Number(position.logicalLeft) || 0));
   };
 
+  const scrollToBookStart = () => {
+    if (!scrollContainer) return;
+    if (displayMode === "scrolly") {
+      scrollContainer.scrollTop = 0;
+      return;
+    }
+    scrollToLogicalLeft(0);
+  };
+
   const playPageTurnEffect = (direction = "forward") => {
     if (pageTurnEffect === "none" || displayMode !== "paged") return;
     document.body.classList.remove(
@@ -197,7 +210,8 @@ export function initReader({
       applyTopbarOffset();
       applyPageWidth();
       updatePageDirection({ preservePosition: true });
-      restoreReaderPosition(position);
+      if (position) restoreReaderPosition(position);
+      else scrollToBookStart();
       if (typeof refreshHScroll === "function") refreshHScroll();
     };
 
@@ -280,8 +294,8 @@ export function initReader({
   bindTopEdgeRevealTap(tapZone);
   bindPageTap(tapZone, scrollContainer);
   bindWheelScroll(readerViewport, scrollContainer, tapZone);
-  applyDisplayMode(displayMode, { tapInScroll });
-  reflowReaderLayout();
+  applyDisplayMode(displayMode, { tapInScroll, preservePosition: hasInitialProgress });
+  reflowReaderLayout({ preservePosition: hasInitialProgress });
   const handleViewportResize = () => reflowReaderLayout({ preservePosition: true });
   window.addEventListener("resize", handleViewportResize);
   window.addEventListener("orientationchange", handleViewportResize);
@@ -292,6 +306,9 @@ export function initReader({
   if (openSettingsOnStart) {
     requestAnimationFrame(() => toggleSettings(true));
   }
+  requestAnimationFrame(() => {
+    isInitialLayout = false;
+  });
 
   function openOverlay() {
     if (!uiOverlay) return;
@@ -366,7 +383,7 @@ export function initReader({
       requestAnimationFrame(() => {
         applyWritingModePreference(writingModePreference);
         updatePageDirection();
-        scrollContainer.scrollLeft = toPhysicalLeft(scrollContainer, 0, pageDirection);
+        scrollToBookStart();
         refreshHScroll?.();
       });
     });
@@ -400,7 +417,7 @@ export function initReader({
       btn.addEventListener("click", () => {
         const target = document.getElementById(item.chapterId);
         if (target) {
-          target.scrollIntoView({ behavior: "smooth", block: "start" });
+          jumpToReaderTarget(target);
         }
         closeToc();
       });
@@ -446,6 +463,23 @@ export function initReader({
     });
   }
 
+  function jumpToReaderTarget(target) {
+    if (!target || !scrollContainer) return;
+    if (displayMode === "scrolly") {
+      target.scrollIntoView({ behavior: "smooth", block: "start" });
+      return;
+    }
+
+    target.scrollIntoView({ behavior: "auto", block: "start", inline: "start" });
+    requestAnimationFrame(() => {
+      const pageSize = getHorizontalPageSize();
+      const logical = toLogicalLeft(scrollContainer, scrollContainer.scrollLeft, pageDirection);
+      const snapped = Math.max(0, Math.round(logical / pageSize) * pageSize);
+      scrollToLogicalLeft(snapped, "auto");
+      refreshHScroll?.();
+    });
+  }
+
   function applySettings(nextSettings) {
     if (!nextSettings) return;
 
@@ -467,7 +501,7 @@ export function initReader({
     applyWritingModePreference(writingModePreference);
     updatePageDirection({ preservePosition: true });
     applyPageWidth();
-    applyDisplayMode(displayMode, { tapInScroll });
+    applyDisplayMode(displayMode, { tapInScroll, preservePosition: !isInitialLayout || hasInitialProgress });
 
     fontSizeRange.value = String(nextSettings.fontSize ?? 100);
     if (fontFamilySelect) {
@@ -480,6 +514,7 @@ export function initReader({
     if (writingModeSelect) writingModeSelect.value = writingModePreference;
     if (wheelPagingCheck) wheelPagingCheck.checked = wheelPaging;
     if (structureAutoDetectCheck) structureAutoDetectCheck.checked = structureAutoDetect;
+    syncStructureAutoDetectControl();
     if (pageTurnEffectSelect) pageTurnEffectSelect.value = pageTurnEffect;
     displayModeRadios.forEach((radio) => {
       radio.checked = radio.value === displayMode;
@@ -627,6 +662,17 @@ export function initReader({
     updateGenkoMatchBadge(approxCharsPerLine, approxLinesPerPage);
   }
 
+  function syncStructureAutoDetectControl() {
+    if (!structureAutoDetectCheck) return;
+    structureAutoDetectCheck.disabled = !supportsStructureAutoDetect;
+    const label = structureAutoDetectCheck.closest("label");
+    if (!label) return;
+    label.classList.toggle("disabled-field", !supportsStructureAutoDetect);
+    label.title = supportsStructureAutoDetect
+      ? "TXT本文の見出しらしい行から章一覧を作ります。"
+      : "EPUBはファイル内の目次を使います。目次がないEPUBは本文1章として扱います。";
+  }
+
   function updateGenkoMatchBadge(charsPerLine, linesPerPage) {
     if (!genkoMatchBadge) return;
 
@@ -695,8 +741,11 @@ export function initReader({
     const mode = normalizeWritingModePreference(writingModeSelect?.value || writingModePreference);
 
     const fontPx = (fontSize / 100) * 16;
-    const targetLineHeightRaw = viewportHeight / (20 * Math.max(10, fontPx));
-    const targetLineHeight = clamp(targetLineHeightRaw, 1.4, 2.4);
+    const targetLineHeightRaw =
+      mode === "horizontal"
+        ? viewportHeight / (20 * Math.max(10, fontPx))
+        : viewportWidthSafe / (20 * Math.max(10, fontPx));
+    const targetLineHeight = clamp(targetLineHeightRaw, 1.4, 2.2);
     const naturalLineHeight = clamp(
       targetLineHeight,
       Math.max(1.4, lineHeightNow - 0.35),
@@ -708,7 +757,8 @@ export function initReader({
         ? Math.max(6, fontPx * 0.95 + letterSpacing)
         : Math.max(6, fontPx * naturalLineHeight);
     const targetWrapPx = charAdvance * 20;
-    const wrapWidthPercent = normalizeWrapWidthPercent((targetWrapPx / viewportWidthSafe) * 100);
+    const wrapBase = viewportWidthSafe;
+    const wrapWidthPercent = normalizeWrapWidthPercent((targetWrapPx / wrapBase) * 100);
 
     return {
       fontSize,
@@ -1045,7 +1095,7 @@ export function initReader({
     } else {
       document.body.classList.add("mode-scrolly");
     }
-    requestAnimationFrame(() => reflowReaderLayout({ preservePosition: true }));
+    requestAnimationFrame(() => reflowReaderLayout({ preservePosition: options.preservePosition !== false }));
   }
 
   function bindWheelScroll(viewport, scrollEl, captureEl) {
@@ -1137,6 +1187,23 @@ function getPdfUrl(book) {
     String(meta.format || "").toLowerCase() === "pdf" ||
     String(sourceData.kind || "").toLowerCase() === "pdf";
   return isPdf ? String(meta.pdfUrl || "").trim() : "";
+}
+
+function getBookFormat(book) {
+  const meta = book?.meta && typeof book.meta === "object" ? book.meta : {};
+  const sourceData = meta.sourceData && typeof meta.sourceData === "object" ? meta.sourceData : {};
+  const raw = String(meta.format || sourceData.kind || "").toLowerCase();
+  if (raw === "epub" || raw === "txt" || raw === "html" || raw === "pdf") return raw;
+  return "";
+}
+
+function isReaderProgress(progress) {
+  if (!progress || typeof progress !== "object") return false;
+  const scrollTop = Number(progress.scrollTop) || 0;
+  const scrollLeft = Number(progress.scrollLeft) || 0;
+  const pageIndex = Number(progress.pageIndex) || 0;
+  const progressPercent = Number(progress.progressPercent);
+  return scrollTop > 0 || scrollLeft > 0 || pageIndex > 0 || (Number.isFinite(progressPercent) && progressPercent > 0 && progressPercent < 100);
 }
 
 function withPdfViewerParams(url) {

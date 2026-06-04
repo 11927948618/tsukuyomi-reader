@@ -191,6 +191,7 @@ body.topbar-mobile-wrap .topbar-group-right .button {
 }
 
 .reader-viewport {
+  position: relative;
   background: var(--panel);
   border: 1px solid var(--border);
   border-radius: 18px;
@@ -208,12 +209,41 @@ body.mode-paged .reader-main {
 }
 
 body.mode-paged .reader-viewport {
-  padding-inline: clamp(20px, 5vw, 56px);
+  overflow: hidden;
+  padding-inline: clamp(38px, 6vw, 72px);
   border: 2px solid color-mix(in srgb, var(--border), var(--text) 16%);
   box-shadow: 0 10px 26px rgba(0, 0, 0, 0.16);
+  cursor: default;
+}
+
+body.mode-paged .reader-viewport::before,
+body.mode-paged .reader-viewport::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: clamp(18px, 2.4vw, 30px);
+  z-index: 2;
+  pointer-events: none;
+}
+
+body.mode-paged .reader-viewport::before {
+  left: 0;
+  border-right: 1px solid color-mix(in srgb, var(--border), var(--text) 12%);
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--panel), #000 10%), color-mix(in srgb, var(--panel), transparent 8%));
+}
+
+body.mode-paged .reader-viewport::after {
+  right: 0;
+  border-left: 1px solid color-mix(in srgb, var(--border), var(--text) 12%);
+  background:
+    linear-gradient(270deg, color-mix(in srgb, var(--panel), #000 10%), color-mix(in srgb, var(--panel), transparent 8%));
 }
 
 .reader-content {
+  position: relative;
+  z-index: 1;
   column-width: var(--page-width, 100vw);
   column-gap: 0;
   font-size: calc(var(--font-size) * 1%);
@@ -534,7 +564,7 @@ body.mode-scrolly .reader-content {
   position: fixed;
   top: 0;
   right: 0;
-  width: min(320px, 92vw);
+  width: min(360px, 94vw);
   height: 100vh;
   height: 100dvh;
   background: var(--panel);
@@ -562,7 +592,7 @@ body.mode-scrolly .reader-content {
   top: 0;
   background: var(--panel);
   z-index: 1;
-  padding: 4px 14px 10px;
+  padding: 12px 14px 10px;
   border-bottom: 1px solid var(--border);
 }
 
@@ -574,11 +604,9 @@ body.mode-scrolly .reader-content {
 
 .settings-body {
   flex: 1 1 auto;
-  display: grid;
-  gap: 8px;
-  align-content: start;
+  display: block;
   min-height: 0;
-  padding: 0 14px calc(20px + env(safe-area-inset-bottom));
+  padding: 12px 14px calc(20px + env(safe-area-inset-bottom));
   overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior: contain;
@@ -592,9 +620,17 @@ body.settings-open .tap-zone {
 
 .settings-group {
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: 8px;
   background: color-mix(in srgb, var(--panel), #000 4%);
   overflow: hidden;
+  min-height: 0;
+}
+
+.settings-group + .settings-group,
+.settings-group + .build-info,
+.build-info + .settings-privacy,
+.settings-privacy + .settings-copyright {
+  margin-top: 10px;
 }
 
 .settings-group-toggle {
@@ -622,8 +658,8 @@ body.settings-open .tap-zone {
 
 .settings-group-body {
   display: grid;
-  gap: 8px;
-  padding: 0 12px 10px;
+  gap: 10px;
+  padding: 2px 12px 12px;
 }
 
 .settings-group:not(.open) .settings-group-body {
@@ -632,7 +668,12 @@ body.settings-open .tap-zone {
 
 .settings-panel .field {
   display: grid;
-  gap: 2px;
+  gap: 5px;
+  min-width: 0;
+}
+
+.settings-panel .disabled-field {
+  color: var(--muted);
 }
 
 .field-head {
@@ -865,7 +906,7 @@ body {
   }
 
   .settings-panel {
-    width: min(340px, 96vw);
+    width: min(360px, 96vw);
   }
 
   .settings-panel > header {
@@ -883,8 +924,7 @@ body {
   }
 
   .settings-body {
-    padding: 0 12px max(12px, env(safe-area-inset-bottom));
-    gap: 8px;
+    padding: 10px 12px max(12px, env(safe-area-inset-bottom));
     min-height: 0;
     overflow-y: auto;
     overscroll-behavior: contain;
@@ -906,7 +946,6 @@ body {
   }
 
   .settings-body {
-    padding: 0 10px max(10px, env(safe-area-inset-bottom));
-    gap: 6px;
+    padding: 8px 10px max(10px, env(safe-area-inset-bottom));
   }
 }

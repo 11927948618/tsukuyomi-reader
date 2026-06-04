@@ -1215,11 +1215,96 @@ function buildTocFromHeadings(chapters) {
   const toc = [];
   for (let i = 0; i < chapters.length; i += 1) {
     const chapter = chapters[i];
-    const heading = chapter.section.querySelector("h1, h2");
-    const title = safeText(heading?.textContent || chapter.title || "", `章${i + 1}`);
-    toc.push({ title, chapterId: chapter.id });
+    const headings = findEpubTocCandidates(chapter.section);
+    if (headings.length === 0) {
+      toc.push({ title: safeText(chapter.title || "", `章${i + 1}`), chapterId: chapter.id });
+      continue;
+    }
+
+    headings.forEach((heading, headingIndex) => {
+      const title = safeText(heading.textContent || "", headingIndex === 0 ? chapter.title : `章${i + 1}`);
+      const headingId = ensureHeadingId(heading, chapter.id, headingIndex);
+      toc.push({ title, chapterId: headingId });
+    });
   }
   return dedupeToc(toc);
+}
+
+function findEpubTocCandidates(section) {
+  if (!section) return [];
+  const candidates = [];
+  const seen = new Set();
+  const selector = [
+    "h1",
+    "h2",
+    "h3",
+    "[epub\\:type~='chapter']",
+    "[epub\\:type~='part']",
+    "[epub\\:type~='prologue']",
+    "[epub\\:type~='epilogue']",
+    "[role='doc-chapter']",
+    "[role='doc-part']",
+    "[class*='chapter' i]",
+    "[class*='title' i]",
+    "[class*='section' i]",
+    "[id*='chapter' i]",
+    "[id*='title' i]",
+    "[id*='section' i]",
+    "p",
+    "div"
+  ].join(",");
+
+  for (const el of Array.from(section.querySelectorAll(selector))) {
+    if (seen.has(el)) continue;
+    if (!isEpubTocCandidate(el)) continue;
+    seen.add(el);
+    candidates.push(el);
+  }
+
+  return candidates;
+}
+
+function isEpubTocCandidate(el) {
+  if (!el) return false;
+  const tag = String(el.tagName || "").toLowerCase();
+  const text = compactText(el.textContent || "");
+  if (!text || text.length > 48) return false;
+  if (/^[\s\-_=*＊・]+$/.test(text)) return false;
+
+  if (/^h[1-3]$/.test(tag)) return true;
+  if (detectEpubHeadingText(text)) return true;
+
+  const hint = [
+    el.getAttribute("epub:type") || "",
+    el.getAttribute("role") || "",
+    el.getAttribute("class") || "",
+    el.getAttribute("id") || ""
+  ].join(" ").toLowerCase();
+  if (/(chapter|section|part|title|prologue|epilogue|doc-chapter|doc-part)/.test(hint)) {
+    return text.length <= 36;
+  }
+
+  return false;
+}
+
+function detectEpubHeadingText(text) {
+  const raw = compactText(text);
+  if (!raw || raw.length > 48) return false;
+  const patterns = [
+    /^第[一二三四五六七八九十百千万〇零\d]+[章話節部編幕][\s　:：、.．-]*(.*)$/u,
+    /^[一二三四五六七八九十百千万〇零\d]+[章話節][\s　:：、.．-]*(.*)$/u,
+    /^(序章|終章|最終章|プロローグ|エピローグ|あとがき|まえがき|前書き|後書き)$/u,
+    /^(chapter|chap\.?|section|part)\s+[0-9ivxlcdm]+[\s:：.\-]*(.*)$/iu
+  ];
+  return patterns.some((pattern) => pattern.test(raw));
+}
+
+function ensureHeadingId(heading, chapterId, headingIndex) {
+  const current = String(heading.getAttribute("id") || "").trim();
+  if (current) return current;
+  const next = headingIndex === 0 ? chapterId : `${chapterId}-heading-${String(headingIndex + 1).padStart(2, "0")}`;
+  heading.setAttribute("id", next);
+  return next;
 }
 
 function guessMimeType(path) {
