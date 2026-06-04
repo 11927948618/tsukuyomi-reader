@@ -46,6 +46,8 @@ export function initReader({
   const themeSelect = qs("#themeSelect");
   const writingModeSelect = qs("#writingModeSelect");
   const wheelPagingCheck = qs("#wheelPagingCheck");
+  const structureAutoDetectCheck = qs("#structureAutoDetectCheck");
+  const pageTurnEffectSelect = qs("#pageTurnEffectSelect");
   const applyGenkoPresetBtn = qs("#applyGenkoPresetBtn");
   const reloadBtn = qs("#reloadBtn");
   const hardReloadBtn = qs("#hardReloadBtn");
@@ -54,6 +56,8 @@ export function initReader({
   let displayMode = normalizeDisplayMode(settings?.displayMode);
   let tapInScroll = Boolean(settings?.tapInScroll);
   let wheelPaging = Boolean(settings?.wheelPaging);
+  let structureAutoDetect = settings?.structureAutoDetect !== false;
+  let pageTurnEffect = normalizePageTurnEffect(settings?.pageTurnEffect);
   let wrapWidthPercent = normalizeWrapWidthPercent(settings?.wrapWidthPercent);
   let writingModePreference = normalizeWritingModePreference(settings?.writingModePreference);
   let pageDirection = writingModePreference === "vertical" ? "rtl" : "ltr";
@@ -84,6 +88,7 @@ export function initReader({
     const totalPages = Math.max(1, Math.floor(maxLeft / pageSize) + 1);
     const currentPage = clamp(Math.round(logical / pageSize), 0, totalPages - 1);
     const targetPage = clamp(currentPage + stepCount, 0, totalPages - 1);
+    if (targetPage === currentPage && !(stepCount > 0 && logical < maxLeft) && !(stepCount < 0 && logical > 0)) return;
     let targetLogical = clamp(targetPage * pageSize, 0, maxLeft);
 
     // Ensure the last partial page is still reachable by tap paging.
@@ -95,6 +100,7 @@ export function initReader({
     }
 
     scrollToLogicalLeft(targetLogical, behavior);
+    flashPageTurn();
   };
   const applyPageWidth = () => {
     const width = getHorizontalPageSize();
@@ -154,6 +160,16 @@ export function initReader({
       return;
     }
     scrollToLogicalLeft(Math.max(0, Number(position.logicalLeft) || 0));
+  };
+
+  const flashPageTurn = () => {
+    if (pageTurnEffect !== "flash" || displayMode !== "paged") return;
+    document.body.classList.remove("page-turn-flash");
+    void document.body.offsetWidth;
+    document.body.classList.add("page-turn-flash");
+    window.setTimeout(() => {
+      document.body.classList.remove("page-turn-flash");
+    }, 140);
   };
 
   const reflowReaderLayout = (options = {}) => {
@@ -330,8 +346,39 @@ export function initReader({
 
     bookContent.innerHTML = currentBook.html || "";
 
+    renderToc(currentBook);
+
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        applyWritingModePreference(writingModePreference);
+        updatePageDirection();
+        scrollContainer.scrollLeft = toPhysicalLeft(scrollContainer, 0, pageDirection);
+        refreshHScroll?.();
+      });
+    });
+
+    // 現状は全文一括DOM生成。大容量書籍向けの分割描画は別対応とする。
+  }
+
+  function renderToc(currentBook) {
+    if (!tocList) return;
     tocList.innerHTML = "";
-    (currentBook.toc || []).forEach((item) => {
+    const sourceToc = Array.isArray(currentBook?.toc) ? currentBook.toc : [];
+    const autoDetected = currentBook?.meta?.textStructureAutoDetected === true;
+    const tocItems = autoDetected && !structureAutoDetect
+      ? [{ chapterId: sourceToc[0]?.chapterId || "chapter-001", title: "本文" }]
+      : sourceToc;
+
+    tocPanel?.classList.toggle("toc-structure-disabled", autoDetected && !structureAutoDetect);
+    if (!tocItems.length) {
+      const li = document.createElement("li");
+      li.className = "toc-empty";
+      li.textContent = "章が見つかりません";
+      tocList.appendChild(li);
+      return;
+    }
+
+    tocItems.forEach((item) => {
       const li = document.createElement("li");
       const btn = document.createElement("button");
       btn.type = "button";
@@ -346,17 +393,6 @@ export function initReader({
       li.appendChild(btn);
       tocList.appendChild(li);
     });
-
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        applyWritingModePreference(writingModePreference);
-        updatePageDirection();
-        scrollContainer.scrollLeft = toPhysicalLeft(scrollContainer, 0, pageDirection);
-        refreshHScroll?.();
-      });
-    });
-
-    // 現状は全文一括DOM生成。大容量書籍向けの分割描画は別対応とする。
   }
 
   function renderPdfBook(currentBook, pdfUrl) {
@@ -410,6 +446,8 @@ export function initReader({
     displayMode = normalizeDisplayMode(nextSettings.displayMode);
     tapInScroll = Boolean(nextSettings.tapInScroll);
     wheelPaging = Boolean(nextSettings.wheelPaging);
+    structureAutoDetect = nextSettings.structureAutoDetect !== false;
+    pageTurnEffect = normalizePageTurnEffect(nextSettings.pageTurnEffect);
     wrapWidthPercent = normalizeWrapWidthPercent(nextSettings.wrapWidthPercent);
     writingModePreference = normalizeWritingModePreference(nextSettings.writingModePreference);
     applyWritingModePreference(writingModePreference);
@@ -427,9 +465,12 @@ export function initReader({
     themeSelect.value = nextSettings.theme || "light";
     if (writingModeSelect) writingModeSelect.value = writingModePreference;
     if (wheelPagingCheck) wheelPagingCheck.checked = wheelPaging;
+    if (structureAutoDetectCheck) structureAutoDetectCheck.checked = structureAutoDetect;
+    if (pageTurnEffectSelect) pageTurnEffectSelect.value = pageTurnEffect;
     displayModeRadios.forEach((radio) => {
       radio.checked = radio.value === displayMode;
     });
+    renderToc(book);
     updateSettingValueLabels();
   }
 
@@ -454,6 +495,12 @@ export function initReader({
     });
     wheelPagingCheck?.addEventListener("change", () => {
       updateSettings({ wheelPaging: Boolean(wheelPagingCheck.checked) });
+    });
+    structureAutoDetectCheck?.addEventListener("change", () => {
+      updateSettings({ structureAutoDetect: Boolean(structureAutoDetectCheck.checked) });
+    });
+    pageTurnEffectSelect?.addEventListener("change", () => {
+      updateSettings({ pageTurnEffect: normalizePageTurnEffect(pageTurnEffectSelect.value) });
     });
     applyGenkoPresetBtn?.addEventListener("click", () => {
       updateSettings(buildGenkoPresetFromCurrent());
@@ -612,6 +659,8 @@ export function initReader({
       theme: themeSelect.value || "light",
       displayMode: normalizeDisplayMode(displayModeRadios.find((radio) => radio.checked)?.value || displayMode),
       wheelPaging: Boolean(wheelPagingCheck?.checked),
+      structureAutoDetect: structureAutoDetectCheck ? Boolean(structureAutoDetectCheck.checked) : structureAutoDetect,
+      pageTurnEffect: normalizePageTurnEffect(pageTurnEffectSelect?.value || pageTurnEffect),
       writingModePreference: normalizeWritingModePreference(writingModeSelect?.value || writingModePreference),
       ...patch
     };
@@ -791,6 +840,7 @@ export function initReader({
   function bindPageTap(tapEl, scrollEl) {
     if (!tapEl || !scrollEl) return;
     const threshold = 10;
+    const swipeThreshold = 42;
     let down = null;
 
     const shouldHandlePagingTap = () => {
@@ -858,7 +908,12 @@ export function initReader({
         if (!down) return;
         const dx = Math.abs(event.clientX - down.x);
         const dy = Math.abs(event.clientY - down.y);
+        const deltaX = event.clientX - down.x;
         down = null;
+        if (dx >= swipeThreshold && dx > dy * 1.25) {
+          handleSwipe(deltaX);
+          return;
+        }
         if (dx > threshold || dy > threshold) return;
         onTap(event);
       });
@@ -887,12 +942,29 @@ export function initReader({
         if (!touch || !down) return;
         const dx = Math.abs(touch.clientX - down.x);
         const dy = Math.abs(touch.clientY - down.y);
+        const deltaX = touch.clientX - down.x;
         down = null;
+        if (dx >= swipeThreshold && dx > dy * 1.25) {
+          handleSwipe(deltaX);
+          return;
+        }
         if (dx > threshold || dy > threshold) return;
         onTap(touch);
       },
       { passive: true }
     );
+
+    function handleSwipe(deltaX) {
+      if (!shouldHandlePagingTap()) return;
+      const swipeLeft = deltaX < 0;
+      const advanceOnSwipeLeft = pageDirection !== "rtl";
+      const step = swipeLeft === advanceOnSwipeLeft ? 1 : -1;
+      if (displayMode === "scrolly") {
+        pageBy(scrollEl, step * getVerticalPageSize(), displayMode);
+      } else {
+        stepHorizontalPage(step, displayMode === "paged" ? "auto" : "smooth");
+      }
+    }
   }
 
   function bindTopEdgeRevealTap(tapEl) {
@@ -1117,6 +1189,10 @@ function pageBy(content, delta, mode = "paged") {
     return;
   }
   content.scrollTo({ left: content.scrollLeft + delta, behavior });
+}
+
+function normalizePageTurnEffect(value) {
+  return String(value || "").toLowerCase() === "flash" ? "flash" : "none";
 }
 
 function getMaxLeft(el) {

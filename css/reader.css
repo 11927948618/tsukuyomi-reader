@@ -186,6 +186,12 @@ body.topbar-mobile-wrap .topbar-group-right .button {
   background: color-mix(in srgb, var(--panel), #000 6%);
 }
 
+.toc-panel .toc-empty {
+  color: var(--muted);
+  font-size: 13px;
+  padding: 8px;
+}
+
 .reader-viewport {
   background: var(--panel);
   border: 1px solid var(--border);
@@ -197,6 +203,16 @@ body.topbar-mobile-wrap .topbar-group-right .button {
   overflow-y: hidden;
   scroll-snap-type: x mandatory;
   touch-action: pan-x;
+}
+
+body.mode-paged .reader-main {
+  width: min(980px, 96vw);
+}
+
+body.mode-paged .reader-viewport {
+  padding-inline: clamp(20px, 5vw, 56px);
+  border: 2px solid color-mix(in srgb, var(--border), var(--text) 16%);
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.16);
 }
 
 .reader-content {
@@ -282,6 +298,13 @@ body.distribution-mode .reader-content img {
 
 .reader-content .epub-body br {
   display: block;
+}
+
+.reader-content .epub-body s,
+.reader-content .epub-body del,
+.reader-content .epub-body strike,
+.reader-content .epub-body [data-tsukuyomi-strike="true"] {
+  text-decoration-line: line-through;
 }
 
 .reader-content .chapter > h1,
@@ -391,6 +414,30 @@ body.pdf-reader-mode .reader-content > * {
   z-index: 5;
   background: transparent;
   pointer-events: auto;
+  touch-action: pan-x;
+}
+
+body.mode-scrolly .tap-zone {
+  touch-action: pan-y;
+}
+
+body.page-turn-flash .reader-viewport::after {
+  content: "";
+  position: fixed;
+  inset: var(--reader-topbar-height, 64px) 0 0;
+  background: color-mix(in srgb, var(--panel), #fff 28%);
+  pointer-events: none;
+  z-index: 6;
+  animation: page-flash 140ms ease-out;
+}
+
+@keyframes page-flash {
+  0% {
+    opacity: 0.42;
+  }
+  100% {
+    opacity: 0;
+  }
 }
 
 body.mode-scrollx .reader-viewport {

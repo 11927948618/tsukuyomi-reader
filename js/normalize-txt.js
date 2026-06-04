@@ -1,8 +1,9 @@
 import { escapeHtml, safeText } from "./utils.js";
 import { normalizeAozoraInlineHtml } from "./normalize-aozora.js";
 
-export function normalizeTxtToBook(text, filename = "") {
+export function normalizeTxtToBook(text, filename = "", options = {}) {
   const lines = text.replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n");
+  const autoDetectStructure = options.autoDetectStructure !== false;
   const chapters = [];
   let current = null;
   let chapterIndex = 0;
@@ -20,8 +21,9 @@ export function normalizeTxtToBook(text, filename = "") {
   };
 
   for (const line of lines) {
-    if (line.startsWith("# ")) {
-      const title = line.slice(2);
+    const heading = autoDetectStructure ? detectChapterHeading(line) : null;
+    if (line.startsWith("# ") || heading) {
+      const title = line.startsWith("# ") ? line.slice(2) : heading;
       startChapter(title);
       continue;
     }
@@ -69,6 +71,28 @@ export function normalizeTxtToBook(text, filename = "") {
     title: safeText(filename.replace(/\.[^.]+$/, ""), "Untitled"),
     html,
     toc,
-    meta: null
+    meta: {
+      format: "txt",
+      textStructureAutoDetected: autoDetectStructure
+    }
   };
+}
+
+function detectChapterHeading(line) {
+  const raw = String(line || "").trim();
+  if (!raw || raw.length > 42) return null;
+  if (/^[\s\-_=*＊・]+$/.test(raw)) return null;
+
+  const patterns = [
+    /^第[一二三四五六七八九十百千万〇零\d]+[章話節部編幕][\s　:：、.．-]*(.*)$/,
+    /^[一二三四五六七八九十百千万〇零\d]+[章話節][\s　:：、.．-]*(.*)$/,
+    /^(序章|終章|最終章|プロローグ|エピローグ|あとがき|まえがき|前書き|後書き)$/,
+    /^(chapter|chap\.?|section|part)\s+[0-9ivxlcdm]+[\s:：.\-]*(.*)$/i
+  ];
+
+  for (const pattern of patterns) {
+    if (pattern.test(raw)) return raw;
+  }
+
+  return null;
 }

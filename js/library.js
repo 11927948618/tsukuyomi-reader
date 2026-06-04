@@ -147,7 +147,9 @@ export function initLibrary({ siteConfig = null, onOpenBook, onExport, getCurren
       const { text, encoding, debug } = await decodeTxtAuto(file, mode);
       setDebug(debug);
       console.log("[TXT decode] pick:", encoding);
-      const book = attachBookSource(normalizeTxtToBook(text, file.name), "file-import", {
+      const book = attachBookSource(normalizeTxtToBook(text, file.name, {
+        autoDetectStructure: loadTxtStructureAutoDetectPreference()
+      }), "file-import", {
         kind: "txt",
         filename: file.name || "",
         encoding
@@ -539,7 +541,9 @@ async function openBundledBook(entry, txtMode = "auto", setDebug, manifestPath =
     const buffer = await res.arrayBuffer();
     const { text, debug } = decodeTxtBuffer(buffer, txtMode);
     setDebug?.(debug);
-    return attachBookSource(normalizeTxtToBook(text, filename), "manifest", sourceData);
+    return attachBookSource(normalizeTxtToBook(text, filename, {
+      autoDetectStructure: loadTxtStructureAutoDetectPreference()
+    }), "manifest", sourceData);
   }
 
   if (kind === "html") {
@@ -573,6 +577,16 @@ async function openBundledBook(entry, txtMode = "auto", setDebug, manifestPath =
   }
 
   throw new Error(`未対応の作品形式です: ${filename}`);
+}
+
+function loadTxtStructureAutoDetectPreference() {
+  try {
+    const raw = localStorage.getItem("tsukiyomi:txtStructureAutoDetect");
+    if (raw == null) return true;
+    return JSON.parse(raw) !== false;
+  } catch (err) {
+    return true;
+  }
 }
 
 function buildManifestAssetUrl(relativePath, manifestPath = DEFAULT_SITE_CONFIG.booksManifest) {

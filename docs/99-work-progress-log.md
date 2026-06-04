@@ -1660,3 +1660,18 @@ TSUKUYOMI_REVIEW_PASSWORD_DAYS=7
 
 - `node --check tsukuyomi-reader/js/admin.js`: OK
 - `git diff --check -- .`: OK
+
+## 2026-06-04 Reader栞・表示モード・ヘルプ表記の整理
+
+### 対応
+
+- 読者向けマニュアルを、栞、ページ切替/横スクロール/縦スクロール、ページめくり効果、TXT構造自動判別に合わせて更新。
+- Reader内ヘルプを、栞から再開、ヘルプからReader位置へ戻る挙動、PDF対応、立ち読みモードのキャッシュ/栞制限に合わせて更新。
+- 実機確認チェックリストとREADMEの配布前チェックを、旧「進捗」表現から「栞」表現へ更新。
+
+### 検証
+
+- `node --check js/app.js`: OK
+- `node --check js/storage.js`: OK
+- `node --check js/reader.js`: OK
+- `node --check js/normalize-txt.js`: OK

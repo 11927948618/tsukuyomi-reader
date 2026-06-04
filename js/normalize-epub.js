@@ -63,6 +63,7 @@ export async function normalizeEpubToBook(file) {
     if (chapterWritingMode) {
       chapterWritingModeHints.push(chapterWritingMode);
     }
+    await preserveStylesheetStrikethroughMarkup(chapterDoc, chapterPath, zip, opfInfo.mediaTypeByPath, blobUrlCache);
     sanitizeChapter(chapterDoc);
     await rewriteChapterAssets(chapterDoc, chapterPath, zip, opfInfo.mediaTypeByPath, blobUrlCache);
     normalizeAozoraTextNodes(chapterDoc.body || chapterDoc.documentElement, chapterDoc);
@@ -624,6 +625,7 @@ function mapHrefToChapter(href, basePath, chapterPathToId) {
 }
 
 function sanitizeChapter(doc) {
+  preserveStrikethroughMarkup(doc);
   doc.querySelectorAll(BLOCKED_SELECTORS).forEach((el) => el.remove());
   doc.querySelectorAll("*").forEach((el) => {
     for (const attr of Array.from(el.attributes || [])) {
@@ -638,6 +640,72 @@ function sanitizeChapter(doc) {
       }
     }
   });
+}
+
+function preserveStrikethroughMarkup(doc) {
+  doc.querySelectorAll("s, del, strike").forEach((el) => {
+    el.setAttribute("data-tsukuyomi-strike", "true");
+  });
+
+  doc.querySelectorAll("[style]").forEach((el) => {
+    const style = String(el.getAttribute("style") || "");
+    if (/text-decoration(?:-line)?\s*:[^;]*line-through/i.test(style)) {
+      el.setAttribute("data-tsukuyomi-strike", "true");
+    }
+  });
+}
+
+async function preserveStylesheetStrikethroughMarkup(doc, chapterPath, zip, mediaTypeByPath, blobUrlCache) {
+  const blocks = [];
+
+  for (const styleEl of Array.from(doc.querySelectorAll("style"))) {
+    const rawCss = String(styleEl.textContent || "");
+    if (rawCss.trim()) blocks.push(rawCss);
+  }
+
+  for (const linkEl of Array.from(doc.querySelectorAll("link[rel~='stylesheet'][href]"))) {
+    const href = String(linkEl.getAttribute("href") || "").trim();
+    if (!href) continue;
+    const cssText = await loadCssAssetText(href, chapterPath, zip, mediaTypeByPath, blobUrlCache, new Set());
+    if (cssText.trim()) blocks.push(cssText);
+  }
+
+  for (const selector of extractLineThroughSelectors(blocks.join("\n"))) {
+    markStrikethroughSelector(doc, selector);
+  }
+}
+
+function extractLineThroughSelectors(cssText) {
+  const selectors = [];
+  const rulePattern = /([^{}]+)\{([^{}]*)\}/g;
+  let match;
+
+  while ((match = rulePattern.exec(String(cssText || "")))) {
+    const selectorText = String(match[1] || "").trim();
+    const declarations = String(match[2] || "");
+    if (!selectorText || !/text-decoration(?:-line)?\s*:[^;}]*line-through/i.test(declarations)) continue;
+    selectors.push(...splitCssSelectors(selectorText));
+  }
+
+  return selectors.map(cleanSelectorForQuery).filter(Boolean);
+}
+
+function markStrikethroughSelector(doc, selector) {
+  try {
+    doc.querySelectorAll(selector).forEach((el) => {
+      el.setAttribute("data-tsukuyomi-strike", "true");
+    });
+  } catch (err) {
+    // Ignore EPUB selectors that are not valid in querySelectorAll after browser parsing.
+  }
+}
+
+function cleanSelectorForQuery(selector) {
+  const cleaned = String(selector || "")
+    .replace(/::?[a-z-]+(?:\([^)]*\))?/gi, "")
+    .trim();
+  if (!cleaned || cleaned.startsWith("@")) return "";
+  return cleaned;
 }
 
 async function buildChapterCss(doc, chapterPath, chapterId, zip, mediaTypeByPath, blobUrlCache) {

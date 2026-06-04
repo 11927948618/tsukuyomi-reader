@@ -38,7 +38,9 @@ const DEFAULT_SETTINGS = {
   displayMode: "paged",
   tapInScroll: false,
   wheelPaging: false,
-  writingModePreference: "vertical"
+  writingModePreference: "vertical",
+  structureAutoDetect: true,
+  pageTurnEffect: "none"
 };
 
 const DEFAULT_PROGRESS = {
@@ -159,6 +161,13 @@ async function render(screen) {
 
 function openHelp(returnScreen = "library") {
   appState.helpReturnScreen = returnScreen === "reader" ? "reader" : "library";
+  if (appState.helpReturnScreen === "reader") {
+    appState.progress = {
+      ...appState.progress,
+      ...captureCurrentReaderProgress()
+    };
+    saveProgress(appState.currentBookId, appState.progress);
+  }
   render("help");
 }
 
@@ -264,9 +273,14 @@ function applyBook(book) {
     ...(book.settings || book.meta?.settings || {}),
     ...(savedSettings || {})
   };
+  const bookmark = getBookmarkCandidate(appState.currentBookId, book);
+  const hasBookmark = isReadableProgress(bookmark);
+  const resumeFromBookmark = hasBookmark
+    ? window.confirm("栞があります。\n\nOK: 栞から読む\nキャンセル: 最初から読む")
+    : false;
   appState.progress = {
     ...DEFAULT_PROGRESS,
-    ...(book.progress || book.meta?.progress || {})
+    ...(resumeFromBookmark ? bookmark : {})
   };
   startAnalyticsSession(appState.currentBook, appState.siteConfig);
 }
@@ -331,10 +345,58 @@ function saveProgress(bookId, progress) {
     chapterId: progress.chapterId || null,
     updatedAt: new Date().toISOString()
   };
-  const ok = saveJSON(`tsukiyomi:progress:${bookId}`, payload);
+  const ok = saveJSON(`tsukiyomi:bookmark:${bookId}`, payload);
+  saveJSON(`tsukiyomi:progress:${bookId}`, payload);
   if (!ok) {
-    appState.startupMessage = "進捗保存に失敗しました（容量不足の可能性）";
+    appState.startupMessage = "栞の保存に失敗しました（容量不足の可能性）";
   }
+}
+
+function loadBookmark(bookId) {
+  if (!bookId) return null;
+  return loadJSON(`tsukiyomi:bookmark:${bookId}`, null) || loadJSON(`tsukiyomi:progress:${bookId}`, null);
+}
+
+function getBookmarkCandidate(bookId, book) {
+  const savedBookmark = loadBookmark(bookId);
+  if (isReadableProgress(savedBookmark)) return savedBookmark;
+
+  const embeddedBookmark = book?.bookmark || book?.meta?.bookmark || book?.progress || book?.meta?.progress || null;
+  if (isReadableProgress(embeddedBookmark)) return embeddedBookmark;
+
+  return null;
+}
+
+function isReadableProgress(progress) {
+  if (!progress || typeof progress !== "object") return false;
+  if (Number(progress.progressPercent) > 0) return true;
+  if (Number(progress.scrollTop) > 0) return true;
+  if (Number(progress.scrollLeft) > 0) return true;
+  if (Number(progress.pageIndex) > 0) return true;
+  const chapterId = String(progress.chapterId || "").trim();
+  return Boolean(chapterId && chapterId !== "chapter-001");
+}
+
+function captureCurrentReaderProgress() {
+  const viewport = document.getElementById("readerViewport");
+  if (!viewport) return {};
+  const content = document.getElementById("bookContent");
+  const mode = appState.settings?.displayMode || "paged";
+  const progress = {};
+  if (mode === "scrolly") {
+    const maxTop = Math.max(0, viewport.scrollHeight - viewport.clientHeight);
+    progress.scrollTop = viewport.scrollTop;
+    progress.pageIndex = Math.round(viewport.scrollTop / Math.max(1, viewport.clientHeight));
+    progress.progressPercent = maxTop > 0 ? Math.round((viewport.scrollTop / maxTop) * 100) : 100;
+  } else {
+    const maxLeft = Math.max(0, viewport.scrollWidth - viewport.clientWidth);
+    const direction = content?.classList.contains("force-vertical") ? "rtl" : "ltr";
+    const logicalLeft = direction === "rtl" ? Math.max(0, maxLeft - viewport.scrollLeft) : viewport.scrollLeft;
+    progress.scrollLeft = logicalLeft;
+    progress.pageIndex = Math.round(logicalLeft / Math.max(1, viewport.clientWidth));
+    progress.progressPercent = maxLeft > 0 ? Math.round((logicalLeft / maxLeft) * 100) : 100;
+  }
+  return progress;
 }
 
 function clearCachedBookData() {
@@ -367,11 +429,6 @@ async function tryRestoreLastBook() {
   };
 
   applyBook(book);
-
-  const progress = loadJSON(`tsukiyomi:progress:${appState.currentBookId}`, null);
-  if (progress) {
-    appState.progress = { ...DEFAULT_PROGRESS, ...progress };
-  }
 
   await render("reader");
   return true;
@@ -500,9 +557,12 @@ function saveSettings(bookId, settings) {
     tapInScroll: Boolean(settings.tapInScroll),
     wheelPaging: Boolean(settings.wheelPaging),
     writingModePreference: settings.writingModePreference || "vertical",
+    structureAutoDetect: settings.structureAutoDetect !== false,
+    pageTurnEffect: settings.pageTurnEffect === "flash" ? "flash" : "none",
     updatedAt: new Date().toISOString()
   };
   const ok = saveJSON(`tsukiyomi:settings:${bookId}`, payload);
+  saveJSON("tsukiyomi:txtStructureAutoDetect", payload.structureAutoDetect);
   if (!ok) {
     appState.startupMessage = "設定保存に失敗しました（容量不足の可能性）";
   }

@@ -318,13 +318,15 @@
   padding-inline: 12px;
 }
 
-.button.public-action {
+.button.ghost.public-action,
+.admin-book-actions .button.ghost.public-action {
   color: #15528a;
   border-color: color-mix(in srgb, #2f73b7, var(--border) 35%);
   background: color-mix(in srgb, #2f73b7, transparent 88%);
 }
 
-.button.public-action:hover {
+.button.ghost.public-action:hover,
+.admin-book-actions .button.ghost.public-action:hover {
   background: color-mix(in srgb, #2f73b7, transparent 80%);
 }
 
@@ -489,7 +491,8 @@
   border-color: color-mix(in srgb, #3faf5c, var(--border) 45%);
 }
 
-.admin-pill.public {
+.admin-pill.public,
+.admin-book-info .admin-pill.public {
   color: #15528a;
   background: color-mix(in srgb, #2f73b7, transparent 84%);
   border-color: color-mix(in srgb, #2f73b7, var(--border) 42%);

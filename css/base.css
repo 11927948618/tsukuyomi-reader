@@ -151,11 +151,13 @@ select.input option {
 }
 
 #helpScreen {
-  min-height: 100vh;
-  min-height: 100dvh;
+  display: block;
+  height: 100vh;
+  height: 100dvh;
   overflow-y: auto;
   overscroll-behavior-y: contain;
   -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
 }
 
 #helpScreen .help-container {

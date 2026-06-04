@@ -134,9 +134,17 @@
 
           <div class="field">
             <span class="label">表示モード</span>
-            <label><input type="radio" name="displayMode" value="paged" checked /> paged</label>
-            <label><input type="radio" name="displayMode" value="scrollx" /> scrollx</label>
-            <label><input type="radio" name="displayMode" value="scrolly" /> scrolly</label>
+            <label><input type="radio" name="displayMode" value="paged" checked /> ページ切替</label>
+            <label><input type="radio" name="displayMode" value="scrollx" /> 横スクロール</label>
+            <label><input type="radio" name="displayMode" value="scrolly" /> 縦スクロール</label>
+          </div>
+
+          <div class="field">
+            <label class="label" for="pageTurnEffectSelect">ページめくり効果</label>
+            <select id="pageTurnEffectSelect">
+              <option value="none">なし</option>
+              <option value="flash">フラッシュ</option>
+            </select>
           </div>
 
           <div class="field">
@@ -150,6 +158,10 @@
 
           <div class="field">
             <label><input id="wheelPagingCheck" type="checkbox" /> Windowsでホイール上下をページ送りにする</label>
+          </div>
+
+          <div class="field">
+            <label><input id="structureAutoDetectCheck" type="checkbox" checked /> TXTの構造を自動判別する</label>
           </div>
         </div>
       </section>

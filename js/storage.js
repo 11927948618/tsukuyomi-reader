@@ -50,7 +50,8 @@ export async function importZipToBook(file) {
     toc,
     meta,
     settings: meta.settings || null,
-    progress: meta.progress || null
+    bookmark: meta.bookmark || meta.progress || null,
+    progress: meta.progress || meta.bookmark || null
   };
 }
 
@@ -71,19 +72,25 @@ export async function exportZipFromBook(book, options = {}) {
     theme: "light"
   };
 
-  const progress = options.progress || {
+  const bookmark = options.bookmark || options.progress || {
     chapterId: "chapter-001",
     scrollTop: 0
+  };
+
+  const bookmarkPayload = {
+    chapterId: bookmark.chapterId || "chapter-001",
+    scrollLeft: Number.isFinite(bookmark.scrollLeft) ? bookmark.scrollLeft : 0,
+    scrollTop: Number.isFinite(bookmark.scrollTop) ? bookmark.scrollTop : 0,
+    pageIndex: Number.isFinite(bookmark.pageIndex) ? bookmark.pageIndex : 0,
+    progressPercent: Number.isFinite(bookmark.progressPercent) ? bookmark.progressPercent : 0
   };
 
   const meta = {
     formatVersion: 1,
     title: book.title || "Untitled",
     createdAt: new Date().toISOString(),
-    progress: {
-      chapterId: progress.chapterId || "chapter-001",
-      scrollTop: Number.isFinite(progress.scrollTop) ? progress.scrollTop : 0
-    },
+    bookmark: bookmarkPayload,
+    progress: bookmarkPayload,
     settings: {
       fontSize: Number(settings.fontSize) || 100,
       fontFamilyPreference: settings.fontFamilyPreference || "system",
