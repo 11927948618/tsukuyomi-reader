@@ -985,9 +985,10 @@ function renderBooks(books, scope = selectedBookScope()) {
       const promotion = book.publicPromotion || null;
       const promoted = promotion?.published === true;
       const promotionVisible = promotion?.visible === true;
+      const promotionRemaining = promotionRemainingDays(promotion);
       const promotionLabel = promoted
         ? promotionVisible
-          ? `一般公開中: ${formatDateTime(promotion.publicExpiresAt)}まで`
+          ? `一般公開中（あと${promotionRemaining}日）: ${formatDateTime(promotion.publicExpiresAt)}まで`
           : `一般公開期限切れ: ${formatDateTime(promotion.publicExpiresAt)}`
         : "";
       const promotionUnchecked = normalizedScope === "limited" && !promotion;
@@ -1012,7 +1013,7 @@ function renderBooks(books, scope = selectedBookScope()) {
             <div class="admin-book-actions">
               <button class="button ghost" type="button" data-action="edit">編集に読み込む</button>
               <button class="button ghost" type="button" data-action="toggle">${published ? "一覧から外す" : "一覧に表示"}</button>
-              ${normalizedScope === "limited" ? `<button class="button ghost ${promotionVisible ? "public-action" : ""}" type="button" data-action="promote">${promoted ? "延長" : "一般公開へ昇格"}</button>` : ""}
+              ${normalizedScope === "limited" ? `<button class="button ghost ${promotionVisible ? "public-action" : ""}" type="button" data-action="promote">${promoted ? "延長（+7日）" : "一般公開へ昇格"}</button>` : ""}
               ${hasCover ? `<button class="button ghost danger" type="button" data-action="remove-cover">表紙削除</button>` : ""}
               <button class="button ghost danger" type="button" data-action="delete">作品削除</button>
             </div>
@@ -1045,6 +1046,12 @@ function renderBooks(books, scope = selectedBookScope()) {
   });
 }
 
+function promotionRemainingDays(promotion) {
+  const expiresMs = Date.parse(promotion?.publicExpiresAt || "");
+  if (!Number.isFinite(expiresMs)) return 0;
+  return Math.max(0, Math.ceil((expiresMs - Date.now()) / 86400000));
+}
+
 async function promoteBook(book) {
   const token = getToken();
   if (!token) {
@@ -1056,7 +1063,7 @@ async function promoteBook(book) {
   const alreadyPromoted = book.publicPromotion?.published === true;
   const confirmed = window.prompt(
     alreadyPromoted
-      ? `「${title}」の一般公開期限を7日後まで延長します。\n限定レビュー認証は一般公開側には適用されません。\n続行するには PUBLIC と入力してください。`
+      ? `「${title}」の一般公開期限を現在の期限から+7日延長します。\n期限切れの場合は今日から7日間にします。\n限定レビュー認証は一般公開側には適用されません。\n続行するには PUBLIC と入力してください。`
       : `「${title}」を一般公開用R2へコピーし、7日間だけ一般作品一覧に表示します。\n限定レビュー認証は一般公開側には適用されません。\n続行するには PUBLIC と入力してください。`
   );
   if (confirmed !== "PUBLIC") {

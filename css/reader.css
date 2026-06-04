@@ -5,15 +5,6 @@
   padding-top: var(--reader-topbar-height, 64px);
 }
 
-body.chrome-hidden .reader-layout {
-  padding-top: 0;
-}
-
-body.chrome-hidden .reader-main {
-  height: 100vh;
-  height: var(--reader-viewport-height, 100dvh);
-}
-
 .reader-topbar {
   position: fixed;
   top: 0;
@@ -29,7 +20,9 @@ body.chrome-hidden .reader-main {
 }
 
 .reader-topbar.hidden {
-  display: none;
+  visibility: hidden;
+  opacity: 0;
+  pointer-events: none;
 }
 
 .topbar-group {
@@ -436,9 +429,66 @@ body.page-turn-flash .reader-viewport::after {
   animation: page-flash 140ms ease-out;
 }
 
+body.page-turn-slide .reader-viewport {
+  animation: page-slide-forward 170ms ease-out;
+}
+
+body.page-turn-slide.page-turn-back .reader-viewport {
+  animation-name: page-slide-back;
+}
+
+body.page-turn-shadow .reader-viewport::after {
+  content: "";
+  position: fixed;
+  top: var(--reader-topbar-height, 64px);
+  bottom: 0;
+  width: min(22vw, 140px);
+  pointer-events: none;
+  z-index: 6;
+  opacity: 0;
+  animation: page-shadow 150ms ease-out;
+}
+
+body.page-turn-shadow.page-turn-forward .reader-viewport::after {
+  right: 0;
+  background: linear-gradient(90deg, transparent, rgba(0, 0, 0, 0.24));
+}
+
+body.page-turn-shadow.page-turn-back .reader-viewport::after {
+  left: 0;
+  background: linear-gradient(270deg, transparent, rgba(0, 0, 0, 0.24));
+}
+
 @keyframes page-flash {
   0% {
     opacity: 0.42;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes page-slide-forward {
+  0% {
+    transform: translateX(10px);
+  }
+  100% {
+    transform: translateX(0);
+  }
+}
+
+@keyframes page-slide-back {
+  0% {
+    transform: translateX(-10px);
+  }
+  100% {
+    transform: translateX(0);
+  }
+}
+
+@keyframes page-shadow {
+  0% {
+    opacity: 0.85;
   }
   100% {
     opacity: 0;

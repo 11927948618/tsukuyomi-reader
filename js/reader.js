@@ -100,7 +100,7 @@ export function initReader({
     }
 
     scrollToLogicalLeft(targetLogical, behavior);
-    flashPageTurn();
+    playPageTurnEffect(stepCount > 0 ? "forward" : "back");
   };
   const applyPageWidth = () => {
     const width = getHorizontalPageSize();
@@ -141,7 +141,7 @@ export function initReader({
     document.body.classList.toggle("topbar-auto-wrap", shouldWrap);
   };
   const applyTopbarOffset = () => {
-    const height = topbar?.classList.contains("hidden") ? 0 : (topbar?.offsetHeight || 64);
+    const height = topbar?.offsetHeight || 64;
     document.documentElement.style.setProperty("--reader-topbar-height", `${height}px`);
   };
 
@@ -162,14 +162,26 @@ export function initReader({
     scrollToLogicalLeft(Math.max(0, Number(position.logicalLeft) || 0));
   };
 
-  const flashPageTurn = () => {
-    if (pageTurnEffect !== "flash" || displayMode !== "paged") return;
-    document.body.classList.remove("page-turn-flash");
+  const playPageTurnEffect = (direction = "forward") => {
+    if (pageTurnEffect === "none" || displayMode !== "paged") return;
+    document.body.classList.remove(
+      "page-turn-flash",
+      "page-turn-slide",
+      "page-turn-shadow",
+      "page-turn-forward",
+      "page-turn-back"
+    );
     void document.body.offsetWidth;
-    document.body.classList.add("page-turn-flash");
+    document.body.classList.add(`page-turn-${pageTurnEffect}`, direction === "back" ? "page-turn-back" : "page-turn-forward");
     window.setTimeout(() => {
-      document.body.classList.remove("page-turn-flash");
-    }, 140);
+      document.body.classList.remove(
+        "page-turn-flash",
+        "page-turn-slide",
+        "page-turn-shadow",
+        "page-turn-forward",
+        "page-turn-back"
+      );
+    }, pageTurnEffect === "slide" ? 170 : 140);
   };
 
   const reflowReaderLayout = (options = {}) => {
@@ -212,6 +224,8 @@ export function initReader({
   });
   reloadBtn?.addEventListener("click", () => location.reload());
   hardReloadBtn?.addEventListener("click", async () => {
+    const ok = window.confirm("キャッシュを破棄して再読み込みします。\n作品更新が反映されない時だけ実行してください。");
+    if (!ok) return;
     try {
       if ("caches" in window) {
         const keys = await caches.keys();
@@ -981,12 +995,10 @@ export function initReader({
         topbar.classList.remove("hidden");
         document.body.classList.remove("chrome-hidden");
         skipNextTap = true;
-        reflowTopbar({ preservePosition: true });
         return;
       }
       topbar.classList.add("hidden");
       document.body.classList.add("chrome-hidden");
-      reflowTopbar({ preservePosition: true });
     };
 
     if (window.PointerEvent) {
@@ -1018,7 +1030,6 @@ export function initReader({
     }
     topbar.classList.toggle("hidden");
     document.body.classList.toggle("chrome-hidden", topbar.classList.contains("hidden"));
-    reflowTopbar({ preservePosition: true });
   }
 
   function applyDisplayMode(mode, options = {}) {
@@ -1192,7 +1203,9 @@ function pageBy(content, delta, mode = "paged") {
 }
 
 function normalizePageTurnEffect(value) {
-  return String(value || "").toLowerCase() === "flash" ? "flash" : "none";
+  const raw = String(value || "").toLowerCase();
+  if (raw === "flash" || raw === "slide" || raw === "shadow") return raw;
+  return "none";
 }
 
 function getMaxLeft(el) {

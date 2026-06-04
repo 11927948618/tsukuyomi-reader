@@ -32,6 +32,8 @@
 
 - `10-reader-analytics-design.md`
   - 読書ログと分析設計。
+- `11-line-reader-quick-manual.md`
+  - LINEで読者へ同送する、文字ベースの簡易マニュアル。
 - `20-cloudflare-usage-guard-design.md`
   - Cloudflare R2使用量ガード設計。
 - `21-cloudflare-f5-defense-design.md`

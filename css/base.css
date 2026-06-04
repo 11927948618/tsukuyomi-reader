@@ -254,14 +254,53 @@ select.input option {
   min-height: 1.45rem;
   margin-top: 6px;
   padding: 0.1rem 0.55rem;
-  border: 1px solid color-mix(in srgb, var(--accent), var(--border) 45%);
+  border: 1px solid #d69822;
   border-radius: 999px;
-  background: color-mix(in srgb, var(--accent), transparent 84%);
-  color: color-mix(in srgb, var(--accent), var(--text) 22%);
+  background: color-mix(in srgb, #f4b84a, transparent 82%);
+  color: color-mix(in srgb, #8a5a00, var(--text) 18%);
   font-size: 0.74rem;
   font-weight: 800;
   line-height: 1.2;
   white-space: nowrap;
+}
+
+.bookmark-choice-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: rgba(0, 0, 0, 0.38);
+}
+
+.bookmark-choice-dialog {
+  width: min(420px, 94vw);
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--panel);
+  color: var(--text);
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.32);
+}
+
+.bookmark-choice-dialog h2 {
+  margin: 0;
+  font-size: 1.2rem;
+  line-height: 1.25;
+}
+
+.bookmark-choice-copy {
+  margin: 10px 0 0;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.bookmark-choice-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 16px;
 }
 
 #libraryScreen {

@@ -24,9 +24,8 @@ export async function onRequestPost(context) {
   if (!publicBucket) return error("一般公開用 R2 bucket binding が未設定です", 500);
 
   const id = context.params.id;
-  const payload = await context.request.json().catch(() => ({}));
   const now = new Date();
-  const publicExpiresAt = safeText(payload?.publicExpiresAt, "") || publicPromotionExpiresAt(context.env, now);
+  const payload = await context.request.json().catch(() => ({}));
 
   const limitedCatalog = await readCatalog(limitedBucket);
   const source = limitedCatalog.books.find((entry) => entry.id === id);
@@ -41,6 +40,8 @@ export async function onRequestPost(context) {
 
   const publicCatalog = await readCatalog(publicBucket);
   const publicBooks = Array.isArray(publicCatalog.books) ? publicCatalog.books : [];
+  const existingPublic = publicBooks.find((entry) => entry.id === id) || null;
+  const publicExpiresAt = safeText(payload?.publicExpiresAt, "") || publicPromotionExpiresAt(context.env, publicPromotionBaseDate(existingPublic, now));
   const promoted = {
     ...source,
     published: true,
@@ -77,6 +78,12 @@ export async function onRequestPost(context) {
       cover: coverCopied
     }
   });
+}
+
+function publicPromotionBaseDate(existingPublic, now) {
+  const expiresMs = Date.parse(existingPublic?.publicExpiresAt || "");
+  if (Number.isFinite(expiresMs) && expiresMs > now.getTime()) return new Date(expiresMs);
+  return now;
 }
 
 async function copyR2Object(sourceBucket, targetBucket, key, fallbackExt = "") {

@@ -66,6 +66,8 @@ export function initLibrary({ siteConfig = null, onOpenBook, onExport, getCurren
 
   libraryReloadBtn?.addEventListener("click", () => location.reload());
   libraryHardReloadBtn?.addEventListener("click", async () => {
+    const ok = window.confirm("キャッシュを破棄して再読み込みします。\n作品更新が反映されない時だけ実行してください。");
+    if (!ok) return;
     try {
       if ("caches" in window) {
         const keys = await caches.keys();
@@ -113,7 +115,7 @@ export function initLibrary({ siteConfig = null, onOpenBook, onExport, getCurren
         });
         setDebug("");
         setStatus("EPUB読み込み完了", "ok");
-        onOpenBook(book);
+        await onOpenBook(book);
       } catch (err) {
         setStatus(err.message || "読み込みに失敗しました", "error");
       }
@@ -134,7 +136,7 @@ export function initLibrary({ siteConfig = null, onOpenBook, onExport, getCurren
         });
         setDebug("");
         setStatus("PDF読み込み完了", "ok");
-        onOpenBook(book);
+        await onOpenBook(book);
       } catch (err) {
         setStatus(err.message || "PDFの読み込みに失敗しました", "error");
       }
@@ -155,7 +157,7 @@ export function initLibrary({ siteConfig = null, onOpenBook, onExport, getCurren
         encoding
       });
       setStatus("TXT読み込み完了", "ok");
-      onOpenBook(book);
+      await onOpenBook(book);
     } catch (err) {
       setStatus(err.message || "読み込みに失敗しました", "error");
     }
@@ -177,7 +179,7 @@ export function initLibrary({ siteConfig = null, onOpenBook, onExport, getCurren
         filename: file.name || ""
       });
       setStatus("HTML読み込み完了", "ok");
-      onOpenBook(book);
+      await onOpenBook(book);
     } catch (err) {
       setStatus(err.message || "読み込みに失敗しました", "error");
     }
@@ -198,7 +200,7 @@ export function initLibrary({ siteConfig = null, onOpenBook, onExport, getCurren
         filename: file.name || ""
       });
       setStatus("バックアップZIP読み込み完了", "ok");
-      onOpenBook(book);
+      await onOpenBook(book);
     } catch (err) {
       setStatus(err.message || "読み込みに失敗しました", "error");
     }
@@ -449,7 +451,7 @@ async function initBundledBooksShelf({
           bundledBooksStatus.textContent = `${title.textContent} を開きました`;
           bundledBooksStatus.className = "status ok";
           setStatus("作品を開きました", "ok");
-          onOpenBook(book);
+          await onOpenBook(book);
           onAfterOpenBook?.();
         } catch (err) {
           bundledBooksStatus.textContent = err.message || "作品の読み込みに失敗しました";

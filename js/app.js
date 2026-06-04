@@ -87,9 +87,9 @@ async function render(screen) {
     document.getElementById("openHelpBtn")?.addEventListener("click", () => openHelp("library"));
     initLibrary({
       siteConfig: appState.siteConfig,
-      onOpenBook: (book) => {
-        applyBook(book);
-        render("reader");
+      onOpenBook: async (book) => {
+        await applyBook(book);
+        await render("reader");
       },
       onExport: () => exportCurrentBook(),
       getCurrentBook: () => appState.currentBook,
@@ -264,7 +264,7 @@ function bindReviewAuthControls() {
   });
 }
 
-function applyBook(book) {
+async function applyBook(book) {
   appState.currentBook = book;
   appState.currentBookId = buildBookId(book);
   const savedSettings = loadSettings(appState.currentBookId);
@@ -276,13 +276,78 @@ function applyBook(book) {
   const bookmark = getBookmarkCandidate(appState.currentBookId, book);
   const hasBookmark = isReadableProgress(bookmark);
   const resumeFromBookmark = hasBookmark
-    ? window.confirm("栞があります。\n\nOK: 栞から読む\nキャンセル: 最初から読む")
+    ? await chooseBookmarkStart(book)
     : false;
   appState.progress = {
     ...DEFAULT_PROGRESS,
     ...(resumeFromBookmark ? bookmark : {})
   };
   startAnalyticsSession(appState.currentBook, appState.siteConfig);
+}
+
+function chooseBookmarkStart(book) {
+  return new Promise((resolve) => {
+    const overlay = document.createElement("div");
+    overlay.className = "bookmark-choice-overlay";
+    overlay.setAttribute("role", "presentation");
+
+    const dialog = document.createElement("section");
+    dialog.className = "bookmark-choice-dialog";
+    dialog.setAttribute("role", "dialog");
+    dialog.setAttribute("aria-modal", "true");
+    dialog.setAttribute("aria-labelledby", "bookmarkChoiceTitle");
+
+    const label = document.createElement("p");
+    label.className = "label";
+    label.textContent = "栞";
+
+    const title = document.createElement("h2");
+    title.id = "bookmarkChoiceTitle";
+    title.textContent = "栞が見つかりました";
+
+    const copy = document.createElement("p");
+    copy.className = "bookmark-choice-copy";
+    copy.textContent = `${book?.title || "この本"} を栞から読むか、最初から読むかを選んでください。`;
+
+    const actions = document.createElement("div");
+    actions.className = "bookmark-choice-actions";
+
+    const fromBookmark = document.createElement("button");
+    fromBookmark.className = "button";
+    fromBookmark.type = "button";
+    fromBookmark.textContent = "栞から読む";
+
+    const fromStart = document.createElement("button");
+    fromStart.className = "button ghost";
+    fromStart.type = "button";
+    fromStart.textContent = "最初から読む";
+
+    const finish = (value) => {
+      document.removeEventListener("keydown", onKeydown);
+      overlay.remove();
+      resolve(value);
+    };
+    const onKeydown = (event) => {
+      if (event.key === "Escape") finish(false);
+    };
+
+    fromBookmark.addEventListener("click", () => finish(true));
+    fromStart.addEventListener("click", () => finish(false));
+    overlay.addEventListener("click", (event) => {
+      if (event.target === overlay) finish(false);
+    });
+    document.addEventListener("keydown", onKeydown);
+
+    actions.appendChild(fromBookmark);
+    actions.appendChild(fromStart);
+    dialog.appendChild(label);
+    dialog.appendChild(title);
+    dialog.appendChild(copy);
+    dialog.appendChild(actions);
+    overlay.appendChild(dialog);
+    document.body.appendChild(overlay);
+    requestAnimationFrame(() => fromBookmark.focus());
+  });
 }
 
 function exportCurrentBook() {
@@ -428,7 +493,7 @@ async function tryRestoreLastBook() {
     }
   };
 
-  applyBook(book);
+  await applyBook(book);
 
   await render("reader");
   return true;
@@ -578,7 +643,7 @@ function saveSettings(bookId, settings) {
     wheelPaging: Boolean(settings.wheelPaging),
     writingModePreference: settings.writingModePreference || "vertical",
     structureAutoDetect: settings.structureAutoDetect !== false,
-    pageTurnEffect: settings.pageTurnEffect === "flash" ? "flash" : "none",
+    pageTurnEffect: normalizePageTurnEffect(settings.pageTurnEffect),
     updatedAt: new Date().toISOString()
   };
   const ok = saveJSON(`tsukiyomi:settings:${bookId}`, payload);
@@ -712,6 +777,12 @@ async function readResponseJson(res) {
   } catch (err) {
     return null;
   }
+}
+
+function normalizePageTurnEffect(value) {
+  const raw = String(value || "").toLowerCase();
+  if (raw === "flash" || raw === "slide" || raw === "shadow") return raw;
+  return "none";
 }
 
 async function bootstrap() {

@@ -59,6 +59,7 @@
 - [管理者認証と復旧設計](docs/08-admin-auth-recovery-design.md)
 - [ログ確認早見表](docs/09-log-coverage-guide.md)
 - [Reader Analytics設計](docs/10-reader-analytics-design.md)
+- [LINE送信用 簡易マニュアル](docs/11-line-reader-quick-manual.md)
 - [Cloudflare R2 Usage Guard設計](docs/20-cloudflare-usage-guard-design.md)
 - [Cloudflare F5 Defense設計](docs/21-cloudflare-f5-defense-design.md)
 - [DialogueAssembler スマホ向けPDF出力メモ](docs/30-dialogueassembler-mobile-pdf-export-spec.md)
