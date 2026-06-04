@@ -460,9 +460,7 @@ function normalizeSiteConfig(config) {
 function applySiteConfig(config) {
   appState.siteConfig = normalizeSiteConfig(config);
   configureAnalytics(appState.siteConfig);
-  if (appState.siteConfig.siteName) {
-    document.title = appState.siteConfig.siteName;
-  }
+  updateDocumentTitle();
   document.body.classList.toggle("site-mode-distribution", appState.siteConfig.mode === "distribution");
   document.body.classList.toggle("site-mode-development", appState.siteConfig.mode !== "distribution");
   applyDistributionGuards(appState.siteConfig);
@@ -507,9 +505,31 @@ function applySiteChrome() {
   const reviewAuthSiteName = document.getElementById("reviewAuthSiteName");
   if (reviewAuthSiteName && config.siteName) reviewAuthSiteName.textContent = config.siteName;
 
+  updateDocumentTitle();
+  applyReviewAuthBadge();
   applyCopyright(config);
   applyAnalyticsNotice(config);
   queueVersionBadge();
+}
+
+function updateDocumentTitle() {
+  const baseTitle = appState.siteConfig?.siteName || DEFAULT_SITE_CONFIG.siteName;
+  if (appState.reviewAuth?.authRequired === true) {
+    const suffix = appState.reviewAuth?.authenticated === true ? "限定レビュー・認証中" : "限定レビュー";
+    document.title = `${baseTitle} - ${suffix}`;
+    return;
+  }
+  document.title = baseTitle;
+}
+
+function applyReviewAuthBadge() {
+  const authRequired = appState.reviewAuth?.authRequired === true;
+  const authenticated = appState.reviewAuth?.authenticated === true;
+  const label = authenticated ? "限定レビュー・認証中" : "限定レビュー";
+  document.querySelectorAll("[data-review-auth-badge]").forEach((badge) => {
+    badge.hidden = !authRequired;
+    badge.textContent = label;
+  });
 }
 
 function applyCopyright(config) {
@@ -697,6 +717,7 @@ async function readResponseJson(res) {
 async function bootstrap() {
   applySiteConfig(await loadSiteConfig());
   appState.reviewAuth = await loadReviewAuthStatus();
+  updateDocumentTitle();
   if (appState.reviewAuth.authRequired && !appState.reviewAuth.authenticated) {
     clearCachedBookData();
     await render("auth");

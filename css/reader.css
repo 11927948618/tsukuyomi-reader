@@ -39,6 +39,11 @@ body.chrome-hidden .reader-main {
   flex-wrap: nowrap;
 }
 
+.reader-mode-badge {
+  margin-top: 0;
+  flex: 0 0 auto;
+}
+
 .topbar-controls {
   display: flex;
   align-items: center;
