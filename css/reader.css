@@ -252,6 +252,22 @@ body.mode-paged .reader-viewport::after {
   font-family: var(--reader-font-family, system-ui, -apple-system, "Segoe UI", sans-serif);
 }
 
+body.mode-paged .reader-content {
+  inline-size: var(--paged-inline-size, auto);
+  block-size: var(--paged-block-size, auto);
+  overflow: visible;
+}
+
+body.mode-paged .reader-content.force-vertical {
+  inline-size: var(--paged-inline-size, 100%);
+  block-size: var(--paged-block-size, auto);
+}
+
+body.mode-paged .reader-content.force-horizontal {
+  inline-size: var(--paged-inline-size, 100%);
+  block-size: var(--paged-block-size, auto);
+}
+
 body.distribution-mode .reader-content,
 body.distribution-mode .reader-content * {
   user-select: none;

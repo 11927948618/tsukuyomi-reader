@@ -48,6 +48,7 @@ export function initReader({
   const wheelPagingCheck = qs("#wheelPagingCheck");
   const structureAutoDetectCheck = qs("#structureAutoDetectCheck");
   const pageTurnEffectSelect = qs("#pageTurnEffectSelect");
+  const pageColumnsCheck = qs("#pageColumnsCheck");
   const applyGenkoPresetBtn = qs("#applyGenkoPresetBtn");
   const reloadBtn = qs("#reloadBtn");
   const hardReloadBtn = qs("#hardReloadBtn");
@@ -61,6 +62,7 @@ export function initReader({
   let wheelPaging = Boolean(settings?.wheelPaging);
   let structureAutoDetect = settings?.structureAutoDetect !== false;
   let pageTurnEffect = normalizePageTurnEffect(settings?.pageTurnEffect);
+  let pageColumns = settings?.pageColumns === true;
   let wrapWidthPercent = normalizeWrapWidthPercent(settings?.wrapWidthPercent);
   let writingModePreference = normalizeWritingModePreference(settings?.writingModePreference);
   let pageDirection = writingModePreference === "vertical" ? "rtl" : "ltr";
@@ -108,8 +110,28 @@ export function initReader({
   };
   const applyPageWidth = () => {
     const width = getHorizontalPageSize();
+    const height = getVerticalPageSize();
     const wrapped = Math.round(width * (wrapWidthPercent / 100));
+    const metrics = getReaderTextMetrics();
+
+    if (displayMode === "paged") {
+      const mode = normalizeWritingModePreference(writingModePreference);
+      const charAdvance = Math.max(6, metrics.fontPx * 0.95 + metrics.letterSpacingPx);
+      const lineAdvance = Math.max(10, metrics.lineHeightPx);
+      const inlineBase = mode === "horizontal" ? wrapped : height;
+      const blockBase = mode === "horizontal" ? height : (pageColumns ? wrapped : width);
+      const inlineSize = snapDownToStep(inlineBase, charAdvance, Math.max(120, charAdvance * 8));
+      const blockSize = snapDownToStep(blockBase, lineAdvance, Math.max(120, lineAdvance * 4));
+
+      document.documentElement.style.setProperty("--page-width", `${Math.max(1, mode === "horizontal" ? inlineSize : blockSize)}px`);
+      document.documentElement.style.setProperty("--paged-inline-size", `${Math.max(1, inlineSize)}px`);
+      document.documentElement.style.setProperty("--paged-block-size", `${Math.max(1, blockSize)}px`);
+      return;
+    }
+
     document.documentElement.style.setProperty("--page-width", `${Math.max(240, wrapped)}px`);
+    document.documentElement.style.removeProperty("--paged-inline-size");
+    document.documentElement.style.removeProperty("--paged-block-size");
   };
   const applyViewportMetrics = () => {
     const visualHeight = Number(window.visualViewport?.height) || Number(window.innerHeight) || 0;
@@ -496,6 +518,7 @@ export function initReader({
     wheelPaging = Boolean(nextSettings.wheelPaging);
     structureAutoDetect = nextSettings.structureAutoDetect !== false;
     pageTurnEffect = normalizePageTurnEffect(nextSettings.pageTurnEffect);
+    pageColumns = nextSettings.pageColumns === true;
     wrapWidthPercent = normalizeWrapWidthPercent(nextSettings.wrapWidthPercent);
     writingModePreference = normalizeWritingModePreference(nextSettings.writingModePreference);
     applyWritingModePreference(writingModePreference);
@@ -516,6 +539,7 @@ export function initReader({
     if (structureAutoDetectCheck) structureAutoDetectCheck.checked = structureAutoDetect;
     syncStructureAutoDetectControl();
     if (pageTurnEffectSelect) pageTurnEffectSelect.value = pageTurnEffect;
+    if (pageColumnsCheck) pageColumnsCheck.checked = pageColumns;
     displayModeRadios.forEach((radio) => {
       radio.checked = radio.value === displayMode;
     });
@@ -550,6 +574,9 @@ export function initReader({
     });
     pageTurnEffectSelect?.addEventListener("change", () => {
       updateSettings({ pageTurnEffect: normalizePageTurnEffect(pageTurnEffectSelect.value) });
+    });
+    pageColumnsCheck?.addEventListener("change", () => {
+      updateSettings({ pageColumns: Boolean(pageColumnsCheck.checked) });
     });
     applyGenkoPresetBtn?.addEventListener("click", () => {
       updateSettings(buildGenkoPresetFromCurrent());
@@ -621,13 +648,14 @@ export function initReader({
   }
 
   function updateSettingValueLabels() {
-    const baseFontPx = parseFloat(window.getComputedStyle(document.documentElement).fontSize) || 16;
+    const metrics = getReaderTextMetrics();
+    const baseFontPx = metrics.baseFontPx;
     const fontPercent = Number(fontSizeRange?.value) || 100;
-    const fontPx = (fontPercent / 100) * baseFontPx;
+    const fontPx = metrics.fontPx;
     const fontPt = fontPx * 0.75;
     const lineHeight = Number(lineHeightRange?.value) || 1.8;
-    const lineHeightPx = fontPx * lineHeight;
-    const letterSpacingPx = Number(letterSpacingRange?.value) || 0;
+    const lineHeightPx = metrics.lineHeightPx;
+    const letterSpacingPx = metrics.letterSpacingPx;
     const wrapPercent = normalizeWrapWidthPercent(wrapWidthRange?.value);
     const viewportWidth = getHorizontalPageSize();
     const viewportHeight = getVerticalPageSize();
@@ -721,6 +749,7 @@ export function initReader({
       wheelPaging: Boolean(wheelPagingCheck?.checked),
       structureAutoDetect: structureAutoDetectCheck ? Boolean(structureAutoDetectCheck.checked) : structureAutoDetect,
       pageTurnEffect: normalizePageTurnEffect(pageTurnEffectSelect?.value || pageTurnEffect),
+      pageColumns: Boolean(pageColumnsCheck?.checked),
       writingModePreference: normalizeWritingModePreference(writingModeSelect?.value || writingModePreference),
       ...patch
     };
@@ -765,6 +794,20 @@ export function initReader({
       lineHeight: Number(naturalLineHeight.toFixed(1)),
       letterSpacing,
       wrapWidthPercent
+    };
+  }
+
+  function getReaderTextMetrics() {
+    const baseFontPx = parseFloat(window.getComputedStyle(document.documentElement).fontSize) || 16;
+    const fontPercent = Number(fontSizeRange?.value) || Number(settings?.fontSize) || 100;
+    const fontPx = (fontPercent / 100) * baseFontPx;
+    const lineHeight = Number(lineHeightRange?.value) || Number(settings?.lineHeight) || 1.8;
+    const letterSpacingPx = Number(letterSpacingRange?.value) || Number(settings?.letterSpacing) || 0;
+    return {
+      baseFontPx,
+      fontPx,
+      lineHeightPx: fontPx * lineHeight,
+      letterSpacingPx
     };
   }
 
@@ -1316,4 +1359,13 @@ function normalizeDisplayMode(mode) {
 
 function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
+}
+
+function snapDownToStep(value, step, min) {
+  const safeValue = Math.max(0, Number(value) || 0);
+  const safeStep = Math.max(1, Number(step) || 1);
+  const safeMin = Math.max(0, Number(min) || 0);
+  const snapped = Math.floor(safeValue / safeStep) * safeStep;
+  if (safeValue <= safeMin) return safeValue;
+  return Math.max(safeMin, snapped || safeValue);
 }

@@ -40,6 +40,7 @@ const DEFAULT_SETTINGS = {
   wheelPaging: false,
   writingModePreference: "vertical",
   structureAutoDetect: true,
+  pageColumns: false,
   pageTurnEffect: "none"
 };
 
@@ -654,6 +655,7 @@ function saveSettings(bookId, settings) {
     wheelPaging: Boolean(settings.wheelPaging),
     writingModePreference: settings.writingModePreference || "vertical",
     structureAutoDetect: settings.structureAutoDetect !== false,
+    pageColumns: settings.pageColumns === true,
     pageTurnEffect: normalizePageTurnEffect(settings.pageTurnEffect),
     updatedAt: new Date().toISOString()
   };
