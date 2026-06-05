@@ -91,6 +91,18 @@ export function initReader({
   const stepHorizontalPage = (stepCount, behavior = "auto") => {
     const pageSize = getHorizontalPageSize();
     const maxLeft = getMaxLeft(scrollContainer);
+    const maxTop = getMaxTop(scrollContainer);
+
+    if (maxLeft <= 1 && maxTop > 1) {
+      const verticalPageSize = getVerticalPageSize();
+      const currentTop = Number(scrollContainer.scrollTop) || 0;
+      const targetTop = clamp(currentTop + stepCount * verticalPageSize, 0, maxTop);
+      if (Math.abs(targetTop - currentTop) <= 1) return;
+      scrollContainer.scrollTo({ top: targetTop, behavior });
+      playPageTurnEffect(stepCount > 0 ? "forward" : "back");
+      return;
+    }
+
     const logical = toLogicalLeft(scrollContainer, scrollContainer.scrollLeft, pageDirection);
     const totalPages = Math.max(1, Math.floor(maxLeft / pageSize) + 1);
     const currentPage = clamp(Math.round(logical / pageSize), 0, totalPages - 1);
@@ -333,6 +345,7 @@ export function initReader({
   bindProgressTracking();
   bindTopEdgeRevealTap(tapZone);
   bindPageTap(tapZone, scrollContainer);
+  bindPageTap(readerViewport, scrollContainer);
   bindWheelScroll(readerViewport, scrollContainer, tapZone);
   applyDisplayMode(displayMode, { tapInScroll, preservePosition: hasInitialProgress });
   reflowReaderLayout({ preservePosition: hasInitialProgress });
@@ -974,8 +987,10 @@ export function initReader({
     const threshold = 10;
     const swipeThreshold = 42;
     let down = null;
+    let lastPointerTapAt = 0;
 
     const shouldHandlePagingTap = () => {
+      if (settingsPanel?.classList.contains("open") || tocPanel?.classList.contains("open")) return false;
       if (displayMode === "paged") return true;
       if (displayMode === "scrollx") return true;
       return tapInScroll === true;
@@ -1075,12 +1090,19 @@ export function initReader({
         if (dragged) return;
         if (dx >= swipeThreshold && dx > dy * 1.25) {
           handleSwipe(deltaX);
+          lastPointerTapAt = Date.now();
           return;
         }
         if (dx > threshold || dy > threshold) return;
         onTap(event);
+        lastPointerTapAt = Date.now();
       });
     }
+
+    tapEl.addEventListener("click", (event) => {
+      if (Date.now() - lastPointerTapAt < 450) return;
+      onTap(event);
+    });
 
     tapEl.addEventListener("mousedown", (event) => {
       if (window.PointerEvent || event.button !== 0) return;
@@ -1451,6 +1473,10 @@ function normalizePageTurnEffect(value) {
 
 function getMaxLeft(el) {
   return Math.max(0, el.scrollWidth - el.clientWidth);
+}
+
+function getMaxTop(el) {
+  return Math.max(0, el.scrollHeight - el.clientHeight);
 }
 
 function toLogicalLeft(el, physicalLeft, direction = "rtl") {

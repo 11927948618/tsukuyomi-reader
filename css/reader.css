@@ -259,13 +259,11 @@ body.mode-paged .reader-content {
   overflow: visible;
   margin-inline-start: auto;
   margin-inline-end: 0;
-  column-width: auto;
-  column-count: 1;
+  column-width: var(--page-width, 100vw);
+  column-count: auto;
 }
 
 body.mode-paged.page-columns-enabled .reader-content {
-  column-width: var(--page-width, 100vw);
-  column-count: auto;
   column-gap: var(--page-column-gap, 2.4em);
 }
 
