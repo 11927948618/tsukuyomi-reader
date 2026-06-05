@@ -120,7 +120,7 @@ export function initReader({
       const charAdvance = Math.max(6, metrics.fontPx * 0.95 + metrics.letterSpacingPx);
       const lineAdvance = Math.max(10, metrics.lineHeightPx);
       const inlineBase = mode === "horizontal" ? wrapped : height;
-      const blockBase = mode === "horizontal" ? height : (pageColumns ? wrapped : width);
+      const blockBase = mode === "horizontal" ? height : Math.min(width, wrapped);
       const inlineSize = genkoPreset
         ? Math.min(inlineBase, charAdvance * 20)
         : snapDownToStep(inlineBase, charAdvance, Math.max(120, charAdvance * 8));
@@ -397,6 +397,9 @@ export function initReader({
       document.body.classList.remove("settings-open");
       if (!tocPanel?.classList.contains("open")) closeOverlay();
     }
+    requestAnimationFrame(() => {
+      reflowReaderLayout({ preservePosition: true, resetPosition: false });
+    });
   }
 
   function renderBook(currentBook) {

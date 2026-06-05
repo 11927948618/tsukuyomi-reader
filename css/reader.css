@@ -3,6 +3,7 @@
   min-height: 100vh;
   min-height: var(--reader-viewport-height, 100dvh);
   padding-top: var(--reader-topbar-height, 64px);
+  --settings-panel-width: min(360px, 94vw);
 }
 
 .reader-topbar {
@@ -258,9 +259,13 @@ body.mode-paged .reader-content {
   overflow: visible;
   margin-inline-start: auto;
   margin-inline-end: 0;
+  column-width: auto;
+  column-count: 1;
 }
 
 body.mode-paged.page-columns-enabled .reader-content {
+  column-width: var(--page-width, 100vw);
+  column-count: auto;
   column-gap: var(--page-column-gap, 2.4em);
 }
 
@@ -627,7 +632,7 @@ body.mode-scrolly .reader-content.force-vertical .chapter {
   position: fixed;
   top: 0;
   right: 0;
-  width: min(360px, 94vw);
+  width: var(--settings-panel-width);
   height: 100vh;
   height: 100dvh;
   background: var(--panel);
@@ -648,6 +653,20 @@ body.mode-scrolly .reader-content.force-vertical .chapter {
   transform: translateX(0);
   visibility: visible;
   pointer-events: auto;
+}
+
+@media (min-width: 900px) {
+  body.settings-open .reader-topbar {
+    right: var(--settings-panel-width);
+  }
+
+  body.settings-open .reader-main,
+  body.settings-open.mode-paged .reader-main {
+    width: auto;
+    max-width: none;
+    margin-left: 12px;
+    margin-right: calc(var(--settings-panel-width) + 12px);
+  }
 }
 
 .settings-panel > header {
