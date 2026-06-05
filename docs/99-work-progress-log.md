@@ -1693,3 +1693,18 @@ TSUKUYOMI_REVIEW_PASSWORD_DAYS=7
 
 - `node --check js/admin.js`: OK
 - `node --check functions/api/admin/books/[id]/promote.js`: OK
+
+## 2026-06-05 文字特化方針とMarkdown対応候補
+
+### 方針
+
+- MP3など音声ファイルをTsukuyomiReaderへ混ぜる案は廃案。
+- 当面はReaderを文字表示に特化し、対応原稿形式は現行のまま維持する。
+- 将来音声を扱う場合は、TsukuyomiPlayerのような別サービスとして検討する。
+
+### 作業候補
+
+- `.md` 読込対応を次期候補として残す。
+  - TXTの上位互換として正規化し、本文・見出し・空行・引用・区切り線を扱う想定。
+  - 初期対応範囲は `#` / `##` / `###` 見出し、通常段落、空行、引用、区切り線程度に絞る。
+  - 表、脚注、HTML混在、複雑なリンクカードは初期対応外でよい。
