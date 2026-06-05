@@ -63,6 +63,7 @@ export function initReader({
   let structureAutoDetect = settings?.structureAutoDetect !== false;
   let pageTurnEffect = normalizePageTurnEffect(settings?.pageTurnEffect);
   let pageColumns = settings?.pageColumns === true;
+  let genkoPreset = settings?.genkoPreset === true;
   let wrapWidthPercent = normalizeWrapWidthPercent(settings?.wrapWidthPercent);
   let writingModePreference = normalizeWritingModePreference(settings?.writingModePreference);
   let pageDirection = writingModePreference === "vertical" ? "rtl" : "ltr";
@@ -113,15 +114,19 @@ export function initReader({
     const height = getVerticalPageSize();
     const wrapped = Math.round(width * (wrapWidthPercent / 100));
     const metrics = getReaderTextMetrics();
+    const mode = normalizeWritingModePreference(writingModePreference);
 
     if (displayMode === "paged") {
-      const mode = normalizeWritingModePreference(writingModePreference);
       const charAdvance = Math.max(6, metrics.fontPx * 0.95 + metrics.letterSpacingPx);
       const lineAdvance = Math.max(10, metrics.lineHeightPx);
       const inlineBase = mode === "horizontal" ? wrapped : height;
       const blockBase = mode === "horizontal" ? height : (pageColumns ? wrapped : width);
-      const inlineSize = snapDownToStep(inlineBase, charAdvance, Math.max(120, charAdvance * 8));
-      const blockSize = snapDownToStep(blockBase, lineAdvance, Math.max(120, lineAdvance * 4));
+      const inlineSize = genkoPreset
+        ? Math.min(inlineBase, charAdvance * 20)
+        : snapDownToStep(inlineBase, charAdvance, Math.max(120, charAdvance * 8));
+      const blockSize = genkoPreset
+        ? Math.min(blockBase, lineAdvance * 20)
+        : snapDownToStep(blockBase, lineAdvance, Math.max(120, lineAdvance * 4));
       const columnGap = pageColumns ? Math.max(lineAdvance * 1.6, metrics.fontPx * 2.4) : 0;
 
       document.documentElement.style.setProperty("--page-width", `${Math.max(1, mode === "horizontal" ? inlineSize : blockSize)}px`);
@@ -132,6 +137,15 @@ export function initReader({
     }
 
     document.documentElement.style.setProperty("--page-width", `${Math.max(240, wrapped)}px`);
+    if (displayMode === "scrolly" && mode === "vertical") {
+      const lineAdvance = Math.max(10, metrics.lineHeightPx);
+      const pageBlockSize = genkoPreset
+        ? Math.min(wrapped, lineAdvance * 20)
+        : snapDownToStep(wrapped, lineAdvance, Math.max(180, lineAdvance * 6));
+      document.documentElement.style.setProperty("--scroll-page-block-size", `${Math.max(1, pageBlockSize)}px`);
+    } else {
+      document.documentElement.style.removeProperty("--scroll-page-block-size");
+    }
     document.documentElement.style.removeProperty("--paged-inline-size");
     document.documentElement.style.removeProperty("--paged-block-size");
     document.documentElement.style.removeProperty("--page-column-gap");
@@ -523,7 +537,9 @@ export function initReader({
     structureAutoDetect = nextSettings.structureAutoDetect !== false;
     pageTurnEffect = normalizePageTurnEffect(nextSettings.pageTurnEffect);
     pageColumns = nextSettings.pageColumns === true;
+    genkoPreset = nextSettings.genkoPreset === true;
     document.body.classList.toggle("page-columns-enabled", pageColumns);
+    document.body.classList.toggle("genko-preset-enabled", genkoPreset);
     wrapWidthPercent = normalizeWrapWidthPercent(nextSettings.wrapWidthPercent);
     writingModePreference = normalizeWritingModePreference(nextSettings.writingModePreference);
     applyWritingModePreference(writingModePreference);
@@ -558,14 +574,14 @@ export function initReader({
   }
 
   function bindSettingsEvents() {
-    fontSizeRange.addEventListener("input", () => updateSettings({ fontSize: Number(fontSizeRange.value) }));
+    fontSizeRange.addEventListener("input", () => updateSettings({ fontSize: Number(fontSizeRange.value), genkoPreset: false }));
     fontFamilySelect?.addEventListener("change", () => {
       updateSettings({ fontFamilyPreference: normalizeFontFamilyPreference(fontFamilySelect.value) });
     });
-    lineHeightRange.addEventListener("input", () => updateSettings({ lineHeight: Number(lineHeightRange.value) }));
-    letterSpacingRange.addEventListener("input", () => updateSettings({ letterSpacing: Number(letterSpacingRange.value) }));
+    lineHeightRange.addEventListener("input", () => updateSettings({ lineHeight: Number(lineHeightRange.value), genkoPreset: false }));
+    letterSpacingRange.addEventListener("input", () => updateSettings({ letterSpacing: Number(letterSpacingRange.value), genkoPreset: false }));
     wrapWidthRange?.addEventListener("input", () => {
-      updateSettings({ wrapWidthPercent: normalizeWrapWidthPercent(wrapWidthRange.value) });
+      updateSettings({ wrapWidthPercent: normalizeWrapWidthPercent(wrapWidthRange.value), genkoPreset: false });
     });
     themeSelect.addEventListener("change", () => updateSettings({ theme: themeSelect.value }));
     writingModeSelect?.addEventListener("change", () => {
@@ -667,12 +683,15 @@ export function initReader({
     const wrapPx = Math.round(viewportWidth * (wrapPercent / 100));
     const mode = normalizeWritingModePreference(writingModeSelect?.value || writingModePreference);
     const inlineAdvance = Math.max(6, fontPx * 0.95 + letterSpacingPx);
-    const approxCharsPerLine =
-      mode === "horizontal"
+    const isGenko = genkoPreset === true;
+    const approxCharsPerLine = isGenko
+      ? 20
+      : mode === "horizontal"
         ? Math.max(1, Math.round(wrapPx / inlineAdvance))
         : Math.max(1, Math.round(viewportHeight / inlineAdvance));
-    const approxLinesPerPage =
-      mode === "horizontal"
+    const approxLinesPerPage = isGenko
+      ? 20
+      : mode === "horizontal"
         ? Math.max(1, Math.round(viewportHeight / lineHeightPx))
         : Math.max(1, Math.round(wrapPx / lineHeightPx));
 
@@ -687,10 +706,11 @@ export function initReader({
       letterSpacingValue.textContent = `${sign}${letterSpacingPx.toFixed(1)}px`;
     }
     if (wrapWidthValue) {
+      const genkoNote = isGenko ? " / 原稿用紙固定" : "";
       wrapWidthValue.textContent =
         mode === "horizontal"
-          ? `${wrapPercent}% / 約${wrapPx}px / 約${approxCharsPerLine}字×${approxLinesPerPage}行`
-          : `${wrapPercent}% / 約${wrapPx}px / 約${approxCharsPerLine}字×${approxLinesPerPage}列`;
+          ? `${wrapPercent}% / 約${wrapPx}px / 約${approxCharsPerLine}字×${approxLinesPerPage}行${genkoNote}`
+          : `${wrapPercent}% / 約${wrapPx}px / 約${approxCharsPerLine}字×${approxLinesPerPage}列${genkoNote}`;
     }
     updateGenkoMatchBadge(approxCharsPerLine, approxLinesPerPage);
   }
@@ -755,6 +775,7 @@ export function initReader({
       structureAutoDetect: structureAutoDetectCheck ? Boolean(structureAutoDetectCheck.checked) : structureAutoDetect,
       pageTurnEffect: normalizePageTurnEffect(pageTurnEffectSelect?.value || pageTurnEffect),
       pageColumns: Boolean(pageColumnsCheck?.checked),
+      genkoPreset,
       writingModePreference: normalizeWritingModePreference(writingModeSelect?.value || writingModePreference),
       ...patch
     };
@@ -768,37 +789,33 @@ export function initReader({
 
   function buildGenkoPresetFromCurrent() {
     const viewportWidthSafe = getHorizontalPageSize();
-    const viewportHeight = getVerticalPageSize();
-    const fontSize = Number(fontSizeRange.value) || 100;
     const lineHeightNow = Number(lineHeightRange.value) || 1.8;
     const letterSpacing = Number(letterSpacingRange.value) || 0;
     const mode = normalizeWritingModePreference(writingModeSelect?.value || writingModePreference);
 
-    const fontPx = (fontSize / 100) * 16;
-    const targetLineHeightRaw =
-      mode === "horizontal"
-        ? viewportHeight / (20 * Math.max(10, fontPx))
-        : viewportWidthSafe / (20 * Math.max(10, fontPx));
-    const targetLineHeight = clamp(targetLineHeightRaw, 1.4, 2.2);
+    const inlineBase = mode === "horizontal" ? getHorizontalPageSize() : getVerticalPageSize();
+    const blockBase = mode === "horizontal" ? getVerticalPageSize() : viewportWidthSafe;
+    const targetFontFromInline = ((inlineBase / 20) / 0.95) / 16 * 100;
+    const adjustedFontSize = clamp(Math.round(targetFontFromInline), 80, 140);
+    const adjustedFontPx = (adjustedFontSize / 100) * 16;
+    const rawLineHeight = blockBase / (20 * adjustedFontPx);
+    const balancedLineHeight = clamp(rawLineHeight, 1.5, 2.05);
     const naturalLineHeight = clamp(
-      targetLineHeight,
-      Math.max(1.4, lineHeightNow - 0.35),
-      Math.min(2.4, lineHeightNow + 0.35)
+      balancedLineHeight,
+      Math.max(1.5, lineHeightNow - 0.3),
+      Math.min(2.1, lineHeightNow + 0.3)
     );
-
-    const charAdvance =
-      mode === "horizontal"
-        ? Math.max(6, fontPx * 0.95 + letterSpacing)
-        : Math.max(6, fontPx * naturalLineHeight);
-    const targetWrapPx = charAdvance * 20;
+    const targetBlockPx = adjustedFontPx * naturalLineHeight * 20;
     const wrapBase = viewportWidthSafe;
-    const wrapWidthPercent = normalizeWrapWidthPercent((targetWrapPx / wrapBase) * 100);
+    const wrapWidthPercent = normalizeWrapWidthPercent((targetBlockPx / wrapBase) * 100);
 
     return {
-      fontSize,
+      fontSize: adjustedFontSize,
       lineHeight: Number(naturalLineHeight.toFixed(1)),
       letterSpacing,
-      wrapWidthPercent
+      wrapWidthPercent,
+      genkoPreset: true,
+      pageColumns: false
     };
   }
 
@@ -957,6 +974,7 @@ export function initReader({
 
     const shouldHandlePagingTap = () => {
       if (displayMode === "paged") return true;
+      if (displayMode === "scrollx") return true;
       return tapInScroll === true;
     };
 
@@ -1009,7 +1027,28 @@ export function initReader({
     if (window.PointerEvent) {
       tapEl.addEventListener("pointerdown", (event) => {
         if (event.pointerType === "mouse" && event.button !== 0) return;
-        down = { x: event.clientX, y: event.clientY };
+        down = {
+          x: event.clientX,
+          y: event.clientY,
+          startLogicalLeft: toLogicalLeft(scrollEl, scrollEl.scrollLeft, pageDirection),
+          dragged: false
+        };
+        if (displayMode === "scrollx") {
+          try {
+            tapEl.setPointerCapture?.(event.pointerId);
+          } catch {
+            // Synthetic or interrupted pointer streams may not be capturable.
+          }
+        }
+      });
+      tapEl.addEventListener("pointermove", (event) => {
+        if (!down || displayMode !== "scrollx") return;
+        const dx = event.clientX - down.x;
+        const dy = event.clientY - down.y;
+        if (Math.abs(dx) <= threshold || Math.abs(dx) <= Math.abs(dy)) return;
+        down.dragged = true;
+        scrollToLogicalLeft(down.startLogicalLeft - dx, "auto");
+        event.preventDefault();
       });
       tapEl.addEventListener("pointerup", (event) => {
         if (skipNextTap) {
@@ -1021,7 +1060,16 @@ export function initReader({
         const dx = Math.abs(event.clientX - down.x);
         const dy = Math.abs(event.clientY - down.y);
         const deltaX = event.clientX - down.x;
+        const dragged = down.dragged;
         down = null;
+        if (displayMode === "scrollx") {
+          try {
+            tapEl.releasePointerCapture?.(event.pointerId);
+          } catch {
+            // Ignore capture release failures for compatibility.
+          }
+        }
+        if (dragged) return;
         if (dx >= swipeThreshold && dx > dy * 1.25) {
           handleSwipe(deltaX);
           return;
@@ -1029,12 +1077,46 @@ export function initReader({
         if (dx > threshold || dy > threshold) return;
         onTap(event);
       });
-      return;
     }
+
+    tapEl.addEventListener("mousedown", (event) => {
+      if (window.PointerEvent || event.button !== 0) return;
+      down = {
+        x: event.clientX,
+        y: event.clientY,
+        startLogicalLeft: toLogicalLeft(scrollEl, scrollEl.scrollLeft, pageDirection),
+        dragged: false
+      };
+    });
+    window.addEventListener("mousemove", (event) => {
+      if (window.PointerEvent || !down || displayMode !== "scrollx") return;
+      const dx = event.clientX - down.x;
+      const dy = event.clientY - down.y;
+      if (Math.abs(dx) <= threshold || Math.abs(dx) <= Math.abs(dy)) return;
+      down.dragged = true;
+      scrollToLogicalLeft(down.startLogicalLeft - dx, "auto");
+      event.preventDefault();
+    });
+    window.addEventListener("mouseup", (event) => {
+      if (window.PointerEvent || !down) return;
+      const dx = Math.abs(event.clientX - down.x);
+      const dy = Math.abs(event.clientY - down.y);
+      const deltaX = event.clientX - down.x;
+      const dragged = down.dragged;
+      down = null;
+      if (dragged) return;
+      if (dx >= swipeThreshold && dx > dy * 1.25) {
+        handleSwipe(deltaX);
+        return;
+      }
+      if (dx > threshold || dy > threshold) return;
+      onTap(event);
+    });
 
     tapEl.addEventListener(
       "touchstart",
       (event) => {
+        if (window.PointerEvent) return;
         const touch = event.touches[0];
         if (!touch) return;
         down = { x: touch.clientX, y: touch.clientY };
@@ -1045,6 +1127,7 @@ export function initReader({
     tapEl.addEventListener(
       "touchend",
       (event) => {
+        if (window.PointerEvent) return;
         if (skipNextTap) {
           skipNextTap = false;
           down = null;

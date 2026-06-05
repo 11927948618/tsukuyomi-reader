@@ -83,9 +83,14 @@ function detectChapterHeading(line) {
   if (!raw || raw.length > 42) return null;
   if (/^[\s\-_=*＊・]+$/.test(raw)) return null;
 
+  const marker = "[\\s　]*[■□◆◇●○◎★☆▲△▼▽＊*#＃▶▷・･-]*[\\s　]*";
+  const number = "[0-9０-９一二三四五六七八九十百千万〇零壱弐参IVXLCDMivxlcdmⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩⅪⅫⅰⅱⅲⅳⅴⅵⅶⅷⅸⅹ]+";
+  const unit = "(?:章|話|節|部|編|幕|回|項|段)";
+  const sep = "[\\s　:：、。．.・･\\-－–—]*";
   const patterns = [
-    /^第[一二三四五六七八九十百千万〇零\d]+[章話節部編幕][\s　:：、.．-]*(.*)$/,
-    /^[一二三四五六七八九十百千万〇零\d]+[章話節][\s　:：、.．-]*(.*)$/,
+    new RegExp(`^${marker}第[\\s　]*${number}[\\s　]*${unit}${sep}(.*)$`, "u"),
+    new RegExp(`^${marker}${number}[\\s　]*${unit}${sep}(.*)$`, "u"),
+    new RegExp(`^${marker}${number}[\\s　]*[。．.][\\s　]*(.*)$`, "u"),
     /^(序章|終章|最終章|プロローグ|エピローグ|あとがき|まえがき|前書き|後書き)$/,
     /^(chapter|chap\.?|section|part)\s+[0-9ivxlcdm]+[\s:：.\-]*(.*)$/i
   ];

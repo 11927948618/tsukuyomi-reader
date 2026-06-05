@@ -102,7 +102,8 @@ export async function exportZipFromBook(book, options = {}) {
       tapInScroll: Boolean(settings.tapInScroll),
       wheelPaging: Boolean(settings.wheelPaging),
       writingModePreference: settings.writingModePreference || "vertical",
-      pageColumns: settings.pageColumns === true
+      pageColumns: settings.pageColumns === true,
+      genkoPreset: settings.genkoPreset === true
     },
     toc: Array.isArray(book.toc) ? book.toc : []
   };

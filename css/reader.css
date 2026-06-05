@@ -256,6 +256,8 @@ body.mode-paged .reader-content {
   inline-size: var(--paged-inline-size, auto);
   block-size: var(--paged-block-size, auto);
   overflow: visible;
+  margin-inline-start: auto;
+  margin-inline-end: 0;
 }
 
 body.mode-paged.page-columns-enabled .reader-content {
@@ -288,6 +290,8 @@ body.distribution-mode .reader-content img {
   line-break: strict;
   word-break: normal;
   overflow-wrap: normal;
+  margin-left: auto;
+  margin-right: 0;
   -moz-font-feature-settings: "vert" 1;
   font-feature-settings: "vert" 1;
 }
@@ -344,6 +348,11 @@ body.distribution-mode .reader-content img {
 
 .reader-content .epub-body p {
   margin-block-end: 1.2em;
+}
+
+.reader-content .epub-body .epub-blank-line {
+  min-block-size: 1em;
+  margin-block-end: 0.8em;
 }
 
 .reader-content .epub-body br {
@@ -470,9 +479,18 @@ body.mode-scrolly .tap-zone {
   touch-action: pan-y;
 }
 
-body.mode-scrolly .tap-zone,
-body.mode-scrollx .tap-zone {
+body.mode-scrolly .tap-zone {
   pointer-events: none;
+}
+
+body.mode-scrollx .tap-zone {
+  pointer-events: auto;
+  touch-action: pan-x;
+  cursor: grab;
+}
+
+body.mode-scrollx .tap-zone:active {
+  cursor: grabbing;
 }
 
 body.page-turn-flash .reader-viewport::after {
@@ -570,6 +588,25 @@ body.mode-scrolly .reader-content {
   column-gap: 0;
 }
 
+body.mode-scrolly .reader-content.force-vertical {
+  inline-size: auto;
+  block-size: var(--scroll-page-block-size, var(--page-width, 100%));
+  max-block-size: 100%;
+  margin-left: auto;
+  margin-right: 0;
+  column-width: auto;
+}
+
+body.mode-scrolly .reader-content.force-vertical .chapter {
+  block-size: 100%;
+  margin-left: 0;
+  margin-right: 0;
+  margin-block-start: 0;
+  margin-block-end: 2rem;
+  padding-block-start: 0;
+  padding-block-end: 0;
+}
+
 .tap-zone.disabled {
   pointer-events: none;
 }
@@ -599,6 +636,8 @@ body.mode-scrolly .reader-content {
   transform: translateX(100%);
   transition: transform 0.2s ease;
   z-index: 950;
+  visibility: hidden;
+  pointer-events: none;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -607,6 +646,8 @@ body.mode-scrolly .reader-content {
 
 .settings-panel.open {
   transform: translateX(0);
+  visibility: visible;
+  pointer-events: auto;
 }
 
 .settings-panel > header {
@@ -827,8 +868,18 @@ body.settings-open .tap-zone {
   padding: 7px 9px;
   border-radius: 8px;
   border: 1px solid var(--border);
-  background: transparent;
+  background: color-mix(in srgb, var(--panel), #000 4%);
   color: var(--text);
+}
+
+.settings-panel select option {
+  color: #14141a;
+  background: #ffffff;
+}
+
+body.theme-dark .settings-panel select option {
+  color: #f2f2f4;
+  background: #171722;
 }
 
 .settings-panel .label {
