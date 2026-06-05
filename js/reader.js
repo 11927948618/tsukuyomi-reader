@@ -84,6 +84,7 @@ export function initReader({
   };
   const getHorizontalPageSize = () => getViewportInnerSize("x");
   const getVerticalPageSize = () => getViewportInnerSize("y");
+  const usesVerticalPagedAxis = () => displayMode === "paged" && getMaxLeft(scrollContainer) <= 1 && getMaxTop(scrollContainer) > 1;
   const scrollToLogicalLeft = (logicalLeft, behavior = "auto") => {
     const physicalLeft = toPhysicalLeft(scrollContainer, logicalLeft, pageDirection);
     scrollContainer.scrollTo({ left: physicalLeft, behavior });
@@ -528,10 +529,6 @@ export function initReader({
 
     target.scrollIntoView({ behavior: "auto", block: "start", inline: "start" });
     requestAnimationFrame(() => {
-      const pageSize = getHorizontalPageSize();
-      const logical = toLogicalLeft(scrollContainer, scrollContainer.scrollLeft, pageDirection);
-      const snapped = Math.max(0, Math.round(logical / pageSize) * pageSize);
-      scrollToLogicalLeft(snapped, "auto");
       refreshHScroll?.();
     });
   }
@@ -853,7 +850,7 @@ export function initReader({
     const handler = throttle(() => {
       const chapterId = getCurrentChapterId();
 
-      if (displayMode === "scrolly") {
+      if (displayMode === "scrolly" || usesVerticalPagedAxis()) {
         const offset = scrollContainer.scrollTop;
         const size = getVerticalPageSize();
         const pageIndex = Math.round(offset / size);
@@ -898,7 +895,7 @@ export function initReader({
   function applyProgress(nextProgress, refresh) {
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
-        if (displayMode === "scrolly") {
+        if (displayMode === "scrolly" || usesVerticalPagedAxis()) {
           const topRaw = Number(nextProgress?.scrollTop);
           const top = Number.isFinite(topRaw)
             ? topRaw
@@ -939,36 +936,46 @@ export function initReader({
       return raw;
     };
 
-    const updatePageInfo = (logical, max) => {
+    const getSliderAxisState = () => {
+      const verticalAxis = usesVerticalPagedAxis();
+      const pageSize = verticalAxis ? getVerticalPageSize() : getHorizontalPageSize();
+      const max = verticalAxis ? getMaxTop(content) : getMaxLeft(content);
+      const logical = verticalAxis ? (Number(content.scrollTop) || 0) : toLogicalLeft(content, content.scrollLeft, pageDirection);
+      return { verticalAxis, pageSize, max, logical };
+    };
+
+    const updatePageInfo = (logical, max, pageSize = getHorizontalPageSize()) => {
       if (!pageInfo) return;
-      const pageSize = getHorizontalPageSize();
       const totalPages = Math.max(1, Math.floor(max / pageSize) + 1);
       const currentPage = Math.min(totalPages, Math.max(1, Math.round(logical / pageSize) + 1));
       pageInfo.textContent = `${currentPage} / ${totalPages}`;
     };
 
     const refresh = () => {
-      const max = getMaxLeft(content);
-      const logical = toLogicalLeft(content, content.scrollLeft, pageDirection);
-      slider.max = String(max);
-      slider.value = String(toSliderValue(logical, max));
-      slider.disabled = max === 0;
-      updatePageInfo(logical, max);
+      const state = getSliderAxisState();
+      slider.max = String(state.max);
+      slider.value = String(state.verticalAxis ? state.logical : toSliderValue(state.logical, state.max));
+      slider.disabled = state.max === 0;
+      updatePageInfo(state.logical, state.max, state.pageSize);
     };
 
     slider.addEventListener("input", () => {
-      const max = Number(slider.max) || 0;
+      const state = getSliderAxisState();
       const raw = Number(slider.value) || 0;
-      const logical = fromSliderValue(raw, max);
+      if (state.verticalAxis) {
+        content.scrollTop = clamp(raw, 0, state.max);
+        updatePageInfo(content.scrollTop, state.max, state.pageSize);
+        return;
+      }
+      const logical = fromSliderValue(raw, state.max);
       scrollToLogicalLeft(logical);
-      updatePageInfo(logical, max);
+      updatePageInfo(logical, state.max, state.pageSize);
     });
 
     content.addEventListener("scroll", () => {
-      const max = Number(slider.max) || getMaxLeft(content);
-      const logical = toLogicalLeft(content, content.scrollLeft, pageDirection);
-      slider.value = String(toSliderValue(logical, max));
-      updatePageInfo(logical, max);
+      const state = getSliderAxisState();
+      slider.value = String(state.verticalAxis ? state.logical : toSliderValue(state.logical, state.max));
+      updatePageInfo(state.logical, state.max, state.pageSize);
     });
 
     window.addEventListener("resize", refresh);
@@ -1262,7 +1269,7 @@ export function initReader({
 
   function captureDisplayModePosition(mode = displayMode) {
     if (!scrollContainer) return null;
-    if (mode === "scrolly") {
+    if (mode === "scrolly" || usesVerticalPagedAxis()) {
       const pageSize = getVerticalPageSize();
       return {
         pageIndex: Math.max(0, Math.round((Number(scrollContainer.scrollTop) || 0) / pageSize)),
@@ -1279,7 +1286,7 @@ export function initReader({
 
   function restoreDisplayModePosition(position, mode = displayMode) {
     if (!position || !scrollContainer) return;
-    if (mode === "scrolly") {
+    if (mode === "scrolly" || usesVerticalPagedAxis()) {
       const top = Number.isFinite(Number(position.scrollTop))
         ? Number(position.scrollTop)
         : (Number(position.pageIndex) || 0) * getVerticalPageSize();

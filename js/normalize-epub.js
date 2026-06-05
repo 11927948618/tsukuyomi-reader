@@ -1303,7 +1303,7 @@ function detectEpubHeadingText(text) {
   const patterns = [
     new RegExp(`^${marker}第[\\s　]*${number}[\\s　]*${unit}${sep}(.*)$`, "u"),
     new RegExp(`^${marker}${number}[\\s　]*${unit}${sep}(.*)$`, "u"),
-    new RegExp(`^${marker}${number}[\\s　]*[。．.][\\s　]*(.*)$`, "u"),
+    new RegExp(`^${marker}${number}[\\s　]*[、。，，．.,][\\s　]*(.*)$`, "u"),
     /^(序章|終章|最終章|プロローグ|エピローグ|あとがき|まえがき|前書き|後書き)$/u,
     /^(chapter|chap\.?|section|part)\s+[0-9ivxlcdm]+[\s:：.\-]*(.*)$/iu
   ];

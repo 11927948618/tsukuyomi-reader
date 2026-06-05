@@ -270,6 +270,8 @@ body.mode-paged.page-columns-enabled .reader-content {
 body.mode-paged .reader-content.force-vertical {
   inline-size: var(--paged-inline-size, 100%);
   block-size: var(--paged-block-size, auto);
+  column-width: auto;
+  column-count: 1;
 }
 
 body.mode-paged .reader-content.force-horizontal {
