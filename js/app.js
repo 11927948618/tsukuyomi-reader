@@ -135,6 +135,7 @@ async function render(screen) {
       onUpdateSettings: (nextSettings) => {
         appState.settings = { ...appState.settings, ...nextSettings };
         applyTheme(appState.settings.theme);
+        saveGlobalSettings(appState.settings);
       },
       onSaveSettings: (nextSettings) => {
         appState.settings = { ...appState.settings, ...nextSettings };
@@ -271,6 +272,7 @@ async function applyBook(book) {
   const savedSettings = loadSettings(appState.currentBookId);
   appState.settings = {
     ...DEFAULT_SETTINGS,
+    ...(loadGlobalSettings() || {}),
     ...(book.settings || book.meta?.settings || {}),
     ...(savedSettings || {})
   };
@@ -643,7 +645,16 @@ function registerServiceWorker() {
 
 function saveSettings(bookId, settings) {
   if (!bookId) return;
-  const payload = {
+  const payload = buildSettingsPayload(settings);
+  const ok = saveJSON(`tsukiyomi:settings:${bookId}`, payload);
+  saveGlobalSettings(settings);
+  if (!ok) {
+    appState.startupMessage = "設定保存に失敗しました（容量不足の可能性）";
+  }
+}
+
+function buildSettingsPayload(settings) {
+  return {
     fontSize: Number(settings.fontSize) || 100,
     fontFamilyPreference: settings.fontFamilyPreference || "system",
     lineHeight: Number(settings.lineHeight) || 1.8,
@@ -659,16 +670,21 @@ function saveSettings(bookId, settings) {
     pageTurnEffect: normalizePageTurnEffect(settings.pageTurnEffect),
     updatedAt: new Date().toISOString()
   };
-  const ok = saveJSON(`tsukiyomi:settings:${bookId}`, payload);
+}
+
+function saveGlobalSettings(settings) {
+  const payload = buildSettingsPayload(settings);
+  saveJSON("tsukiyomi:settings:global", payload);
   saveJSON("tsukiyomi:txtStructureAutoDetect", payload.structureAutoDetect);
-  if (!ok) {
-    appState.startupMessage = "設定保存に失敗しました（容量不足の可能性）";
-  }
 }
 
 function loadSettings(bookId) {
   if (!bookId) return null;
   return loadJSON(`tsukiyomi:settings:${bookId}`, null);
+}
+
+function loadGlobalSettings() {
+  return loadJSON("tsukiyomi:settings:global", null);
 }
 
 function applyVersionBadge() {

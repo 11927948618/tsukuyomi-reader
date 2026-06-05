@@ -223,7 +223,7 @@ export function initReader({
   };
 
   const reflowReaderLayout = (options = {}) => {
-    const position = options.preservePosition ? captureReaderPosition() : null;
+    const position = options.position || (options.preservePosition ? captureReaderPosition() : null);
     applyViewportMetrics();
     applyTopbarLayoutMode();
     applyTopbarOffset();
@@ -236,8 +236,9 @@ export function initReader({
       applyPageWidth();
       updatePageDirection({ preservePosition: true });
       if (position) restoreReaderPosition(position);
-      else scrollToBookStart();
+      else if (options.resetPosition !== false) scrollToBookStart();
       if (typeof refreshHScroll === "function") refreshHScroll();
+      if (typeof options.afterSettle === "function") options.afterSettle();
     };
 
     requestAnimationFrame(() => {
@@ -516,7 +517,7 @@ export function initReader({
     document.documentElement.style.setProperty("--line-height", Number(nextSettings.lineHeight) || 1.8);
     document.documentElement.style.setProperty("--letter-spacing", `${Number(nextSettings.letterSpacing) || 0}px`);
     applyTheme(nextSettings.theme || "light");
-    displayMode = normalizeDisplayMode(nextSettings.displayMode);
+    const nextDisplayMode = normalizeDisplayMode(nextSettings.displayMode);
     tapInScroll = Boolean(nextSettings.tapInScroll);
     wheelPaging = Boolean(nextSettings.wheelPaging);
     structureAutoDetect = nextSettings.structureAutoDetect !== false;
@@ -528,7 +529,7 @@ export function initReader({
     applyWritingModePreference(writingModePreference);
     updatePageDirection({ preservePosition: true });
     applyPageWidth();
-    applyDisplayMode(displayMode, { tapInScroll, preservePosition: !isInitialLayout || hasInitialProgress });
+    applyDisplayMode(nextDisplayMode, { tapInScroll, preservePosition: !isInitialLayout || hasInitialProgress });
 
     fontSizeRange.value = String(nextSettings.fontSize ?? 100);
     if (fontFamilySelect) {
@@ -545,7 +546,7 @@ export function initReader({
     if (pageTurnEffectSelect) pageTurnEffectSelect.value = pageTurnEffect;
     if (pageColumnsCheck) pageColumnsCheck.checked = pageColumns;
     displayModeRadios.forEach((radio) => {
-      radio.checked = radio.value === displayMode;
+      radio.checked = radio.value === nextDisplayMode;
     });
     renderToc(book);
     updateSettingValueLabels();
@@ -1131,6 +1132,8 @@ export function initReader({
 
   function applyDisplayMode(mode, options = {}) {
     if (!tapZone) return;
+    const previousMode = displayMode;
+    const previousPosition = options.preservePosition === false ? null : captureDisplayModePosition(previousMode);
     const normalized = normalizeDisplayMode(mode);
     displayMode = normalized;
     tapZone.classList.remove("disabled");
@@ -1142,7 +1145,45 @@ export function initReader({
     } else {
       document.body.classList.add("mode-scrolly");
     }
-    requestAnimationFrame(() => reflowReaderLayout({ preservePosition: options.preservePosition !== false }));
+    requestAnimationFrame(() => reflowReaderLayout({
+      preservePosition: false,
+      resetPosition: previousPosition == null,
+      afterSettle: () => restoreDisplayModePosition(previousPosition, normalized)
+    }));
+  }
+
+  function captureDisplayModePosition(mode = displayMode) {
+    if (!scrollContainer) return null;
+    if (mode === "scrolly") {
+      const pageSize = getVerticalPageSize();
+      return {
+        pageIndex: Math.max(0, Math.round((Number(scrollContainer.scrollTop) || 0) / pageSize)),
+        scrollTop: Number(scrollContainer.scrollTop) || 0
+      };
+    }
+
+    const logicalLeft = toLogicalLeft(scrollContainer, scrollContainer.scrollLeft, pageDirection);
+    return {
+      pageIndex: Math.max(0, Math.round(logicalLeft / getHorizontalPageSize())),
+      logicalLeft
+    };
+  }
+
+  function restoreDisplayModePosition(position, mode = displayMode) {
+    if (!position || !scrollContainer) return;
+    if (mode === "scrolly") {
+      const top = Number.isFinite(Number(position.scrollTop))
+        ? Number(position.scrollTop)
+        : (Number(position.pageIndex) || 0) * getVerticalPageSize();
+      scrollContainer.scrollTop = Math.max(0, top);
+      return;
+    }
+
+    const logical = Number.isFinite(Number(position.logicalLeft))
+      ? Number(position.logicalLeft)
+      : (Number(position.pageIndex) || 0) * getHorizontalPageSize();
+    scrollToLogicalLeft(Math.max(0, logical));
+    refreshHScroll?.();
   }
 
   function bindWheelScroll(viewport, scrollEl, captureEl) {

@@ -295,6 +295,8 @@ body.distribution-mode .reader-content img {
 .reader-content.force-horizontal {
   writing-mode: horizontal-tb;
   text-orientation: mixed;
+  overflow-wrap: anywhere;
+  word-break: normal;
 }
 
 .reader-content ruby {
@@ -399,6 +401,12 @@ body.pdf-reader-mode .reader-content {
   letter-spacing: 0;
 }
 
+body.mode-scrolly .reader-content.force-horizontal {
+  inline-size: min(var(--page-width, 100%), 100%);
+  max-inline-size: 100%;
+  column-width: auto;
+}
+
 body.pdf-reader-mode .reader-content > * {
   scroll-snap-align: none;
 }
@@ -436,14 +444,7 @@ body.pdf-reader-mode .reader-content > * {
 }
 
 .reader-copyright {
-  position: fixed;
-  left: 12px;
-  right: 12px;
-  bottom: max(8px, env(safe-area-inset-bottom));
-  z-index: 4;
-  pointer-events: none;
-  text-align: center;
-  text-shadow: 0 1px 2px var(--bg);
+  display: none;
 }
 
 .settings-copyright {
@@ -467,6 +468,11 @@ body.pdf-reader-mode .reader-content > * {
 
 body.mode-scrolly .tap-zone {
   touch-action: pan-y;
+}
+
+body.mode-scrolly .tap-zone,
+body.mode-scrollx .tap-zone {
+  pointer-events: none;
 }
 
 body.page-turn-flash .reader-viewport::after {
