@@ -271,11 +271,13 @@ async function applyBook(book) {
   appState.currentBook = book;
   appState.currentBookId = buildBookId(book);
   const savedSettings = loadSettings(appState.currentBookId);
+  const globalSettings = loadGlobalSettings() || {};
+  const bookSettings = book.settings || book.meta?.settings || {};
   appState.settings = {
     ...DEFAULT_SETTINGS,
-    ...(loadGlobalSettings() || {}),
-    ...(book.settings || book.meta?.settings || {}),
-    ...(savedSettings || {})
+    ...bookSettings,
+    ...(savedSettings || {}),
+    ...globalSettings
   };
   const bookmark = getBookmarkCandidate(appState.currentBookId, book);
   const hasBookmark = isReadableProgress(bookmark);
