@@ -160,24 +160,34 @@ export function initReader({
     const mode = normalizeWritingModePreference(writingModePreference);
 
     if (displayMode === "paged") {
-      const charAdvance = Math.max(6, metrics.fontPx * 0.95 + metrics.letterSpacingPx);
-      const lineAdvance = Math.max(10, metrics.lineHeightPx);
-      const verticalPageGutter = mode === "vertical" ? Math.round(Math.min(48, Math.max(28, lineAdvance * 0.85))) : 0;
+      const baseCharAdvance = Math.max(6, metrics.fontPx * 0.95 + metrics.letterSpacingPx);
+      const baseLineAdvance = Math.max(10, metrics.lineHeightPx);
       const inlineBase = mode === "horizontal" ? wrapped : height;
       const blockBase = mode === "horizontal" ? height : Math.min(width, wrapped);
-      const inlineSize = genkoPreset
-        ? Math.min(inlineBase, charAdvance * 20)
-        : snapDownToStep(inlineBase, charAdvance, Math.max(120, charAdvance * 8));
-      const blockSize = genkoPreset
-        ? Math.min(blockBase, lineAdvance * 20)
-        : snapDownToStep(blockBase, lineAdvance, Math.max(120, lineAdvance * 4));
-      const columnGap = pageColumns ? Math.max(lineAdvance * 1.6, metrics.fontPx * 2.4) : 0;
+      const pagePlan = mode === "vertical"
+        ? resolveVerticalPagePlan({
+            inlineBase,
+            blockBase,
+            charAdvance: baseCharAdvance,
+            lineAdvance: baseLineAdvance,
+            fontPx: metrics.fontPx,
+            genkoPreset
+          })
+        : resolveHorizontalPagePlan({
+            inlineBase,
+            blockBase,
+            charAdvance: baseCharAdvance,
+            lineAdvance: baseLineAdvance,
+            genkoPreset
+          });
+      const columnGap = pageColumns ? Math.max(pagePlan.lineAdvance * 1.6, metrics.fontPx * pagePlan.fontScale * 2.4) : 0;
 
-      document.documentElement.style.setProperty("--page-width", `${Math.max(1, inlineSize)}px`);
-      document.documentElement.style.setProperty("--paged-inline-size", `${Math.max(1, inlineSize)}px`);
-      document.documentElement.style.setProperty("--paged-block-size", `${Math.max(1, blockSize)}px`);
+      document.documentElement.style.setProperty("--page-font-scale", `${pagePlan.fontScale}`);
+      document.documentElement.style.setProperty("--page-width", `${Math.max(1, pagePlan.inlineSize)}px`);
+      document.documentElement.style.setProperty("--paged-inline-size", `${Math.max(1, pagePlan.inlineSize)}px`);
+      document.documentElement.style.setProperty("--paged-block-size", `${Math.max(1, pagePlan.blockSize)}px`);
       document.documentElement.style.setProperty("--page-column-gap", `${Math.round(columnGap)}px`);
-      document.documentElement.style.setProperty("--vertical-page-gutter", `${verticalPageGutter}px`);
+      document.documentElement.style.setProperty("--vertical-page-gutter", `${pagePlan.verticalPageGutter}px`);
       return;
     }
 
@@ -191,6 +201,7 @@ export function initReader({
     } else {
       document.documentElement.style.removeProperty("--scroll-page-block-size");
     }
+    document.documentElement.style.removeProperty("--page-font-scale");
     document.documentElement.style.removeProperty("--paged-inline-size");
     document.documentElement.style.removeProperty("--paged-block-size");
     document.documentElement.style.removeProperty("--page-column-gap");
@@ -209,6 +220,8 @@ export function initReader({
   const applyImmersivePagedChrome = () => {
     const immersive = shouldUseImmersivePagedChrome();
     document.body.classList.toggle("mobile-paged-immersive", immersive);
+    document.body.classList.toggle("rotation-locked", immersive);
+    requestPortraitOrientationLock(immersive);
     if (!topbar) return;
     if (immersive) {
       topbar.classList.add("hidden");
@@ -217,6 +230,17 @@ export function initReader({
       topbar.classList.remove("hidden");
       document.body.classList.remove("chrome-hidden");
     }
+  };
+  const requestPortraitOrientationLock = (enabled) => {
+    const orientation = screen?.orientation;
+    if (!orientation) return;
+    try {
+      if (enabled && typeof orientation.lock === "function") {
+        orientation.lock("portrait").catch(() => {});
+      } else if (!enabled && typeof orientation.unlock === "function") {
+        orientation.unlock();
+      }
+    } catch {}
   };
   const applyTopbarLayoutMode = () => {
     const controls = topbar?.querySelector(".topbar-controls");
@@ -1475,6 +1499,92 @@ function withPdfViewerParams(url) {
   return `${base}#${hash ? `${hash}&${params}` : params}`;
 }
 
+function resolveHorizontalPagePlan({ inlineBase, blockBase, charAdvance, lineAdvance, genkoPreset }) {
+  const inlineSize = genkoPreset
+    ? Math.min(inlineBase, charAdvance * 20)
+    : snapDownToStep(inlineBase, charAdvance, Math.max(120, charAdvance * 8));
+  const blockSize = genkoPreset
+    ? Math.min(blockBase, lineAdvance * 20)
+    : snapDownToStep(blockBase, lineAdvance, Math.max(120, lineAdvance * 4));
+  return {
+    inlineSize: Math.max(1, Math.round(inlineSize)),
+    blockSize: Math.max(1, Math.round(blockSize)),
+    lineAdvance,
+    fontScale: 1,
+    verticalPageGutter: 0
+  };
+}
+
+function resolveVerticalPagePlan({ inlineBase, blockBase, charAdvance, lineAdvance, genkoPreset }) {
+  const maxInline = Math.max(120, inlineBase);
+  const maxBlock = Math.max(120, blockBase);
+  const minFontScale = genkoPreset ? 0.9 : 1;
+  const scaleSteps = genkoPreset ? [1, 0.97, 0.94, 0.9] : [1];
+  const candidates = genkoPreset
+    ? [
+        { chars: 20, lines: 20 },
+        { chars: 34, lines: 12 },
+        { chars: 33, lines: 12 },
+        { chars: 32, lines: 12 },
+        { chars: 30, lines: 13 },
+        { chars: 28, lines: 14 },
+        { chars: 25, lines: 16 },
+        { chars: 24, lines: 16 },
+        { chars: 22, lines: 18 }
+      ]
+    : buildNaturalVerticalCandidates(maxInline, maxBlock, charAdvance, lineAdvance);
+
+  for (const scale of scaleSteps) {
+    const scaledCharAdvance = Math.max(6, charAdvance * scale);
+    const scaledLineAdvance = Math.max(10, lineAdvance * scale);
+    const gutter = Math.round(Math.min(48, Math.max(24, scaledLineAdvance * 0.7)));
+    const fit = candidates
+      .map((candidate) => {
+        const inlineSize = Math.round(candidate.chars * scaledCharAdvance + gutter * 2);
+        const blockSize = Math.round(candidate.lines * scaledLineAdvance);
+        return { ...candidate, inlineSize, blockSize, fontScale: scale, lineAdvance: scaledLineAdvance, verticalPageGutter: gutter };
+      })
+      .filter((candidate) => candidate.inlineSize <= maxInline && candidate.blockSize <= maxBlock)
+      .sort((a, b) => scoreVerticalPageCandidate(b, genkoPreset) - scoreVerticalPageCandidate(a, genkoPreset))[0];
+    if (fit) return fit;
+  }
+
+  const fallbackScale = minFontScale;
+  const scaledCharAdvance = Math.max(6, charAdvance * fallbackScale);
+  const scaledLineAdvance = Math.max(10, lineAdvance * fallbackScale);
+  const gutter = Math.round(Math.min(42, Math.max(20, scaledLineAdvance * 0.6)));
+  const chars = Math.max(8, Math.floor((maxInline - gutter * 2) / scaledCharAdvance));
+  const lines = Math.max(4, Math.floor(maxBlock / scaledLineAdvance));
+  return {
+    chars,
+    lines,
+    inlineSize: Math.max(1, Math.round(Math.min(maxInline, chars * scaledCharAdvance + gutter * 2))),
+    blockSize: Math.max(1, Math.round(Math.min(maxBlock, lines * scaledLineAdvance))),
+    lineAdvance: scaledLineAdvance,
+    fontScale: fallbackScale,
+    verticalPageGutter: gutter
+  };
+}
+
+function buildNaturalVerticalCandidates(maxInline, maxBlock, charAdvance, lineAdvance) {
+  const maxChars = Math.max(8, Math.floor((maxInline - 48) / charAdvance));
+  const maxLines = Math.max(4, Math.floor(maxBlock / lineAdvance));
+  const candidates = [];
+  for (const chars of [maxChars, maxChars - 1, maxChars - 2, Math.floor(maxChars * 0.9)].filter((value) => value >= 8)) {
+    for (const lines of [maxLines, maxLines - 1, Math.floor(maxLines * 0.9)].filter((value) => value >= 4)) {
+      candidates.push({ chars, lines });
+    }
+  }
+  return candidates;
+}
+
+function scoreVerticalPageCandidate(candidate, genkoPreset) {
+  const total = candidate.chars * candidate.lines;
+  if (!genkoPreset) return total;
+  const target = 400;
+  const balance = Math.abs(candidate.chars / Math.max(1, candidate.lines) - 2.75) * 10;
+  return 1000 - Math.abs(total - target) - balance;
+}
 function normalizeFontFamilyPreference(value) {
   const normalized = String(value || "").toLowerCase();
   if (normalized === "mincho" || normalized === "gothic") return normalized;
