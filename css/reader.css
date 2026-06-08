@@ -293,6 +293,39 @@ body.mode-paged .reader-content.force-horizontal {
   block-size: var(--paged-block-size, auto);
 }
 
+body.mobile-text-pager.mode-paged .reader-content {
+  column-width: auto;
+  column-count: auto;
+  inline-size: var(--paged-inline-size, 100%);
+  block-size: var(--paged-block-size, 100%);
+  overflow: hidden;
+}
+
+body.mobile-text-pager.mode-paged .reader-content.mobile-pager-content {
+  padding-inline: var(--vertical-page-gutter, 0px);
+}
+
+.mobile-text-page {
+  box-sizing: border-box;
+  inline-size: 100%;
+  block-size: 100%;
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  overflow: hidden;
+  white-space: pre-wrap;
+}
+
+.mobile-text-page h1 {
+  margin: 0 0 0 0.8em;
+  font-size: 1.08em;
+  line-height: 1.45;
+  font-weight: 700;
+}
+
+.mobile-text-page-body {
+  white-space: pre-wrap;
+}
+
 body.distribution-mode .reader-content,
 body.distribution-mode .reader-content * {
   user-select: none;

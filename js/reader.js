@@ -69,6 +69,13 @@ export function initReader({
   let pageDirection = writingModePreference === "vertical" ? "rtl" : "ltr";
   let isInitialLayout = true;
   let skipNextTap = false;
+  let mobileTextPager = {
+    active: false,
+    sourceHtml: "",
+    pages: [],
+    pageIndex: 0,
+    chapterPageMap: new Map()
+  };
   const refreshHScroll = setupHScroll(scrollContainer);
   const isMobileReadingDevice = () => {
     const width = Number(window.innerWidth) || 0;
@@ -76,6 +83,12 @@ export function initReader({
     const shortSide = Math.min(width || Infinity, height || Infinity);
     const coarsePointer = window.matchMedia?.("(pointer: coarse)")?.matches || false;
     return coarsePointer || shortSide <= 640;
+  };
+  const shouldUseMobileTextPager = () => {
+    return displayMode === "paged"
+      && normalizeWritingModePreference(writingModePreference) === "vertical"
+      && isMobileReadingDevice()
+      && !getPdfUrl(book);
   };
   const getViewportInnerSize = (axis = "x") => {
     const fallback = axis === "x" ? window.innerWidth : window.innerHeight;
@@ -124,6 +137,12 @@ export function initReader({
     scrollContainer.scrollTo({ left: physicalLeft, behavior });
   };
   const stepHorizontalPage = (stepCount, behavior = "auto") => {
+    if (mobileTextPager.active) {
+      setMobileTextPage(mobileTextPager.pageIndex + stepCount);
+      playPageTurnEffect(stepCount > 0 ? "forward" : "back");
+      return;
+    }
+
     const pageSize = getHorizontalPageSize();
     const maxLeft = getMaxLeft(scrollContainer);
     const maxTop = getMaxTop(scrollContainer);
@@ -351,6 +370,7 @@ export function initReader({
       applyTopbarOffset();
       applyPageWidth();
       updatePageDirection({ preservePosition: true });
+      syncMobileTextPager({ preservePage: true });
       if (position) restoreReaderPosition(position);
       else if (options.resetPosition !== false) scrollToBookStart();
       if (typeof refreshHScroll === "function") refreshHScroll();
@@ -521,7 +541,8 @@ export function initReader({
       return;
     }
 
-    bookContent.innerHTML = currentBook.html || "";
+    mobileTextPager.sourceHtml = currentBook.html || "";
+    bookContent.innerHTML = mobileTextPager.sourceHtml;
 
     renderToc(currentBook);
 
@@ -535,6 +556,157 @@ export function initReader({
     });
 
     // 現状は全文一括DOM生成。大容量書籍向けの分割描画は別対応とする。
+  }
+
+  function syncMobileTextPager(options = {}) {
+    if (!bookContent || getPdfUrl(book)) return;
+    const enabled = shouldUseMobileTextPager();
+    document.body.classList.toggle("mobile-text-pager", enabled);
+
+    if (!enabled) {
+      if (mobileTextPager.active) {
+        const source = mobileTextPager.sourceHtml || book.html || "";
+        mobileTextPager.active = false;
+        bookContent.classList.remove("mobile-pager-content");
+        bookContent.innerHTML = source;
+        applyWritingModePreference(writingModePreference);
+        updatePageDirection({ preservePosition: false });
+      }
+      return;
+    }
+
+    const previousPage = mobileTextPager.active && options.preservePage !== false
+      ? mobileTextPager.pageIndex
+      : Number(options.pageIndex) || 0;
+    const source = mobileTextPager.sourceHtml || book.html || "";
+    const plan = resolveMobileTextPagerPlan();
+    const built = buildMobileTextPages(source, plan);
+    mobileTextPager = {
+      active: true,
+      sourceHtml: source,
+      pages: built.pages,
+      pageIndex: clamp(previousPage, 0, Math.max(0, built.pages.length - 1)),
+      chapterPageMap: built.chapterPageMap
+    };
+    bookContent.classList.add("mobile-pager-content");
+    renderMobileTextPage(mobileTextPager.pageIndex);
+    updateMobileTextPagerProgress();
+    refreshHScroll?.();
+  }
+
+  function resolveMobileTextPagerPlan() {
+    const metrics = getReaderTextMetrics();
+    const baseCharAdvance = Math.max(6, metrics.fontPx * 0.95 + metrics.letterSpacingPx);
+    const baseLineAdvance = Math.max(10, metrics.lineHeightPx);
+    const plan = resolveVerticalPagePlan({
+      inlineBase: getViewportInnerSize("y"),
+      blockBase: getViewportInnerSize("x"),
+      charAdvance: baseCharAdvance,
+      lineAdvance: baseLineAdvance,
+      genkoPreset
+    });
+    const chars = Math.max(8, Number(plan.chars) || 20);
+    const lines = Math.max(4, Number(plan.lines) || 10);
+    return {
+      chars,
+      lines,
+      capacity: Math.max(40, chars * lines),
+      fontScale: plan.fontScale || 1
+    };
+  }
+
+  function buildMobileTextPages(sourceHtml, plan) {
+    const template = document.createElement("template");
+    template.innerHTML = sourceHtml || "";
+    const chapterEls = Array.from(template.content.querySelectorAll("section.chapter"));
+    const sourceChapters = chapterEls.length ? chapterEls : [template.content];
+    const pages = [];
+    const chapterPageMap = new Map();
+
+    sourceChapters.forEach((chapter, index) => {
+      const chapterId = chapter.getAttribute?.("id") || `chapter-${String(index + 1).padStart(3, "0")}`;
+      const title = chapter.querySelector?.("h1,h2,h3")?.textContent?.trim() || "";
+      const textSource = chapter.cloneNode?.(true) || chapter;
+      textSource.querySelectorAll?.("h1,h2,h3").forEach((heading) => heading.remove());
+      const text = normalizeMobilePageText(textSource.textContent || "");
+      const startPage = pages.length;
+      chapterPageMap.set(chapterId, startPage);
+      splitTextIntoPages(text, plan.capacity).forEach((pageText, pageOffset) => {
+        pages.push({
+          chapterId,
+          title: pageOffset === 0 ? title : "",
+          text: pageText
+        });
+      });
+    });
+
+    if (!pages.length) {
+      pages.push({ chapterId: "chapter-001", title: "", text: "" });
+    }
+
+    return { pages, chapterPageMap };
+  }
+
+  function normalizeMobilePageText(text) {
+    return String(text || "")
+      .replace(/\r\n?/g, "\n")
+      .replace(/[ \t\f\v]+/g, "")
+      .replace(/\n{3,}/g, "\n\n")
+      .trim();
+  }
+
+  function splitTextIntoPages(text, capacity) {
+    const source = String(text || "");
+    const safeCapacity = Math.max(40, Number(capacity) || 400);
+    const pages = [];
+    let current = "";
+    let count = 0;
+
+    for (const char of source) {
+      current += char;
+      if (char !== "\n") count += 1;
+      if (count >= safeCapacity) {
+        pages.push(current.trim());
+        current = "";
+        count = 0;
+      }
+    }
+
+    if (current.trim() || !pages.length) pages.push(current.trim());
+    return pages;
+  }
+
+  function renderMobileTextPage(pageIndex) {
+    if (!mobileTextPager.active) return;
+    const maxPage = Math.max(0, mobileTextPager.pages.length - 1);
+    const safePage = clamp(Number(pageIndex) || 0, 0, maxPage);
+    const page = mobileTextPager.pages[safePage] || mobileTextPager.pages[0] || { chapterId: "chapter-001", text: "" };
+    mobileTextPager.pageIndex = safePage;
+    bookContent.innerHTML = `
+      <section class="mobile-text-page" id="${escapeAttribute(page.chapterId)}" data-page-index="${safePage}">
+        ${page.title ? `<h1>${escapeHtml(page.title)}</h1>` : ""}
+        <div class="mobile-text-page-body">${escapeHtml(page.text)}</div>
+      </section>
+    `;
+    refreshHScroll?.();
+  }
+
+  function setMobileTextPage(pageIndex) {
+    if (!mobileTextPager.active) return;
+    const maxPage = Math.max(0, mobileTextPager.pages.length - 1);
+    const nextPage = clamp(Math.round(Number(pageIndex) || 0), 0, maxPage);
+    if (nextPage === mobileTextPager.pageIndex) return;
+    renderMobileTextPage(nextPage);
+    updateMobileTextPagerProgress();
+  }
+
+  function updateMobileTextPagerProgress() {
+    if (!mobileTextPager.active) return;
+    const maxPage = Math.max(0, mobileTextPager.pages.length - 1);
+    const pageIndex = clamp(mobileTextPager.pageIndex, 0, maxPage);
+    const page = mobileTextPager.pages[pageIndex] || {};
+    const progressPercent = maxPage > 0 ? Math.round((pageIndex / maxPage) * 100) : 100;
+    onUpdateProgress({ chapterId: page.chapterId || "chapter-001", pageIndex, progressPercent });
   }
 
   function renderToc(currentBook) {
@@ -561,6 +733,12 @@ export function initReader({
       btn.type = "button";
       btn.innerHTML = escapeHtml(item.title || "");
       btn.addEventListener("click", () => {
+        if (mobileTextPager.active) {
+          const pageIndex = mobileTextPager.chapterPageMap.get(item.chapterId);
+          if (Number.isFinite(pageIndex)) setMobileTextPage(pageIndex);
+          closeToc();
+          return;
+        }
         const target = document.getElementById(item.chapterId);
         if (target) {
           jumpToReaderTarget(target);
@@ -611,6 +789,11 @@ export function initReader({
 
   function jumpToReaderTarget(target) {
     if (!target || !scrollContainer) return;
+    if (mobileTextPager.active) {
+      const pageIndex = mobileTextPager.chapterPageMap.get(target.getAttribute("id") || "");
+      if (Number.isFinite(pageIndex)) setMobileTextPage(pageIndex);
+      return;
+    }
     if (displayMode === "scrolly") {
       target.scrollIntoView({ behavior: "smooth", block: "start" });
       return;
@@ -648,6 +831,7 @@ export function initReader({
     updatePageDirection({ preservePosition: true });
     applyPageWidth();
     applyDisplayMode(nextDisplayMode, { tapInScroll, preservePosition: !isInitialLayout || hasInitialProgress });
+    syncMobileTextPager({ preservePage: !isInitialLayout || hasInitialProgress });
 
     fontSizeRange.value = String(nextSettings.fontSize ?? 100);
     if (fontFamilySelect) {
@@ -937,6 +1121,7 @@ export function initReader({
 
   function bindProgressTracking() {
     const handler = throttle(() => {
+      if (mobileTextPager.active) return;
       const chapterId = getCurrentChapterId();
 
       if (displayMode === "scrolly" || usesVerticalPagedAxis()) {
@@ -963,6 +1148,9 @@ export function initReader({
   }
 
   function getCurrentChapterId() {
+    if (mobileTextPager.active) {
+      return mobileTextPager.pages[mobileTextPager.pageIndex]?.chapterId || "chapter-001";
+    }
     const chapters = Array.from(bookContent.querySelectorAll("section.chapter"));
     if (chapters.length === 0) return "chapter-001";
 
@@ -985,6 +1173,12 @@ export function initReader({
   function applyProgress(nextProgress, refresh) {
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
+        if (mobileTextPager.active) {
+          renderMobileTextPage(Number(nextProgress?.pageIndex) || 0);
+          updateMobileTextPagerProgress();
+          if (typeof refresh === "function") refresh();
+          return;
+        }
         if (displayMode === "scrolly" || usesVerticalPagedAxis()) {
           const topRaw = Number(nextProgress?.scrollTop);
           const top = Number.isFinite(topRaw)
@@ -1027,6 +1221,15 @@ export function initReader({
     };
 
     const getSliderAxisState = () => {
+      if (mobileTextPager.active) {
+        return {
+          mobilePager: true,
+          verticalAxis: true,
+          pageSize: 1,
+          max: Math.max(0, mobileTextPager.pages.length - 1),
+          logical: mobileTextPager.pageIndex
+        };
+      }
       const verticalAxis = usesVerticalPagedAxis();
       const pageSize = verticalAxis ? getVerticalPageSize() : getHorizontalPageSize();
       const max = verticalAxis ? Math.max(0, getMaxTop(content) - getVerticalPagedBoundaryBleed()) : getMaxLeft(content);
@@ -1053,6 +1256,11 @@ export function initReader({
       const state = getSliderAxisState();
       const raw = Number(slider.value) || 0;
       const logical = fromSliderValue(raw, state.max);
+      if (state.mobilePager) {
+        setMobileTextPage(logical);
+        updatePageInfo(mobileTextPager.pageIndex, state.max, state.pageSize);
+        return;
+      }
       if (state.verticalAxis) {
         content.scrollTop = clamp(verticalPagedPhysicalTop(logical), 0, getMaxTop(content));
         updatePageInfo(logical, state.max, state.pageSize);
@@ -1633,6 +1841,14 @@ function resolveReaderFontFamily(preference) {
   }
 
   return ['system-ui', '-apple-system', '"Segoe UI"', 'sans-serif'].join(", ");
+}
+
+function escapeAttribute(value) {
+  return String(value || "")
+    .replace(/&/g, "&amp;")
+    .replace(/"/g, "&quot;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
 }
 
 function throttle(fn, wait) {
