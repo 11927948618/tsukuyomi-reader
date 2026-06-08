@@ -1545,7 +1545,7 @@ function resolveVerticalPagePlan({ inlineBase, blockBase, charAdvance, lineAdvan
         return { ...candidate, inlineSize, blockSize, fontScale: scale, lineAdvance: scaledLineAdvance, verticalPageGutter: gutter };
       })
       .filter((candidate) => candidate.inlineSize <= maxInline && candidate.blockSize <= maxBlock)
-      .sort((a, b) => scoreVerticalPageCandidate(b, genkoPreset) - scoreVerticalPageCandidate(a, genkoPreset))[0];
+      .sort((a, b) => scoreVerticalPageCandidate(b, genkoPreset, maxInline, maxBlock) - scoreVerticalPageCandidate(a, genkoPreset, maxInline, maxBlock))[0];
     if (fit) return fit;
   }
 
@@ -1578,12 +1578,15 @@ function buildNaturalVerticalCandidates(maxInline, maxBlock, charAdvance, lineAd
   return candidates;
 }
 
-function scoreVerticalPageCandidate(candidate, genkoPreset) {
+function scoreVerticalPageCandidate(candidate, genkoPreset, maxInline = 1, maxBlock = 1) {
   const total = candidate.chars * candidate.lines;
   if (!genkoPreset) return total;
   const target = 400;
-  const balance = Math.abs(candidate.chars / Math.max(1, candidate.lines) - 2.75) * 10;
-  return 1000 - Math.abs(total - target) - balance;
+  const viewportRatio = maxInline / Math.max(1, maxBlock);
+  const targetRatio = viewportRatio >= 1.25 ? 2.75 : 1;
+  const balance = Math.abs(candidate.chars / Math.max(1, candidate.lines) - targetRatio) * 10;
+  const squareBonus = viewportRatio < 1.25 && candidate.chars === 20 && candidate.lines === 20 ? 28 : 0;
+  return 1000 - Math.abs(total - target) - balance + squareBonus;
 }
 function normalizeFontFamilyPreference(value) {
   const normalized = String(value || "").toLowerCase();
