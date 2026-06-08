@@ -131,8 +131,9 @@ export async function normalizeEpubToBook(file) {
   if (toc.length === 0) {
     toc = await buildTocFromNcx(zip, opfInfo.ncxPath, chapterPathToId);
   }
-  if (toc.length === 0) {
-    toc = buildTocFromHeadings(chapters);
+  const headingToc = buildTocFromHeadings(chapters);
+  if (toc.length === 0 || shouldPreferHeadingToc(toc, headingToc, chapters)) {
+    toc = headingToc;
   }
   if (toc.length === 0) {
     toc = chapters.map((chapter) => ({ title: chapter.title, chapterId: chapter.id }));
@@ -1217,6 +1218,23 @@ function dedupeToc(toc) {
   return out;
 }
 
+function shouldPreferHeadingToc(toc, headingToc, chapters) {
+  if (!Array.isArray(headingToc) || headingToc.length === 0) return false;
+  if (!Array.isArray(toc) || toc.length === 0) return true;
+  if (headingToc.length <= toc.length) return false;
+
+  const spineCount = Array.isArray(chapters) ? chapters.length : 0;
+  const sparseNav = toc.length <= Math.max(1, Math.floor(spineCount / 2));
+  const enoughHeadings = headingToc.length >= toc.length + 2;
+  if (!sparseNav || !enoughHeadings) return false;
+
+  const genericTitleCount = toc.filter((item, index) => {
+    const title = compactText(item?.title || "");
+    return !title || /^本文$/u.test(title) || /^章[0-9０-９]+$/u.test(title) || title === `章${index + 1}`;
+  }).length;
+
+  return toc.length <= 1 || genericTitleCount >= Math.ceil(toc.length / 2);
+}
 function buildTocFromHeadings(chapters) {
   const toc = [];
   for (let i = 0; i < chapters.length; i += 1) {
@@ -1304,6 +1322,7 @@ function detectEpubHeadingText(text) {
     new RegExp(`^${marker}第[\\s　]*${number}[\\s　]*${unit}${sep}(.*)$`, "u"),
     new RegExp(`^${marker}${number}[\\s　]*${unit}${sep}(.*)$`, "u"),
     new RegExp(`^${marker}${number}[\\s　]*[、。，，．.,][\\s　]*(.*)$`, "u"),
+    new RegExp(`^${marker}${number}[\\s　]+(.{1,36})$`, "u"),
     /^(序章|終章|最終章|プロローグ|エピローグ|あとがき|まえがき|前書き|後書き)$/u,
     /^(chapter|chap\.?|section|part)\s+[0-9ivxlcdm]+[\s:：.\-]*(.*)$/iu
   ];

@@ -83,7 +83,34 @@ export function initReader({
     return Math.max(1, inner || size || fallback || 1);
   };
   const getHorizontalPageSize = () => getViewportInnerSize("x");
-  const getVerticalPageSize = () => getViewportInnerSize("y");
+  const isVerticalPagedMode = () => displayMode === "paged" && normalizeWritingModePreference(writingModePreference) === "vertical";
+  const getVerticalPageSize = () => {
+    if (isVerticalPagedMode()) {
+      const pageInlineSize = parseFloat(
+        window.getComputedStyle(document.documentElement).getPropertyValue("--paged-inline-size")
+      );
+      if (Number.isFinite(pageInlineSize) && pageInlineSize > 1) return Math.round(pageInlineSize);
+    }
+    return getViewportInnerSize("y");
+  };
+  const getVerticalPagedBoundaryBleed = () => {
+    if (!isVerticalPagedMode()) return 0;
+    return 0;
+  };
+  const verticalPagedLogicalTop = (physicalTop) => {
+    const top = Math.max(0, Number(physicalTop) || 0);
+    const pageSize = getVerticalPageSize();
+    const bleed = getVerticalPagedBoundaryBleed();
+    if (!bleed || top < pageSize) return top;
+    return Math.max(0, top - bleed);
+  };
+  const verticalPagedPhysicalTop = (logicalTop) => {
+    const logical = Math.max(0, Number(logicalTop) || 0);
+    const pageSize = getVerticalPageSize();
+    const bleed = getVerticalPagedBoundaryBleed();
+    if (!bleed || logical < pageSize) return logical;
+    return logical + bleed;
+  };
   const usesVerticalPagedAxis = () => displayMode === "paged" && getMaxLeft(scrollContainer) <= 1 && getMaxTop(scrollContainer) > 1;
   const scrollToLogicalLeft = (logicalLeft, behavior = "auto") => {
     const physicalLeft = toPhysicalLeft(scrollContainer, logicalLeft, pageDirection);
@@ -97,7 +124,10 @@ export function initReader({
     if (maxLeft <= 1 && maxTop > 1) {
       const verticalPageSize = getVerticalPageSize();
       const currentTop = Number(scrollContainer.scrollTop) || 0;
-      const targetTop = clamp(currentTop + stepCount * verticalPageSize, 0, maxTop);
+      const currentLogicalTop = verticalPagedLogicalTop(currentTop);
+      const logicalMaxTop = Math.max(0, maxTop - getVerticalPagedBoundaryBleed());
+      const targetLogicalTop = clamp(currentLogicalTop + stepCount * verticalPageSize, 0, logicalMaxTop);
+      const targetTop = clamp(verticalPagedPhysicalTop(targetLogicalTop), 0, maxTop);
       if (Math.abs(targetTop - currentTop) <= 1) return;
       scrollContainer.scrollTo({ top: targetTop, behavior });
       playPageTurnEffect(stepCount > 0 ? "forward" : "back");
@@ -132,6 +162,7 @@ export function initReader({
     if (displayMode === "paged") {
       const charAdvance = Math.max(6, metrics.fontPx * 0.95 + metrics.letterSpacingPx);
       const lineAdvance = Math.max(10, metrics.lineHeightPx);
+      const verticalPageGutter = mode === "vertical" ? Math.round(Math.min(48, Math.max(28, lineAdvance * 0.85))) : 0;
       const inlineBase = mode === "horizontal" ? wrapped : height;
       const blockBase = mode === "horizontal" ? height : Math.min(width, wrapped);
       const inlineSize = genkoPreset
@@ -146,6 +177,7 @@ export function initReader({
       document.documentElement.style.setProperty("--paged-inline-size", `${Math.max(1, inlineSize)}px`);
       document.documentElement.style.setProperty("--paged-block-size", `${Math.max(1, blockSize)}px`);
       document.documentElement.style.setProperty("--page-column-gap", `${Math.round(columnGap)}px`);
+      document.documentElement.style.setProperty("--vertical-page-gutter", `${verticalPageGutter}px`);
       return;
     }
 
@@ -162,11 +194,29 @@ export function initReader({
     document.documentElement.style.removeProperty("--paged-inline-size");
     document.documentElement.style.removeProperty("--paged-block-size");
     document.documentElement.style.removeProperty("--page-column-gap");
+    document.documentElement.style.removeProperty("--vertical-page-gutter");
   };
   const applyViewportMetrics = () => {
     const visualHeight = Number(window.visualViewport?.height) || Number(window.innerHeight) || 0;
     if (!visualHeight) return;
     document.documentElement.style.setProperty("--reader-viewport-height", `${Math.round(visualHeight)}px`);
+  };
+  const shouldUseImmersivePagedChrome = () => {
+    if (displayMode !== "paged") return false;
+    return window.matchMedia?.("(max-width: 640px), (pointer: coarse)")?.matches || false;
+  };
+
+  const applyImmersivePagedChrome = () => {
+    const immersive = shouldUseImmersivePagedChrome();
+    document.body.classList.toggle("mobile-paged-immersive", immersive);
+    if (!topbar) return;
+    if (immersive) {
+      topbar.classList.add("hidden");
+      document.body.classList.add("chrome-hidden");
+    } else if (displayMode !== "paged") {
+      topbar.classList.remove("hidden");
+      document.body.classList.remove("chrome-hidden");
+    }
   };
   const applyTopbarLayoutMode = () => {
     const controls = topbar?.querySelector(".topbar-controls");
@@ -851,11 +901,12 @@ export function initReader({
       const chapterId = getCurrentChapterId();
 
       if (displayMode === "scrolly" || usesVerticalPagedAxis()) {
-        const offset = scrollContainer.scrollTop;
+        const offset = usesVerticalPagedAxis() ? verticalPagedLogicalTop(scrollContainer.scrollTop) : scrollContainer.scrollTop;
         const size = getVerticalPageSize();
         const pageIndex = Math.round(offset / size);
         const maxTop = Math.max(0, scrollContainer.scrollHeight - scrollContainer.clientHeight);
-        const progressPercent = maxTop > 0 ? Math.round((offset / maxTop) * 100) : 100;
+        const logicalMaxTop = usesVerticalPagedAxis() ? Math.max(0, maxTop - getVerticalPagedBoundaryBleed()) : maxTop;
+        const progressPercent = logicalMaxTop > 0 ? Math.round((offset / logicalMaxTop) * 100) : 100;
         onUpdateProgress({ chapterId, scrollTop: offset, pageIndex, progressPercent });
         return;
       }
@@ -900,7 +951,7 @@ export function initReader({
           const top = Number.isFinite(topRaw)
             ? topRaw
             : (Number(nextProgress?.pageIndex) || 0) * getVerticalPageSize();
-          scrollContainer.scrollTop = top;
+          scrollContainer.scrollTop = usesVerticalPagedAxis() ? verticalPagedPhysicalTop(top) : top;
           if (typeof refresh === "function") refresh();
           return;
         }
@@ -939,8 +990,8 @@ export function initReader({
     const getSliderAxisState = () => {
       const verticalAxis = usesVerticalPagedAxis();
       const pageSize = verticalAxis ? getVerticalPageSize() : getHorizontalPageSize();
-      const max = verticalAxis ? getMaxTop(content) : getMaxLeft(content);
-      const logical = verticalAxis ? (Number(content.scrollTop) || 0) : toLogicalLeft(content, content.scrollLeft, pageDirection);
+      const max = verticalAxis ? Math.max(0, getMaxTop(content) - getVerticalPagedBoundaryBleed()) : getMaxLeft(content);
+      const logical = verticalAxis ? verticalPagedLogicalTop(content.scrollTop) : toLogicalLeft(content, content.scrollLeft, pageDirection);
       return { verticalAxis, pageSize, max, logical };
     };
 
@@ -964,7 +1015,7 @@ export function initReader({
       const raw = Number(slider.value) || 0;
       const logical = fromSliderValue(raw, state.max);
       if (state.verticalAxis) {
-        content.scrollTop = clamp(logical, 0, state.max);
+        content.scrollTop = clamp(verticalPagedPhysicalTop(logical), 0, getMaxTop(content));
         updatePageInfo(logical, state.max, state.pageSize);
         return;
       }
@@ -978,7 +1029,10 @@ export function initReader({
       updatePageInfo(state.logical, state.max, state.pageSize);
     });
 
-    window.addEventListener("resize", refresh);
+    window.addEventListener("resize", () => {
+      applyImmersivePagedChrome();
+      refresh();
+    });
     window.addEventListener("orientationchange", refresh);
 
     requestAnimationFrame(() => {
@@ -1260,6 +1314,7 @@ export function initReader({
     } else {
       document.body.classList.add("mode-scrolly");
     }
+    applyImmersivePagedChrome();
     requestAnimationFrame(() => reflowReaderLayout({
       preservePosition: false,
       resetPosition: previousPosition == null,
