@@ -631,7 +631,7 @@ export function initReader({
       const text = normalizeMobilePageText(textSource.textContent || "");
       const startPage = pages.length;
       chapterPageMap.set(chapterId, startPage);
-      splitTextIntoPages(text, plan.capacity).forEach((pageText, pageOffset) => {
+      splitTextIntoPages(text, plan).forEach((pageText, pageOffset) => {
         pages.push({
           chapterId,
           title: pageOffset === 0 ? title : "",
@@ -655,24 +655,34 @@ export function initReader({
       .trim();
   }
 
-  function splitTextIntoPages(text, capacity) {
+  function splitTextIntoPages(text, plan) {
     const source = String(text || "");
-    const safeCapacity = Math.max(40, Number(capacity) || 400);
+    const charsPerLine = Math.max(8, Math.floor(Number(plan?.chars) || 20));
+    const linesPerPage = Math.max(4, Math.floor(Number(plan?.lines) || 10));
     const pages = [];
-    let current = "";
-    let count = 0;
+    let pageLines = [];
+    let line = "";
+
+    const pushLine = () => {
+      pageLines.push(line);
+      line = "";
+      if (pageLines.length >= linesPerPage) {
+        pages.push(pageLines.join("\n").trim());
+        pageLines = [];
+      }
+    };
 
     for (const char of source) {
-      current += char;
-      if (char !== "\n") count += 1;
-      if (count >= safeCapacity) {
-        pages.push(current.trim());
-        current = "";
-        count = 0;
+      if (char === "\n") {
+        pushLine();
+        continue;
       }
+      line += char;
+      if (line.length >= charsPerLine) pushLine();
     }
 
-    if (current.trim() || !pages.length) pages.push(current.trim());
+    if (line) pageLines.push(line);
+    if (pageLines.length || !pages.length) pages.push(pageLines.join("\n").trim());
     return pages;
   }
 
