@@ -651,38 +651,21 @@ export function initReader({
     return String(text || "")
       .replace(/\r\n?/g, "\n")
       .replace(/[ \t\f\v]+/g, "")
-      .replace(/\n{3,}/g, "\n\n")
+      .replace(/\n+/g, "")
       .trim();
   }
 
   function splitTextIntoPages(text, plan) {
     const source = String(text || "");
-    const charsPerLine = Math.max(8, Math.floor(Number(plan?.chars) || 20));
-    const linesPerPage = Math.max(4, Math.floor(Number(plan?.lines) || 10));
+    const charsPerLine = Math.max(8, Math.floor(Number(plan?.chars) || 20) - 1);
+    const linesPerPage = Math.max(4, Math.floor(Number(plan?.lines) || 10) - 1);
+    const safeCapacity = Math.max(40, charsPerLine * linesPerPage);
     const pages = [];
-    let pageLines = [];
-    let line = "";
-
-    const pushLine = () => {
-      pageLines.push(line);
-      line = "";
-      if (pageLines.length >= linesPerPage) {
-        pages.push(pageLines.join("\n").trim());
-        pageLines = [];
-      }
-    };
-
-    for (const char of source) {
-      if (char === "\n") {
-        pushLine();
-        continue;
-      }
-      line += char;
-      if (line.length >= charsPerLine) pushLine();
+    for (let index = 0; index < source.length; index += safeCapacity) {
+      pages.push(source.slice(index, index + safeCapacity).trim());
     }
 
-    if (line) pageLines.push(line);
-    if (pageLines.length || !pages.length) pages.push(pageLines.join("\n").trim());
+    if (!pages.length) pages.push("");
     return pages;
   }
 
