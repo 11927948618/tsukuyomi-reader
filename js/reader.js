@@ -70,6 +70,13 @@ export function initReader({
   let isInitialLayout = true;
   let skipNextTap = false;
   const refreshHScroll = setupHScroll(scrollContainer);
+  const isMobileReadingDevice = () => {
+    const width = Number(window.innerWidth) || 0;
+    const height = Number(window.innerHeight) || 0;
+    const shortSide = Math.min(width || Infinity, height || Infinity);
+    const coarsePointer = window.matchMedia?.("(pointer: coarse)")?.matches || false;
+    return coarsePointer || shortSide <= 640;
+  };
   const getViewportInnerSize = (axis = "x") => {
     const fallback = axis === "x" ? window.innerWidth : window.innerHeight;
     const el = readerViewport || scrollContainer;
@@ -162,8 +169,13 @@ export function initReader({
     if (displayMode === "paged") {
       const baseCharAdvance = Math.max(6, metrics.fontPx * 0.95 + metrics.letterSpacingPx);
       const baseLineAdvance = Math.max(10, metrics.lineHeightPx);
-      const inlineBase = mode === "horizontal" ? wrapped : height;
-      const blockBase = mode === "horizontal" ? height : Math.min(width, wrapped);
+      const pageFrameWidth = Math.max(1, width);
+      const pageFrameHeight = Math.max(1, height);
+      const verticalBlockLimit = isMobileReadingDevice()
+        ? Math.min(pageFrameWidth, wrapped)
+        : Math.min(pageFrameWidth, Math.max(360, wrapped));
+      const inlineBase = mode === "horizontal" ? wrapped : pageFrameHeight;
+      const blockBase = mode === "horizontal" ? pageFrameHeight : verticalBlockLimit;
       const pagePlan = mode === "vertical"
         ? resolveVerticalPagePlan({
             inlineBase,
@@ -180,7 +192,7 @@ export function initReader({
             lineAdvance: baseLineAdvance,
             genkoPreset
           });
-      const columnGap = pageColumns ? Math.max(pagePlan.lineAdvance * 1.6, metrics.fontPx * pagePlan.fontScale * 2.4) : 0;
+      const columnGap = pageColumns ? Math.max(pagePlan.lineAdvance * 2.4, metrics.fontPx * pagePlan.fontScale * 3.2) : 0;
 
       document.documentElement.style.setProperty("--page-font-scale", `${pagePlan.fontScale}`);
       document.documentElement.style.setProperty("--page-width", `${Math.max(1, pagePlan.inlineSize)}px`);
