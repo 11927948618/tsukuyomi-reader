@@ -658,7 +658,7 @@ export function initReader({
   function splitTextIntoPages(text, plan) {
     const source = String(text || "");
     const charsPerLine = Math.max(8, Math.floor(Number(plan?.chars) || 20) - 1);
-    const linesPerPage = Math.max(4, Math.floor(Number(plan?.lines) || 10) - 1);
+    const linesPerPage = Math.max(4, Math.floor(Number(plan?.lines) || 10) - 2);
     const safeCapacity = Math.max(40, charsPerLine * linesPerPage);
     const pages = [];
     for (let index = 0; index < source.length; index += safeCapacity) {
