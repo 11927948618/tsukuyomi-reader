@@ -1,4 +1,4 @@
-const CACHE_NAME = "tsukuyomi-reader-v0.1.98";
+const CACHE_NAME = "tsukuyomi-reader-v0.1.99";
 const STATIC_ASSETS = [
   "./",
   "./index.html",
