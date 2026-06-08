@@ -274,7 +274,7 @@ async function applyBook(book) {
   const globalSettings = loadGlobalSettings() || {};
   const bookSettings = book.settings || book.meta?.settings || {};
   appState.settings = {
-    ...DEFAULT_SETTINGS,
+    ...getRecommendedDefaultSettings(),
     ...bookSettings,
     ...(savedSettings || {}),
     ...globalSettings
@@ -646,6 +646,21 @@ function registerServiceWorker() {
   }
 }
 
+function getRecommendedDefaultSettings() {
+  return {
+    ...DEFAULT_SETTINGS,
+    displayMode: isMobileReadingDevice() ? "paged" : "scrollx"
+  };
+}
+
+function isMobileReadingDevice() {
+  const width = Number(window.innerWidth) || 0;
+  const height = Number(window.innerHeight) || 0;
+  const shortSide = Math.min(width || Infinity, height || Infinity);
+  const coarsePointer = window.matchMedia?.("(pointer: coarse)")?.matches || false;
+  const narrowViewport = shortSide <= 640;
+  return coarsePointer || narrowViewport;
+}
 function saveSettings(bookId, settings) {
   if (!bookId) return;
   const payload = buildSettingsPayload(settings);
