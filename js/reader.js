@@ -93,10 +93,7 @@ export function initReader({
   const isVerticalPagedMode = () => displayMode === "paged" && normalizeWritingModePreference(writingModePreference) === "vertical";
   const getVerticalPageSize = () => {
     if (isVerticalPagedMode()) {
-      const pageInlineSize = parseFloat(
-        window.getComputedStyle(document.documentElement).getPropertyValue("--paged-inline-size")
-      );
-      if (Number.isFinite(pageInlineSize) && pageInlineSize > 1) return Math.round(pageInlineSize);
+      return getViewportInnerSize("y");
     }
     return getViewportInnerSize("y");
   };
@@ -133,7 +130,10 @@ export function initReader({
       const currentTop = Number(scrollContainer.scrollTop) || 0;
       const currentLogicalTop = verticalPagedLogicalTop(currentTop);
       const logicalMaxTop = Math.max(0, maxTop - getVerticalPagedBoundaryBleed());
-      const targetLogicalTop = clamp(currentLogicalTop + stepCount * verticalPageSize, 0, logicalMaxTop);
+      const totalPages = Math.max(1, Math.floor(logicalMaxTop / verticalPageSize) + 1);
+      const currentPage = clamp(Math.round(currentLogicalTop / verticalPageSize), 0, totalPages - 1);
+      const targetPage = clamp(currentPage + stepCount, 0, totalPages - 1);
+      const targetLogicalTop = clamp(targetPage * verticalPageSize, 0, logicalMaxTop);
       const targetTop = clamp(verticalPagedPhysicalTop(targetLogicalTop), 0, maxTop);
       if (Math.abs(targetTop - currentTop) <= 1) return;
       scrollContainer.scrollTo({ top: targetTop, behavior });

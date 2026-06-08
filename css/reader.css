@@ -218,7 +218,7 @@ body.mode-paged .reader-viewport {
 }
 
 body.mode-paged.writing-vertical .reader-viewport {
-  height: min(100%, calc(var(--paged-inline-size, 100%) + 2px));
+  height: min(100%, var(--paged-inline-size, 100%));
   padding-block: 0;
   align-self: start;
 }
@@ -1113,8 +1113,8 @@ body {
   }
 
   body.mobile-paged-immersive.mode-paged.writing-vertical .reader-viewport {
-    height: min(100%, calc(var(--paged-inline-size, 100%) + 2px));
-    align-self: center;
+    height: min(100%, var(--paged-inline-size, 100%));
+    align-self: start;
   }
 
   body.mobile-paged-immersive .reader-topbar {
