@@ -313,6 +313,8 @@ body.mobile-text-pager.mode-paged .reader-content.mobile-pager-content {
   text-orientation: mixed;
   overflow: hidden;
   white-space: pre-wrap;
+  margin: 0;
+  padding: 0;
 }
 
 .mobile-text-page h1 {
@@ -323,6 +325,12 @@ body.mobile-text-pager.mode-paged .reader-content.mobile-pager-content {
 }
 
 .mobile-text-page-body {
+  box-sizing: border-box;
+  display: block;
+  inline-size: 100%;
+  block-size: 100%;
+  margin: 0;
+  padding: 0;
   white-space: pre-wrap;
 }
 
