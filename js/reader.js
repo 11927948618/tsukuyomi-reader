@@ -142,7 +142,7 @@ export function initReader({
         : snapDownToStep(blockBase, lineAdvance, Math.max(120, lineAdvance * 4));
       const columnGap = pageColumns ? Math.max(lineAdvance * 1.6, metrics.fontPx * 2.4) : 0;
 
-      document.documentElement.style.setProperty("--page-width", `${Math.max(1, mode === "horizontal" ? inlineSize : blockSize)}px`);
+      document.documentElement.style.setProperty("--page-width", `${Math.max(1, inlineSize)}px`);
       document.documentElement.style.setProperty("--paged-inline-size", `${Math.max(1, inlineSize)}px`);
       document.documentElement.style.setProperty("--paged-block-size", `${Math.max(1, blockSize)}px`);
       document.documentElement.style.setProperty("--page-column-gap", `${Math.round(columnGap)}px`);
@@ -954,7 +954,7 @@ export function initReader({
     const refresh = () => {
       const state = getSliderAxisState();
       slider.max = String(state.max);
-      slider.value = String(state.verticalAxis ? state.logical : toSliderValue(state.logical, state.max));
+      slider.value = String(toSliderValue(state.logical, state.max));
       slider.disabled = state.max === 0;
       updatePageInfo(state.logical, state.max, state.pageSize);
     };
@@ -962,19 +962,19 @@ export function initReader({
     slider.addEventListener("input", () => {
       const state = getSliderAxisState();
       const raw = Number(slider.value) || 0;
+      const logical = fromSliderValue(raw, state.max);
       if (state.verticalAxis) {
-        content.scrollTop = clamp(raw, 0, state.max);
-        updatePageInfo(content.scrollTop, state.max, state.pageSize);
+        content.scrollTop = clamp(logical, 0, state.max);
+        updatePageInfo(logical, state.max, state.pageSize);
         return;
       }
-      const logical = fromSliderValue(raw, state.max);
       scrollToLogicalLeft(logical);
       updatePageInfo(logical, state.max, state.pageSize);
     });
 
     content.addEventListener("scroll", () => {
       const state = getSliderAxisState();
-      slider.value = String(state.verticalAxis ? state.logical : toSliderValue(state.logical, state.max));
+      slider.value = String(toSliderValue(state.logical, state.max));
       updatePageInfo(state.logical, state.max, state.pageSize);
     });
 
@@ -1354,11 +1354,14 @@ export function initReader({
 
   function applyWritingModePreference(mode) {
     if (!bookContent) return;
+    const normalized = normalizeWritingModePreference(mode);
+    document.body.classList.toggle("writing-vertical", normalized === "vertical");
+    document.body.classList.toggle("writing-horizontal", normalized === "horizontal");
     bookContent.classList.remove("force-vertical", "force-horizontal");
     if (getPdfUrl(book)) return;
-    if (mode === "vertical") {
+    if (normalized === "vertical") {
       bookContent.classList.add("force-vertical");
-    } else if (mode === "horizontal") {
+    } else if (normalized === "horizontal") {
       bookContent.classList.add("force-horizontal");
     }
   }

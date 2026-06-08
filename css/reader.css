@@ -217,6 +217,11 @@ body.mode-paged .reader-viewport {
   cursor: default;
 }
 
+body.mode-paged.writing-vertical .reader-viewport {
+  height: min(100%, calc(var(--paged-inline-size, 100%) + 34px));
+  padding-block: 32px 0;
+  align-self: start;
+}
 body.mode-paged .reader-viewport::before,
 body.mode-paged .reader-viewport::after {
   content: "";
@@ -270,8 +275,6 @@ body.mode-paged.page-columns-enabled .reader-content {
 body.mode-paged .reader-content.force-vertical {
   inline-size: var(--paged-inline-size, 100%);
   block-size: var(--paged-block-size, auto);
-  column-width: auto;
-  column-count: 1;
 }
 
 body.mode-paged .reader-content.force-horizontal {
@@ -1001,6 +1004,10 @@ body {
     padding: 18px 16px;
   }
 
+  body.mode-paged .reader-viewport {
+    padding-inline: 38px;
+  }
+
   .settings-panel {
     width: min(360px, 96vw);
   }
@@ -1043,5 +1050,35 @@ body {
 
   .settings-body {
     padding: 8px 10px max(10px, env(safe-area-inset-bottom));
+  }
+}
+
+@media (max-width: 640px) {
+  body.distribution-mode .reader-topbar .mode-badge {
+    width: 1.65rem;
+    min-width: 1.65rem;
+    height: 1.65rem;
+    padding: 0;
+    overflow: hidden;
+    color: transparent;
+    position: relative;
+  }
+
+  body.distribution-mode .reader-topbar .mode-badge::before {
+    content: "R";
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    color: #7a5a0b;
+    font-weight: 800;
+  }
+
+  body.mode-paged .reader-title {
+    display: none;
+  }
+
+  body.mode-paged .reader-topbar {
+    padding-block-end: 6px;
   }
 }
