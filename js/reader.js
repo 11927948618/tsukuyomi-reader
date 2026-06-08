@@ -93,7 +93,10 @@ export function initReader({
   const isVerticalPagedMode = () => displayMode === "paged" && normalizeWritingModePreference(writingModePreference) === "vertical";
   const getVerticalPageSize = () => {
     if (isVerticalPagedMode()) {
-      return getViewportInnerSize("y");
+      const pageInlineSize = parseFloat(
+        window.getComputedStyle(document.documentElement).getPropertyValue("--paged-inline-size")
+      );
+      if (Number.isFinite(pageInlineSize) && pageInlineSize > 1) return Math.round(pageInlineSize);
     }
     return getViewportInnerSize("y");
   };
