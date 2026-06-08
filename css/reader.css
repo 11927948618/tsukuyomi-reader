@@ -306,6 +306,7 @@ body.mobile-text-pager.mode-paged .reader-content.mobile-pager-content {
 }
 
 .mobile-text-page {
+  position: relative;
   box-sizing: border-box;
   inline-size: 100%;
   block-size: 100%;
@@ -325,6 +326,8 @@ body.mobile-text-pager.mode-paged .reader-content.mobile-pager-content {
 }
 
 .mobile-text-page-body {
+  position: absolute;
+  inset: 0;
   box-sizing: border-box;
   display: block;
   inline-size: 100%;
