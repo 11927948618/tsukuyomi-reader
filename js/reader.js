@@ -651,14 +651,15 @@ export function initReader({
     return String(text || "")
       .replace(/\r\n?/g, "\n")
       .replace(/[ \t\f\v]+/g, "")
-      .replace(/\n+/g, "")
+      .replace(/[―—]/g, "︱")
+      .replace(/\n{3,}/g, "\n\n")
       .trim();
   }
 
   function splitTextIntoPages(text, plan) {
     const source = String(text || "");
-    const charsPerLine = Math.max(8, Math.floor(Number(plan?.chars) || 20) - 1);
-    const linesPerPage = Math.max(4, Math.floor(Number(plan?.lines) || 10) - 2);
+    const charsPerLine = Math.max(8, Math.floor(Number(plan?.chars) || 20) - 2);
+    const linesPerPage = Math.max(4, Math.floor(Number(plan?.lines) || 10) - 1);
     const safeCapacity = Math.max(40, charsPerLine * linesPerPage);
     const pages = [];
     for (let index = 0; index < source.length; index += safeCapacity) {
