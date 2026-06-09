@@ -296,7 +296,7 @@ body.mode-paged .reader-content.force-horizontal {
 body.mobile-text-pager.mode-paged .reader-content {
   column-width: auto;
   column-count: auto;
-  inline-size: var(--paged-inline-size, 100%);
+  inline-size: 100%;
   block-size: 100%;
   overflow: hidden;
 }
