@@ -57,7 +57,10 @@
             </div>
             <button class="button ghost compact-button" id="bundledBooksToggleBtn" type="button" aria-expanded="false" aria-controls="bundledBooksList">開く</button>
           </div>
-          <div id="bundledBooksList" class="library-card-stack" hidden></div>
+          <div class="library-list-tools" id="bundledBooksTools" hidden>
+            <input class="input library-search-input" id="bundledBooksSearch" type="search" placeholder="作品名・作者で絞り込み" autocomplete="off" />
+          </div>
+          <div id="bundledBooksList" class="library-book-list" hidden></div>
         </div>
 
         <div class="card" data-export-control>

@@ -24,6 +24,8 @@ export function initLibrary({ siteConfig = null, onOpenBook, onExport, getCurren
   const bundledBooksStatus = qs("#bundledBooksStatus");
   const bundledBooksList = qs("#bundledBooksList");
   const bundledBooksToggleBtn = qs("#bundledBooksToggleBtn");
+  const bundledBooksTools = qs("#bundledBooksTools");
+  const bundledBooksSearch = qs("#bundledBooksSearch");
   const exportBtn = qs("#exportBtn");
   const openReaderSettingsBtn = qs("#openReaderSettingsBtn");
   const libraryReloadBtn = qs("#libraryReloadBtn");
@@ -60,6 +62,10 @@ export function initLibrary({ siteConfig = null, onOpenBook, onExport, getCurren
 
   bundledBooksToggleBtn?.addEventListener("click", () => {
     setBundledBooksOpen(!bundledBooksOpen);
+  });
+
+  bundledBooksSearch?.addEventListener("input", () => {
+    filterBundledBooksList(bundledBooksList, bundledBooksStatus, bundledBooksSearch.value);
   });
 
   openReaderSettingsBtn?.addEventListener("click", () => {
@@ -223,6 +229,7 @@ export function initLibrary({ siteConfig = null, onOpenBook, onExport, getCurren
   function setBundledBooksOpen(open) {
     bundledBooksOpen = Boolean(open);
     if (bundledBooksList) bundledBooksList.hidden = !bundledBooksOpen;
+    if (bundledBooksTools) bundledBooksTools.hidden = !bundledBooksOpen;
     if (bundledBooksToggleBtn) {
       bundledBooksToggleBtn.setAttribute("aria-expanded", bundledBooksOpen ? "true" : "false");
       bundledBooksToggleBtn.textContent = bundledBooksOpen ? "閉じる" : "開く";
@@ -386,6 +393,9 @@ async function initBundledBooksShelf({
       const displayTitle = safeText(entry.title, entry.filename || entry.path || "Untitled");
       const article = document.createElement("article");
       article.className = "book-card";
+      article.dataset.searchText = [displayTitle, entry.author, entry.description, entry.updatedAt, kind]
+        .map((value) => String(value || "").toLowerCase())
+        .join(" ");
 
       const cover = document.createElement("div");
       cover.className = "book-cover";
@@ -425,14 +435,19 @@ async function initBundledBooksShelf({
       desc.className = "book-description";
       desc.textContent = safeText(entry?.description, defaultDescription(kind));
 
-      const updated = document.createElement("p");
+      const updated = document.createElement("span");
       updated.className = "book-updated";
-      updated.textContent = entry.updatedAt ? `更新日: ${entry.updatedAt}` : "";
+      updated.textContent = entry.updatedAt ? `更新日 ${entry.updatedAt}` : "";
       updated.hidden = !entry.updatedAt;
 
-      const manuscriptStats = document.createElement("p");
+      const manuscriptStats = document.createElement("span");
       manuscriptStats.className = "book-stats";
       manuscriptStats.textContent = formatManuscriptStats(resolveManifestManuscriptStats(entry)) || "400字換算: 計算中...";
+
+      const metaRow = document.createElement("div");
+      metaRow.className = "book-meta-row";
+      metaRow.appendChild(manuscriptStats);
+      metaRow.appendChild(updated);
 
       const button = document.createElement("button");
       button.type = "button";
@@ -443,8 +458,7 @@ async function initBundledBooksShelf({
       info.appendChild(title);
       info.appendChild(author);
       info.appendChild(desc);
-      info.appendChild(updated);
-      info.appendChild(manuscriptStats);
+      info.appendChild(metaRow);
       info.appendChild(button);
       article.appendChild(cover);
       article.appendChild(info);
@@ -478,6 +492,22 @@ async function initBundledBooksShelf({
   }
 }
 
+
+function filterBundledBooksList(listEl, statusEl, query) {
+  if (!listEl) return;
+  const needle = String(query || "").trim().toLowerCase();
+  const cards = Array.from(listEl.querySelectorAll(".book-card"));
+  let visible = 0;
+  cards.forEach((card) => {
+    const matched = !needle || String(card.dataset.searchText || "").includes(needle);
+    card.hidden = !matched;
+    if (matched) visible += 1;
+  });
+  if (statusEl && cards.length > 0) {
+    statusEl.textContent = needle ? `${visible} / ${cards.length}作品` : `${cards.length}作品`;
+    statusEl.className = visible > 0 ? "status ok" : "status error";
+  }
+}
 async function loadBundledBookManifest(manifestPath) {
   let res;
   try {
