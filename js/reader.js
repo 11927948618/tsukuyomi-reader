@@ -1412,6 +1412,8 @@ export function initReader({
       if (topbar.classList.contains("hidden")) {
         topbar.classList.remove("hidden");
         document.body.classList.remove("chrome-hidden");
+        document.body.classList.add("topbar-reveal-guard");
+        window.setTimeout(() => document.body.classList.remove("topbar-reveal-guard"), 350);
         skipNextTap = true;
         return;
       }
@@ -1447,7 +1449,12 @@ export function initReader({
       return;
     }
     topbar.classList.toggle("hidden");
-    document.body.classList.toggle("chrome-hidden", topbar.classList.contains("hidden"));
+    const hidden = topbar.classList.contains("hidden");
+    document.body.classList.toggle("chrome-hidden", hidden);
+    if (!hidden) {
+      document.body.classList.add("topbar-reveal-guard");
+      window.setTimeout(() => document.body.classList.remove("topbar-reveal-guard"), 350);
+    }
   }
 
   function applyDisplayMode(mode, options = {}) {

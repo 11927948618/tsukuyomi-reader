@@ -1157,8 +1157,12 @@ body {
   }
 
   body.mobile-paged-immersive.mode-paged.writing-vertical .reader-viewport {
-    height: min(100%, var(--paged-inline-size, 100%));
-    align-self: start;
+    height: 100%;
+    align-self: stretch;
+  }
+
+  body.mobile-paged-immersive.topbar-reveal-guard .reader-topbar {
+    pointer-events: none;
   }
 
   body.mobile-paged-immersive .reader-topbar {
