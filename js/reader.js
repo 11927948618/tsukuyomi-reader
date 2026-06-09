@@ -42,14 +42,12 @@ export function initReader({
   const lineHeightValue = qs("#lineHeightValue");
   const letterSpacingValue = qs("#letterSpacingValue");
   const wrapWidthValue = qs("#wrapWidthValue");
-  const genkoMatchBadge = qs("#genkoMatchBadge");
   const themeSelect = qs("#themeSelect");
   const writingModeSelect = qs("#writingModeSelect");
   const wheelPagingCheck = qs("#wheelPagingCheck");
   const structureAutoDetectCheck = qs("#structureAutoDetectCheck");
   const pageTurnEffectSelect = qs("#pageTurnEffectSelect");
   const pageColumnsCheck = qs("#pageColumnsCheck");
-  const applyGenkoPresetBtn = qs("#applyGenkoPresetBtn");
   const reloadBtn = qs("#reloadBtn");
   const hardReloadBtn = qs("#hardReloadBtn");
   const displayModeRadios = Array.from(document.querySelectorAll('input[name="displayMode"]'));
@@ -63,7 +61,7 @@ export function initReader({
   let structureAutoDetect = settings?.structureAutoDetect !== false;
   let pageTurnEffect = normalizePageTurnEffect(settings?.pageTurnEffect);
   let pageColumns = settings?.pageColumns === true;
-  let genkoPreset = settings?.genkoPreset === true;
+  let genkoPreset = false;
   let wrapWidthPercent = normalizeWrapWidthPercent(settings?.wrapWidthPercent);
   let writingModePreference = normalizeWritingModePreference(settings?.writingModePreference);
   let pageDirection = writingModePreference === "vertical" ? "rtl" : "ltr";
@@ -205,14 +203,14 @@ export function initReader({
             charAdvance: baseCharAdvance,
             lineAdvance: baseLineAdvance,
             fontPx: metrics.fontPx,
-            genkoPreset
+            genkoPreset: false
           })
         : resolveHorizontalPagePlan({
             inlineBase,
             blockBase,
             charAdvance: baseCharAdvance,
             lineAdvance: baseLineAdvance,
-            genkoPreset
+            genkoPreset: false
           });
       const columnGap = pageColumns ? Math.max(pagePlan.lineAdvance * 2.4, metrics.fontPx * pagePlan.fontScale * 3.2) : 0;
 
@@ -228,9 +226,7 @@ export function initReader({
     document.documentElement.style.setProperty("--page-width", `${Math.max(240, wrapped)}px`);
     if (displayMode === "scrolly" && mode === "vertical") {
       const lineAdvance = Math.max(10, metrics.lineHeightPx);
-      const pageBlockSize = genkoPreset
-        ? Math.min(wrapped, lineAdvance * 20)
-        : snapDownToStep(wrapped, lineAdvance, Math.max(180, lineAdvance * 6));
+      const pageBlockSize = snapDownToStep(wrapped, lineAdvance, Math.max(180, lineAdvance * 6));
       document.documentElement.style.setProperty("--scroll-page-block-size", `${Math.max(1, pageBlockSize)}px`);
     } else {
       document.documentElement.style.removeProperty("--scroll-page-block-size");
@@ -603,7 +599,7 @@ export function initReader({
       blockBase: getViewportInnerSize("x"),
       charAdvance: baseCharAdvance,
       lineAdvance: baseLineAdvance,
-      genkoPreset
+      genkoPreset: false
     });
     const chars = Math.max(8, Number(plan.chars) || 20);
     const lines = Math.max(4, Number(plan.lines) || 10);
@@ -816,9 +812,9 @@ export function initReader({
     structureAutoDetect = nextSettings.structureAutoDetect !== false;
     pageTurnEffect = normalizePageTurnEffect(nextSettings.pageTurnEffect);
     pageColumns = nextSettings.pageColumns === true;
-    genkoPreset = nextSettings.genkoPreset === true;
+    genkoPreset = false;
     document.body.classList.toggle("page-columns-enabled", pageColumns);
-    document.body.classList.toggle("genko-preset-enabled", genkoPreset);
+    document.body.classList.remove("genko-preset-enabled");
     wrapWidthPercent = normalizeWrapWidthPercent(nextSettings.wrapWidthPercent);
     writingModePreference = normalizeWritingModePreference(nextSettings.writingModePreference);
     applyWritingModePreference(writingModePreference);
@@ -854,14 +850,14 @@ export function initReader({
   }
 
   function bindSettingsEvents() {
-    fontSizeRange.addEventListener("input", () => updateSettings({ fontSize: Number(fontSizeRange.value), genkoPreset: false }));
+    fontSizeRange.addEventListener("input", () => updateSettings({ fontSize: Number(fontSizeRange.value) }));
     fontFamilySelect?.addEventListener("change", () => {
       updateSettings({ fontFamilyPreference: normalizeFontFamilyPreference(fontFamilySelect.value) });
     });
-    lineHeightRange.addEventListener("input", () => updateSettings({ lineHeight: Number(lineHeightRange.value), genkoPreset: false }));
-    letterSpacingRange.addEventListener("input", () => updateSettings({ letterSpacing: Number(letterSpacingRange.value), genkoPreset: false }));
+    lineHeightRange.addEventListener("input", () => updateSettings({ lineHeight: Number(lineHeightRange.value) }));
+    letterSpacingRange.addEventListener("input", () => updateSettings({ letterSpacing: Number(letterSpacingRange.value) }));
     wrapWidthRange?.addEventListener("input", () => {
-      updateSettings({ wrapWidthPercent: normalizeWrapWidthPercent(wrapWidthRange.value), genkoPreset: false });
+      updateSettings({ wrapWidthPercent: normalizeWrapWidthPercent(wrapWidthRange.value) });
     });
     themeSelect.addEventListener("change", () => updateSettings({ theme: themeSelect.value }));
     writingModeSelect?.addEventListener("change", () => {
@@ -878,14 +874,6 @@ export function initReader({
     });
     pageColumnsCheck?.addEventListener("change", () => {
       updateSettings({ pageColumns: Boolean(pageColumnsCheck.checked) });
-    });
-    applyGenkoPresetBtn?.addEventListener("click", () => {
-      updateSettings(buildGenkoPresetFromCurrent());
-      flashGenkoMatchBadge();
-      applyGenkoPresetBtn.textContent = "適用しました";
-      window.setTimeout(() => {
-        if (applyGenkoPresetBtn) applyGenkoPresetBtn.textContent = "400字目安を適用";
-      }, 1200);
     });
     saveSettingsBtn?.addEventListener("click", () => {
       const next = getCurrentSettings();
@@ -963,17 +951,12 @@ export function initReader({
     const wrapPx = Math.round(viewportWidth * (wrapPercent / 100));
     const mode = normalizeWritingModePreference(writingModeSelect?.value || writingModePreference);
     const inlineAdvance = Math.max(6, fontPx * 0.95 + letterSpacingPx);
-    const isGenko = genkoPreset === true;
-    const approxCharsPerLine = isGenko
-      ? 20
-      : mode === "horizontal"
-        ? Math.max(1, Math.round(wrapPx / inlineAdvance))
-        : Math.max(1, Math.round(viewportHeight / inlineAdvance));
-    const approxLinesPerPage = isGenko
-      ? 20
-      : mode === "horizontal"
-        ? Math.max(1, Math.round(viewportHeight / lineHeightPx))
-        : Math.max(1, Math.round(wrapPx / lineHeightPx));
+    const approxCharsPerLine = mode === "horizontal"
+      ? Math.max(1, Math.round(wrapPx / inlineAdvance))
+      : Math.max(1, Math.round(viewportHeight / inlineAdvance));
+    const approxLinesPerPage = mode === "horizontal"
+      ? Math.max(1, Math.round(viewportHeight / lineHeightPx))
+      : Math.max(1, Math.round(wrapPx / lineHeightPx));
 
     if (fontSizeValue) {
       fontSizeValue.textContent = `${fontPercent}% / ${fontPx.toFixed(1)}px / ${fontPt.toFixed(1)}pt`;
@@ -986,13 +969,11 @@ export function initReader({
       letterSpacingValue.textContent = `${sign}${letterSpacingPx.toFixed(1)}px`;
     }
     if (wrapWidthValue) {
-      const genkoNote = isGenko ? " / 原稿用紙固定" : "";
       wrapWidthValue.textContent =
         mode === "horizontal"
-          ? `${wrapPercent}% / 約${wrapPx}px / 約${approxCharsPerLine}字×${approxLinesPerPage}行${genkoNote}`
-          : `${wrapPercent}% / 約${wrapPx}px / 約${approxCharsPerLine}字×${approxLinesPerPage}列${genkoNote}`;
+          ? `${wrapPercent}% / 約${wrapPx}px / 約${approxCharsPerLine}字×${approxLinesPerPage}行`
+          : `${wrapPercent}% / 約${wrapPx}px / 約${approxCharsPerLine}字×${approxLinesPerPage}列`;
     }
-    updateGenkoMatchBadge(approxCharsPerLine, approxLinesPerPage);
   }
 
   function syncStructureAutoDetectControl() {
@@ -1005,43 +986,6 @@ export function initReader({
       ? "TXT本文の見出しらしい行から章一覧を作ります。"
       : "EPUBはファイル内の目次を使います。目次がないEPUBは本文1章として扱います。";
   }
-
-  function updateGenkoMatchBadge(charsPerLine, linesPerPage) {
-    if (!genkoMatchBadge) return;
-
-    const charsDelta = Math.abs(charsPerLine - 20);
-    const linesDelta = Math.abs(linesPerPage - 20);
-    const totalCells = charsPerLine * linesPerPage;
-
-    let text = "";
-    let tone = "off";
-    if (charsDelta <= 1 && linesDelta <= 1) {
-      text = "400字目安";
-      tone = "exact";
-    } else if (charsDelta <= 3 && linesDelta <= 3) {
-      text = "ほぼ400字";
-      tone = "near";
-    } else if (totalCells > 400) {
-      text = "やや広め";
-    } else {
-      text = "やや狭め";
-    }
-
-    genkoMatchBadge.hidden = false;
-    genkoMatchBadge.className = `field-badge ${tone}`;
-    genkoMatchBadge.textContent = text;
-  }
-
-  function flashGenkoMatchBadge() {
-    if (!genkoMatchBadge) return;
-    genkoMatchBadge.classList.remove("flash");
-    void genkoMatchBadge.offsetWidth;
-    genkoMatchBadge.classList.add("flash");
-    window.setTimeout(() => {
-      genkoMatchBadge?.classList.remove("flash");
-    }, 750);
-  }
-
   function getCurrentSettings(patch = {}) {
     return {
       fontSize: Number(fontSizeRange.value) || 100,
@@ -1055,7 +999,6 @@ export function initReader({
       structureAutoDetect: structureAutoDetectCheck ? Boolean(structureAutoDetectCheck.checked) : structureAutoDetect,
       pageTurnEffect: normalizePageTurnEffect(pageTurnEffectSelect?.value || pageTurnEffect),
       pageColumns: Boolean(pageColumnsCheck?.checked),
-      genkoPreset,
       writingModePreference: normalizeWritingModePreference(writingModeSelect?.value || writingModePreference),
       ...patch
     };
@@ -1066,39 +1009,6 @@ export function initReader({
     applySettings(next);
     onUpdateSettings(next);
   }
-
-  function buildGenkoPresetFromCurrent() {
-    const viewportWidthSafe = getHorizontalPageSize();
-    const lineHeightNow = Number(lineHeightRange.value) || 1.8;
-    const letterSpacing = Number(letterSpacingRange.value) || 0;
-    const mode = normalizeWritingModePreference(writingModeSelect?.value || writingModePreference);
-
-    const inlineBase = mode === "horizontal" ? getHorizontalPageSize() : getVerticalPageSize();
-    const blockBase = mode === "horizontal" ? getVerticalPageSize() : viewportWidthSafe;
-    const targetFontFromInline = ((inlineBase / 20) / 0.95) / 16 * 100;
-    const adjustedFontSize = clamp(Math.round(targetFontFromInline), 80, 140);
-    const adjustedFontPx = (adjustedFontSize / 100) * 16;
-    const rawLineHeight = blockBase / (20 * adjustedFontPx);
-    const balancedLineHeight = clamp(rawLineHeight, 1.5, 2.05);
-    const naturalLineHeight = clamp(
-      balancedLineHeight,
-      Math.max(1.5, lineHeightNow - 0.3),
-      Math.min(2.1, lineHeightNow + 0.3)
-    );
-    const targetBlockPx = adjustedFontPx * naturalLineHeight * 20;
-    const wrapBase = viewportWidthSafe;
-    const wrapWidthPercent = normalizeWrapWidthPercent((targetBlockPx / wrapBase) * 100);
-
-    return {
-      fontSize: adjustedFontSize,
-      lineHeight: Number(naturalLineHeight.toFixed(1)),
-      letterSpacing,
-      wrapWidthPercent,
-      genkoPreset: true,
-      pageColumns: false
-    };
-  }
-
   function getReaderTextMetrics() {
     const baseFontPx = parseFloat(window.getComputedStyle(document.documentElement).fontSize) || 16;
     const fontPercent = Number(fontSizeRange?.value) || Number(settings?.fontSize) || 100;

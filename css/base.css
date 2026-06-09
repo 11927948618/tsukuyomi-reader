@@ -429,12 +429,18 @@ select.input option {
 
 #libraryScreen .book-author,
 #libraryScreen .book-description,
-#libraryScreen .book-updated {
+#libraryScreen .book-updated,
+#libraryScreen .book-stats {
   margin: 0;
   color: var(--muted);
   font-size: 0.88rem;
   line-height: 1.35;
   overflow-wrap: anywhere;
+}
+
+#libraryScreen .book-stats {
+  color: var(--fg);
+  font-weight: 700;
 }
 
 #libraryScreen .book-read-button {
@@ -775,7 +781,8 @@ select.input option {
 
   #libraryScreen .book-author,
   #libraryScreen .book-description,
-  #libraryScreen .book-updated {
+  #libraryScreen .book-updated,
+  #libraryScreen .book-stats {
     font-size: 0.78rem;
     line-height: 1.28;
   }
@@ -786,6 +793,7 @@ select.input option {
     -webkit-box-orient: vertical;
     overflow: hidden;
   }
+
 
   #libraryScreen .book-read-button {
     justify-self: stretch;

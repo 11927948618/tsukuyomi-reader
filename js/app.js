@@ -41,7 +41,6 @@ const DEFAULT_SETTINGS = {
   writingModePreference: "vertical",
   structureAutoDetect: true,
   pageColumns: false,
-  genkoPreset: false,
   pageTurnEffect: "none"
 };
 
@@ -685,7 +684,6 @@ function buildSettingsPayload(settings) {
     writingModePreference: settings.writingModePreference || "vertical",
     structureAutoDetect: settings.structureAutoDetect !== false,
     pageColumns: settings.pageColumns === true,
-    genkoPreset: settings.genkoPreset === true,
     pageTurnEffect: normalizePageTurnEffect(settings.pageTurnEffect),
     updatedAt: new Date().toISOString()
   };

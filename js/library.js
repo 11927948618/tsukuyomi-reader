@@ -3,6 +3,8 @@ import { normalizeTxtToBook } from "./normalize-txt.js";
 import { normalizeEpub } from "./normalize-epub.js";
 import { importZipToBook } from "./storage.js";
 
+const manuscriptStatsCache = new Map();
+
 const DEFAULT_SITE_CONFIG = {
   mode: "development",
   siteName: "TsukuyomiReader Dev",
@@ -428,6 +430,10 @@ async function initBundledBooksShelf({
       updated.textContent = entry.updatedAt ? `更新日: ${entry.updatedAt}` : "";
       updated.hidden = !entry.updatedAt;
 
+      const manuscriptStats = document.createElement("p");
+      manuscriptStats.className = "book-stats";
+      manuscriptStats.textContent = formatManuscriptStats(resolveManifestManuscriptStats(entry)) || "400字換算: 計算中...";
+
       const button = document.createElement("button");
       button.type = "button";
       button.className = "button book-read-button";
@@ -438,9 +444,12 @@ async function initBundledBooksShelf({
       info.appendChild(author);
       info.appendChild(desc);
       info.appendChild(updated);
+      info.appendChild(manuscriptStats);
       info.appendChild(button);
       article.appendChild(cover);
       article.appendChild(info);
+
+      void hydrateBundledBookManuscriptStats(entry, manuscriptStats, manifestPath, txtEncoding?.value || "auto");
 
       button.addEventListener("click", async () => {
         bundledBooksStatus.textContent = `${title.textContent} を読み込み中...`;
@@ -623,6 +632,106 @@ function encodeRelativeUrl(url) {
   return `${encodedPath}${query ? `?${query}` : ""}${hash ? `#${hash}` : ""}`;
 }
 
+
+async function hydrateBundledBookManuscriptStats(entry, targetEl, manifestPath, txtMode = "auto") {
+  if (!targetEl) return;
+  const fromManifest = resolveManifestManuscriptStats(entry);
+  if (fromManifest) {
+    targetEl.textContent = formatManuscriptStats(fromManifest);
+    targetEl.hidden = false;
+    return;
+  }
+
+  try {
+    const stats = await estimateBundledBookManuscriptStats(entry, manifestPath, txtMode);
+    targetEl.textContent = formatManuscriptStats(stats) || "400字換算: -";
+    targetEl.hidden = !stats;
+  } catch (err) {
+    targetEl.textContent = "400字換算: 未計算";
+    targetEl.hidden = false;
+  }
+}
+
+function resolveManifestManuscriptStats(entry) {
+  const meta = entry?.meta && typeof entry.meta === "object" ? entry.meta : {};
+  const charCount = firstFiniteNumber(entry?.charCount, entry?.textLength, meta.charCount, meta.textLength);
+  const manuscriptPages = firstFiniteNumber(entry?.manuscriptPages, entry?.genkoPages, meta.manuscriptPages, meta.genkoPages);
+  if (!charCount && !manuscriptPages) return null;
+  return normalizeManuscriptStats({ charCount, manuscriptPages });
+}
+
+async function estimateBundledBookManuscriptStats(entry, manifestPath, txtMode = "auto") {
+  const relativePath = safeText(entry?.path || entry?.filename, "");
+  if (!relativePath) return null;
+  const cacheKey = `${manifestPath}::${relativePath}::${txtMode}`;
+  if (manuscriptStatsCache.has(cacheKey)) return manuscriptStatsCache.get(cacheKey);
+
+  const filename = relativePath.split("/").pop() || relativePath;
+  const sourceUrl = buildManifestAssetUrl(relativePath, manifestPath);
+  const kind = normalizeBundledBookKind(entry?.format || entry?.kind, filename);
+  let text = "";
+
+  if (kind === "txt") {
+    const res = await fetch(sourceUrl);
+    if (!res.ok) throw new Error(`TXTを読み込めません: ${filename}`);
+    const buffer = await res.arrayBuffer();
+    text = decodeTxtBuffer(buffer, txtMode).text || "";
+  } else if (kind === "html") {
+    const res = await fetch(sourceUrl);
+    if (!res.ok) throw new Error(`HTMLを読み込めません: ${filename}`);
+    text = extractTextFromHtml(await res.text());
+  } else if (kind === "epub") {
+    const res = await fetch(sourceUrl);
+    if (!res.ok) throw new Error(`EPUBを読み込めません: ${filename}`);
+    const blob = await res.blob();
+    const file = new File([blob], filename, { type: "application/epub+zip" });
+    const book = await normalizeEpub(file);
+    text = extractTextFromHtml(book?.html || "");
+  } else {
+    return null;
+  }
+
+  const stats = estimateManuscriptStats(text);
+  manuscriptStatsCache.set(cacheKey, stats);
+  return stats;
+}
+
+function extractTextFromHtml(htmlText) {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(String(htmlText || ""), "text/html");
+  doc.querySelectorAll("script, style, rt, rp").forEach((el) => el.remove());
+  return doc.body?.textContent || "";
+}
+
+function estimateManuscriptStats(text) {
+  const normalized = String(text || "").replace(/[\s\u3000]+/gu, "");
+  const charCount = Array.from(normalized).length;
+  return normalizeManuscriptStats({ charCount });
+}
+
+function normalizeManuscriptStats(stats) {
+  const charCount = Math.max(0, Math.round(Number(stats?.charCount) || 0));
+  const manuscriptPages = Math.max(0, Math.ceil(Number(stats?.manuscriptPages) || (charCount / 400)));
+  return { charCount, manuscriptPages };
+}
+
+function formatManuscriptStats(stats) {
+  if (!stats) return "";
+  const charCount = Math.max(0, Math.round(Number(stats.charCount) || 0));
+  const pages = Math.max(0, Math.round(Number(stats.manuscriptPages) || 0));
+  if (!charCount && !pages) return "";
+  const charsLabel = charCount ? `約${charCount.toLocaleString()}字` : "文字数未計算";
+  const pagesLabel = pages ? `400字換算 ${pages.toLocaleString()}枚` : "400字換算 -";
+  return `${charsLabel} / ${pagesLabel}`;
+}
+
+function firstFiniteNumber(...values) {
+  for (const value of values) {
+    const number = Number(value);
+    if (Number.isFinite(number) && number > 0) return number;
+  }
+  return 0;
+}
 function attachBookSource(book, sourceType, sourceData = null) {
   return {
     ...book,
