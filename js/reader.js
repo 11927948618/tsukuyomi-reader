@@ -85,6 +85,7 @@ export function initReader({
   const shouldUseMobileTextPager = () => {
     return displayMode === "paged"
       && normalizeWritingModePreference(writingModePreference) === "vertical"
+      && bookFormat === "txt"
       && isMobileReadingDevice()
       && !getPdfUrl(book);
   };
