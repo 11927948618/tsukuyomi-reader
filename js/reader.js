@@ -790,7 +790,26 @@ export function initReader({
       return;
     }
 
-    target.scrollIntoView({ behavior: "auto", block: "start", inline: "start" });
+    scrollPagedTargetIntoView(target);
+  }
+
+  function scrollPagedTargetIntoView(target) {
+    const targetRect = target.getBoundingClientRect();
+    const containerRect = scrollContainer.getBoundingClientRect();
+    if (usesVerticalPagedAxis()) {
+      const targetTop = (Number(scrollContainer.scrollTop) || 0) + targetRect.top - containerRect.top;
+      scrollContainer.scrollTop = clamp(targetTop, 0, getMaxTop(scrollContainer));
+      requestAnimationFrame(() => refreshHScroll?.());
+      return;
+    }
+
+    const writingMode = normalizeWritingModePreference(writingModePreference);
+    const currentPhysicalLeft = Number(scrollContainer.scrollLeft) || 0;
+    const delta = writingMode === "vertical"
+      ? targetRect.right - containerRect.right
+      : targetRect.left - containerRect.left;
+    const targetPhysicalLeft = clamp(currentPhysicalLeft + delta, 0, getMaxLeft(scrollContainer));
+    scrollContainer.scrollLeft = targetPhysicalLeft;
     requestAnimationFrame(() => {
       refreshHScroll?.();
     });
