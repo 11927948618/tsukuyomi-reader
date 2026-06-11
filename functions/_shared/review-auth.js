@@ -270,8 +270,6 @@ export async function verifyReviewLogin(bucket, env, identifier, password) {
   if (entry?.passwordHash && entry.status === "applied") {
     if (isFutureDate(entry.loginLockedUntil)) {
       reason = "locked";
-    } else if (isPasswordExpired(entry, env)) {
-      reason = "password-expired";
     } else {
       passwordOk = await verifyPasswordHash(rawPassword, entry.passwordHash, secret);
       if (!passwordOk) reason = "password-mismatch";
@@ -478,7 +476,7 @@ export function reviewAuthDeniedResponse(reason = "") {
   const messages = {
     muted: "現在このReaderは閲覧保留中です",
     locked: "ログイン試行が多すぎます。時間をおいて再度お試しください。",
-    "password-expired": "パスワードの有効期限が切れています"
+    "password-expired": "旧仕様のパスワード期限記録です。必要ならパスワードを再発行してください。"
   };
   const message = messages[reason] || "このメールアドレスでは閲覧できません";
   return json({ error: message, authRequired: true, blocked: true }, { status: 403 });
@@ -569,7 +567,6 @@ async function recordReviewLoginAttempt(bucket, identity, success, reason, curre
 
 function reviewLoginFailureEventType(reason) {
   if (reason === "password-mismatch") return "valid-id-password-mismatch";
-  if (reason === "password-expired") return "password-expired";
   if (reason === "locked") return "";
   if (reason === "password-missing" || reason === "inactive" || reason === "pending" || reason === "muted" || reason === "revoked") {
     return "valid-id-login-denied";
@@ -622,7 +619,6 @@ function reviewAuthDeniedReason(entry, payload, env = {}) {
   if (entry.status !== "applied") return "pending";
   if (!entry.passwordHash) return "password-missing";
   if (isFutureDate(entry.loginLockedUntil)) return "locked";
-  if (isPasswordExpired(entry, env)) return "password-expired";
 
   const issuedAt = Date.parse(entry.passwordIssuedAt || "");
   const tokenIssuedAt = Number(payload?.iat) * 1000;
@@ -703,24 +699,6 @@ function minutesFromNowIso(minutes) {
 function isFutureDate(value) {
   const time = Date.parse(value || "");
   return Number.isFinite(time) && time > Date.now();
-}
-
-function isPastDate(value) {
-  const raw = safeText(value, "");
-  if (!raw) return false;
-  const time = Date.parse(raw);
-  return Number.isFinite(time) && time <= Date.now();
-}
-
-function isPasswordExpired(entry, env) {
-  if (isPastDate(entry?.passwordExpiresAt)) return true;
-  if (entry?.passwordExpiresAt) return false;
-
-  const issuedAt = Date.parse(entry?.passwordIssuedAt || "");
-  if (!Number.isFinite(issuedAt)) return false;
-  const expiresAt = new Date(issuedAt);
-  expiresAt.setUTCDate(expiresAt.getUTCDate() + reviewPasswordDays(env));
-  return expiresAt.getTime() <= Date.now();
 }
 
 function createSessionId() {

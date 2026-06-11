@@ -533,7 +533,7 @@ function renderReviewAccess(updatedAt = "") {
       const mutedAt = entry.mutedAt ? `保留: ${formatDateTime(entry.mutedAt)}` : "";
       const revokedAt = entry.revokedAt ? `停止: ${formatDateTime(entry.revokedAt)}` : "";
       const passwordAt = entry.passwordIssuedAt ? `PW発行: ${formatDateTime(entry.passwordIssuedAt)}` : "";
-      const passwordExpiresAt = entry.passwordExpiresAt ? `PW期限: ${formatDateTime(entry.passwordExpiresAt)}` : "";
+      const passwordExpiresAt = entry.passwordExpiresAt ? `PW目安: ${formatDateTime(entry.passwordExpiresAt)}` : "";
       const lastLogin = entry.lastLoginAt ? `最終ログイン: ${formatDateTime(entry.lastLoginAt)}` : "";
       const lastFailed = entry.lastFailedAt ? `失敗: ${formatDateTime(entry.lastFailedAt)} (${Number(entry.failedLoginCount) || 0})` : "";
       const lockedUntil = entry.loginLockedUntil && new Date(entry.loginLockedUntil).getTime() > Date.now()
@@ -854,7 +854,7 @@ function authLogTypeLabel(type, result) {
   if (type === "concurrent-session") return "同時利用検知";
   if (type === "valid-id-password-mismatch") return "有効IDのPW失敗";
   if (type === "account-locked") return "ロック発生";
-  if (type === "password-expired") return "PW期限切れ";
+  if (type === "password-expired") return "PW期限記録";
   if (type === "valid-id-login-denied") return "有効IDの認証拒否";
   return `${type || "-"}${suffix ? ` ${suffix}` : ""}`;
 }

@@ -82,7 +82,7 @@ _tsukuyomi/review-auth-log.json
 | PW無効化失敗 | `password-revoke-failed` | PW無効化に失敗した。対象不一致など |
 | 有効IDのPW失敗 | `valid-id-password-mismatch` | 登録済みメールまたは仮IDでPWが違う |
 | ロック発生 | `account-locked` | 失敗回数が閾値を超えた |
-| PW期限切れ | `password-expired` | 期限切れPWでログインしようとした |
+| PW更新目安超過 | `password-expired` | 旧仕様の期限切れ記録。現在は再発行または無効化までログインを許可する |
 | 有効IDの認証拒否 | `valid-id-login-denied` | 未発行、未適用、保留、停止など |
 | 同時利用検知 | `concurrent-session` | 同じIDで複数セッションが近い時間に動いた |
 
