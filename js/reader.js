@@ -85,10 +85,11 @@ export function initReader({
   const shouldUseMobileTextPager = () => {
     return displayMode === "paged"
       && normalizeWritingModePreference(writingModePreference) === "vertical"
-      && bookFormat === "txt"
+      && (bookFormat === "txt" || bookFormat === "epub" || bookFormat === "html")
       && isMobileReadingDevice()
       && !getPdfUrl(book);
   };
+  const shouldPreserveMobilePageMarkup = () => bookFormat === "epub" || bookFormat === "html";
   const getViewportInnerSize = (axis = "x") => {
     const fallback = axis === "x" ? window.innerWidth : window.innerHeight;
     const el = readerViewport || scrollContainer;
@@ -630,29 +631,100 @@ export function initReader({
     const sourceChapters = chapterEls.length ? chapterEls : [template.content];
     const pages = [];
     const chapterPageMap = new Map();
+    const preserveMarkup = shouldPreserveMobilePageMarkup();
 
     sourceChapters.forEach((chapter, index) => {
       const chapterId = chapter.getAttribute?.("id") || `chapter-${String(index + 1).padStart(3, "0")}`;
       const title = chapter.querySelector?.("h1,h2,h3")?.textContent?.trim() || "";
       const textSource = chapter.cloneNode?.(true) || chapter;
       textSource.querySelectorAll?.("h1,h2,h3").forEach((heading) => heading.remove());
-      const text = normalizeMobilePageText(textSource.textContent || "");
       const startPage = pages.length;
       chapterPageMap.set(chapterId, startPage);
-      splitTextIntoPages(text, plan).forEach((pageText, pageOffset) => {
+      const pageParts = preserveMarkup
+        ? splitHtmlFragmentsIntoPages(extractMobilePageFragments(textSource), plan)
+        : splitTextIntoPages(normalizeMobilePageText(textSource.textContent || ""), plan).map((text) => ({ text }));
+
+      pageParts.forEach((pagePart, pageOffset) => {
         pages.push({
           chapterId,
           title: pageOffset === 0 ? title : "",
-          text: pageText
+          text: pagePart.text || "",
+          html: pagePart.html || ""
         });
       });
     });
 
     if (!pages.length) {
-      pages.push({ chapterId: "chapter-001", title: "", text: "" });
+      pages.push({ chapterId: "chapter-001", title: "", text: "", html: "" });
     }
 
     return { pages, chapterPageMap };
+  }
+
+  function extractMobilePageFragments(root) {
+    const fragments = [];
+    const pushText = (value) => {
+      const text = normalizeMobilePageText(value);
+      for (const char of Array.from(text)) {
+        fragments.push({ html: escapeHtml(char), weight: char === "\n" ? 1 : 1 });
+      }
+    };
+    const walk = (node) => {
+      if (!node) return;
+      if (node.nodeType === Node.TEXT_NODE) {
+        pushText(node.textContent || "");
+        return;
+      }
+      if (node.nodeType !== Node.ELEMENT_NODE && node.nodeType !== Node.DOCUMENT_FRAGMENT_NODE) return;
+      const tag = String(node.tagName || "").toLowerCase();
+      if (tag === "script" || tag === "style" || tag === "noscript") return;
+      if (tag === "br") {
+        fragments.push({ html: "\n", weight: 1 });
+        return;
+      }
+      if (tag === "ruby") {
+        fragments.push({ html: node.outerHTML || escapeHtml(node.textContent || ""), weight: measureRubyBaseText(node) });
+        return;
+      }
+      node.childNodes?.forEach(walk);
+      if (tag === "p" || tag === "div" || tag === "section") {
+        fragments.push({ html: "\n", weight: 1 });
+      }
+    };
+
+    root.childNodes?.forEach(walk);
+    return fragments;
+  }
+
+  function measureRubyBaseText(rubyNode) {
+    const clone = rubyNode.cloneNode(true);
+    clone.querySelectorAll?.("rt,rp").forEach((node) => node.remove());
+    const text = normalizeMobilePageText(clone.textContent || "");
+    return Math.max(1, Array.from(text).length);
+  }
+
+  function splitHtmlFragmentsIntoPages(fragments, plan) {
+    const charsPerLine = Math.max(8, Math.floor(Number(plan?.chars) || 20) - 2);
+    const linesPerPage = Math.max(4, Math.floor(Number(plan?.lines) || 10) - 1);
+    const safeCapacity = Math.max(40, charsPerLine * linesPerPage);
+    const pages = [];
+    let html = "";
+    let count = 0;
+
+    for (const fragment of Array.isArray(fragments) ? fragments : []) {
+      const weight = Math.max(1, Number(fragment?.weight) || 1);
+      if (html && count + weight > safeCapacity) {
+        pages.push({ html: html.trim() });
+        html = "";
+        count = 0;
+      }
+      html += fragment?.html || "";
+      count += weight;
+    }
+
+    if (html.trim()) pages.push({ html: html.trim() });
+    if (!pages.length) pages.push({ html: "" });
+    return pages;
   }
 
   function normalizeMobilePageText(text) {
@@ -684,10 +756,11 @@ export function initReader({
     const safePage = clamp(Number(pageIndex) || 0, 0, maxPage);
     const page = mobileTextPager.pages[safePage] || mobileTextPager.pages[0] || { chapterId: "chapter-001", text: "" };
     mobileTextPager.pageIndex = safePage;
+    const bodyHtml = page.html || escapeHtml(page.text || "");
     bookContent.innerHTML = `
       <section class="mobile-text-page${page.title ? " has-title" : ""}" id="${escapeAttribute(page.chapterId)}" data-page-index="${safePage}">
         ${page.title ? `<h1>${escapeHtml(page.title)}</h1>` : ""}
-        <div class="mobile-text-page-body">${escapeHtml(page.text)}</div>
+        <div class="mobile-text-page-body">${bodyHtml}</div>
       </section>
     `;
     refreshHScroll?.();
