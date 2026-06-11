@@ -640,6 +640,10 @@ export function initReader({
       textSource.querySelectorAll?.("h1,h2,h3").forEach((heading) => heading.remove());
       const startPage = pages.length;
       chapterPageMap.set(chapterId, startPage);
+      chapter.querySelectorAll?.("[id]").forEach((el) => {
+        const id = el.getAttribute("id");
+        if (id && !chapterPageMap.has(id)) chapterPageMap.set(id, startPage);
+      });
       const pageParts = preserveMarkup
         ? splitHtmlFragmentsIntoPages(extractMobilePageFragments(textSource), plan)
         : splitTextIntoPages(normalizeMobilePageText(textSource.textContent || ""), plan).map((text) => ({ text }));
