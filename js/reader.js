@@ -673,7 +673,7 @@ export function initReader({
     const page = mobileTextPager.pages[safePage] || mobileTextPager.pages[0] || { chapterId: "chapter-001", text: "" };
     mobileTextPager.pageIndex = safePage;
     bookContent.innerHTML = `
-      <section class="mobile-text-page" id="${escapeAttribute(page.chapterId)}" data-page-index="${safePage}">
+      <section class="mobile-text-page${page.title ? " has-title" : ""}" id="${escapeAttribute(page.chapterId)}" data-page-index="${safePage}">
         ${page.title ? `<h1>${escapeHtml(page.title)}</h1>` : ""}
         <div class="mobile-text-page-body">${escapeHtml(page.text)}</div>
       </section>

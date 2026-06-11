@@ -218,9 +218,9 @@ body.mode-paged .reader-viewport {
 }
 
 body.mode-paged.writing-vertical .reader-viewport {
-  height: min(100%, var(--paged-inline-size, 100%));
+  height: 100%;
   padding-block: 0;
-  align-self: start;
+  align-self: stretch;
 }
 body.mode-paged .reader-viewport::before,
 body.mode-paged .reader-viewport::after {
@@ -323,6 +323,8 @@ body.mobile-text-pager.mode-paged .reader-content.mobile-pager-content {
   font-size: 1.08em;
   line-height: 1.45;
   font-weight: 700;
+  max-block-size: 5.2em;
+  overflow: hidden;
 }
 
 .mobile-text-page-body {
@@ -335,6 +337,11 @@ body.mobile-text-pager.mode-paged .reader-content.mobile-pager-content {
   margin: 0;
   padding: 0;
   white-space: pre-wrap;
+}
+
+.mobile-text-page.has-title .mobile-text-page-body {
+  inset-inline-start: 6.6em;
+  inline-size: calc(100% - 6.6em);
 }
 
 body.distribution-mode .reader-content,
@@ -1140,12 +1147,17 @@ body {
 @media (max-width: 640px), (pointer: coarse) {
   body.mobile-paged-immersive {
     padding-top: 0;
+    --mobile-reader-bottom-reserve: 74px;
+  }
+
+  body.mobile-paged-immersive .reader-layout {
+    padding-top: 0;
   }
 
   body.mobile-paged-immersive .reader-main,
   body.mobile-paged-immersive.mode-paged .reader-main {
     width: min(100vw - 12px, 720px);
-    height: var(--reader-viewport-height, 100dvh);
+    height: calc(var(--reader-viewport-height, 100dvh) - var(--mobile-reader-bottom-reserve, 0px));
     padding: max(6px, env(safe-area-inset-top)) 0 max(8px, env(safe-area-inset-bottom));
     gap: 0;
   }
