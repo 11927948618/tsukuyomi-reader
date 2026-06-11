@@ -130,9 +130,16 @@ export function initReader({
     if (!bleed || logical < pageSize) return logical;
     return logical + bleed;
   };
-  const usesVerticalPagedAxis = () => displayMode === "paged" && getMaxLeft(scrollContainer) <= 1 && getMaxTop(scrollContainer) > 1;
+  const usesVerticalPagedAxis = () => {
+    if (displayMode !== "paged") return false;
+    if (bookFormat === "epub") return false;
+    return getMaxLeft(scrollContainer) <= 1 && getMaxTop(scrollContainer) > 1;
+  };
   const scrollToLogicalLeft = (logicalLeft, behavior = "auto") => {
     const physicalLeft = toPhysicalLeft(scrollContainer, logicalLeft, pageDirection);
+    if (isVerticalPagedMode() && !usesVerticalPagedAxis() && scrollContainer.scrollTop !== 0) {
+      scrollContainer.scrollTop = 0;
+    }
     scrollContainer.scrollTo({ left: physicalLeft, behavior });
   };
   const stepHorizontalPage = (stepCount, behavior = "auto") => {
@@ -160,6 +167,10 @@ export function initReader({
       scrollContainer.scrollTo({ top: targetTop, behavior });
       playPageTurnEffect(stepCount > 0 ? "forward" : "back");
       return;
+    }
+
+    if (isVerticalPagedMode() && scrollContainer.scrollTop !== 0) {
+      scrollContainer.scrollTop = 0;
     }
 
     const logical = toLogicalLeft(scrollContainer, scrollContainer.scrollLeft, pageDirection);
