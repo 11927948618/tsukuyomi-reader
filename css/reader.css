@@ -1148,18 +1148,32 @@ body {
   body.mobile-paged-immersive {
     padding-top: 0;
     --mobile-reader-bottom-reserve: 74px;
+    height: var(--reader-viewport-height, 100dvh);
+    overflow: hidden;
   }
 
   body.mobile-paged-immersive .reader-layout {
+    height: var(--reader-viewport-height, 100dvh);
+    min-height: var(--reader-viewport-height, 100dvh);
+    padding-top: var(--reader-topbar-height, 64px);
+    overflow: hidden;
+  }
+
+  body.mobile-paged-immersive.chrome-hidden .reader-layout {
     padding-top: 0;
   }
 
   body.mobile-paged-immersive .reader-main,
   body.mobile-paged-immersive.mode-paged .reader-main {
     width: min(100vw - 12px, 720px);
-    height: calc(var(--reader-viewport-height, 100dvh) - var(--mobile-reader-bottom-reserve, 0px));
+    height: calc(var(--reader-viewport-height, 100dvh) - var(--reader-topbar-height, 64px) - var(--mobile-reader-bottom-reserve, 0px));
     padding: max(6px, env(safe-area-inset-top)) 0 max(8px, env(safe-area-inset-bottom));
     gap: 0;
+  }
+
+  body.mobile-paged-immersive.chrome-hidden .reader-main,
+  body.mobile-paged-immersive.chrome-hidden.mode-paged .reader-main {
+    height: calc(var(--reader-viewport-height, 100dvh) - var(--mobile-reader-bottom-reserve, 0px));
   }
 
   body.mobile-paged-immersive.mode-paged .reader-viewport {
