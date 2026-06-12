@@ -1,3 +1,3 @@
-export const APP_VERSION = "0.1.121";
+export const APP_VERSION = "0.1.122";
 export const BUILD_TIME = "2026-06-12 00:00";
-export const COMMIT = "chapter-heading-marker-names";
+export const COMMIT = "mobile-txt-line-join";

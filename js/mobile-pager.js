@@ -76,8 +76,13 @@ function tokenizeMobilePageContent(root) {
       return;
     }
 
+    if (node.classList?.contains("txt-gap")) {
+      tokens.push({ type: "newline" });
+      return;
+    }
+
     node.childNodes?.forEach((child) => walk(child, nextMarks));
-    if (tag === "p" || tag === "div" || tag === "section") {
+    if (tag === "p" || tag === "section" || (tag === "div" && !node.classList?.contains("txt-line"))) {
       tokens.push({ type: "newline" });
     }
   };
