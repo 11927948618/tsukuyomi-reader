@@ -319,36 +319,34 @@ body.mobile-text-pager.mode-paged .reader-content.mobile-pager-content {
 }
 
 .mobile-text-page h1 {
-  position: absolute;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  width: 5.2em;
   box-sizing: border-box;
-  margin: 0;
-  padding-left: 0.8em;
+  margin: 0 0 0 0.9em;
+  padding: 0;
   font-size: 1.08em;
   line-height: 1.45;
   font-weight: 700;
+  max-block-size: 4.2em;
   overflow: hidden;
 }
 
 .mobile-text-page-body {
-  position: absolute;
-  inset: 0;
   box-sizing: border-box;
   display: block;
   inline-size: 100%;
-  block-size: 100%;
+  block-size: auto;
   margin: 0;
   padding: 0;
   white-space: pre-wrap;
 }
 
-.mobile-text-page.has-title .mobile-text-page-body {
-  inset: 0 6.2em 0 0;
-  inline-size: auto;
-  block-size: auto;
+.mobile-text-page .mp-strike,
+.mobile-text-page s,
+.mobile-text-page del,
+.mobile-text-page strike {
+  text-decoration-line: line-through;
+  text-decoration-thickness: 0.08em;
+  text-decoration-color: currentColor;
+  text-decoration-skip-ink: none;
 }
 
 body.distribution-mode .reader-content,
@@ -675,7 +673,7 @@ body.mode-scrolly .reader-content.force-vertical {
 }
 
 body.mode-scrolly .reader-content.force-vertical .chapter {
-  block-size: 100%;
+  block-size: auto;
   margin-left: 0;
   margin-right: 0;
   margin-block-start: 0;
@@ -1207,3 +1205,6 @@ body {
     transform: translateY(-105%);
   }
 }
+
+
+

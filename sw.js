@@ -1,4 +1,4 @@
-const CACHE_NAME = "tsukuyomi-reader-v0.1.119";
+const CACHE_NAME = "tsukuyomi-reader-v0.1.120";
 const STATIC_ASSETS = [
   "./",
   "./index.html",
@@ -22,6 +22,7 @@ const STATIC_ASSETS = [
   "./js/version.js",
   "./js/library.js",
   "./js/reader.js",
+  "./js/mobile-pager.js",
   "./js/normalize-txt.js",
   "./js/normalize-epub.js",
   "./js/storage.js",
@@ -169,3 +170,6 @@ self.addEventListener("fetch", (event) => {
       .catch(() => caches.match(req))
   );
 });
+
+
+

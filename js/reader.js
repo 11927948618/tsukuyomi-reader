@@ -1,4 +1,5 @@
 import { qs, escapeHtml } from "./utils.js";
+import { buildMobileTextPagerPages } from "./mobile-pager.js";
 
 export function initReader({
   book,
@@ -89,7 +90,6 @@ export function initReader({
       && isMobileReadingDevice()
       && !getPdfUrl(book);
   };
-  const shouldPreserveMobilePageMarkup = () => bookFormat === "epub" || bookFormat === "html";
   const getViewportInnerSize = (axis = "x") => {
     const fallback = axis === "x" ? window.innerWidth : window.innerHeight;
     const el = readerViewport || scrollContainer;
@@ -589,7 +589,7 @@ export function initReader({
       : Number(options.pageIndex) || 0;
     const source = mobileTextPager.sourceHtml || book.html || "";
     const plan = resolveMobileTextPagerPlan();
-    const built = buildMobileTextPages(source, plan);
+    const built = buildMobileTextPagerPages(source, { plan });
     mobileTextPager = {
       active: true,
       sourceHtml: source,
@@ -622,136 +622,6 @@ export function initReader({
       capacity: Math.max(40, chars * lines),
       fontScale: plan.fontScale || 1
     };
-  }
-
-  function buildMobileTextPages(sourceHtml, plan) {
-    const template = document.createElement("template");
-    template.innerHTML = sourceHtml || "";
-    const chapterEls = Array.from(template.content.querySelectorAll("section.chapter"));
-    const sourceChapters = chapterEls.length ? chapterEls : [template.content];
-    const pages = [];
-    const chapterPageMap = new Map();
-    const preserveMarkup = shouldPreserveMobilePageMarkup();
-
-    sourceChapters.forEach((chapter, index) => {
-      const chapterId = chapter.getAttribute?.("id") || `chapter-${String(index + 1).padStart(3, "0")}`;
-      const title = chapter.querySelector?.("h1,h2,h3")?.textContent?.trim() || "";
-      const textSource = chapter.cloneNode?.(true) || chapter;
-      textSource.querySelectorAll?.("h1,h2,h3").forEach((heading) => heading.remove());
-      const startPage = pages.length;
-      chapterPageMap.set(chapterId, startPage);
-      chapter.querySelectorAll?.("[id]").forEach((el) => {
-        const id = el.getAttribute("id");
-        if (id && !chapterPageMap.has(id)) chapterPageMap.set(id, startPage);
-      });
-      const pageParts = preserveMarkup
-        ? splitHtmlFragmentsIntoPages(extractMobilePageFragments(textSource), plan)
-        : splitTextIntoPages(normalizeMobilePageText(textSource.textContent || ""), plan).map((text) => ({ text }));
-
-      pageParts.forEach((pagePart, pageOffset) => {
-        pages.push({
-          chapterId,
-          title: pageOffset === 0 ? title : "",
-          text: pagePart.text || "",
-          html: pagePart.html || ""
-        });
-      });
-    });
-
-    if (!pages.length) {
-      pages.push({ chapterId: "chapter-001", title: "", text: "", html: "" });
-    }
-
-    return { pages, chapterPageMap };
-  }
-
-  function extractMobilePageFragments(root) {
-    const fragments = [];
-    const pushText = (value) => {
-      const text = normalizeMobilePageText(value);
-      for (const char of Array.from(text)) {
-        fragments.push({ html: escapeHtml(char), weight: char === "\n" ? 1 : 1 });
-      }
-    };
-    const walk = (node) => {
-      if (!node) return;
-      if (node.nodeType === Node.TEXT_NODE) {
-        pushText(node.textContent || "");
-        return;
-      }
-      if (node.nodeType !== Node.ELEMENT_NODE && node.nodeType !== Node.DOCUMENT_FRAGMENT_NODE) return;
-      const tag = String(node.tagName || "").toLowerCase();
-      if (tag === "script" || tag === "style" || tag === "noscript") return;
-      if (tag === "br") {
-        fragments.push({ html: "\n", weight: 1 });
-        return;
-      }
-      if (tag === "ruby") {
-        fragments.push({ html: node.outerHTML || escapeHtml(node.textContent || ""), weight: measureRubyBaseText(node) });
-        return;
-      }
-      node.childNodes?.forEach(walk);
-      if (tag === "p" || tag === "div" || tag === "section") {
-        fragments.push({ html: "\n", weight: 1 });
-      }
-    };
-
-    root.childNodes?.forEach(walk);
-    return fragments;
-  }
-
-  function measureRubyBaseText(rubyNode) {
-    const clone = rubyNode.cloneNode(true);
-    clone.querySelectorAll?.("rt,rp").forEach((node) => node.remove());
-    const text = normalizeMobilePageText(clone.textContent || "");
-    return Math.max(1, Array.from(text).length);
-  }
-
-  function splitHtmlFragmentsIntoPages(fragments, plan) {
-    const charsPerLine = Math.max(8, Math.floor(Number(plan?.chars) || 20) - 2);
-    const linesPerPage = Math.max(4, Math.floor(Number(plan?.lines) || 10) - 1);
-    const safeCapacity = Math.max(40, charsPerLine * linesPerPage);
-    const pages = [];
-    let html = "";
-    let count = 0;
-
-    for (const fragment of Array.isArray(fragments) ? fragments : []) {
-      const weight = Math.max(1, Number(fragment?.weight) || 1);
-      if (html && count + weight > safeCapacity) {
-        pages.push({ html: html.trim() });
-        html = "";
-        count = 0;
-      }
-      html += fragment?.html || "";
-      count += weight;
-    }
-
-    if (html.trim()) pages.push({ html: html.trim() });
-    if (!pages.length) pages.push({ html: "" });
-    return pages;
-  }
-
-  function normalizeMobilePageText(text) {
-    return String(text || "")
-      .replace(/\r\n?/g, "\n")
-      .replace(/[ \t\f\v]+/g, "")
-      .replace(/[―—]/g, "︱")
-      .replace(/\n{3,}/g, "\n\n")
-      .trim();
-  }
-
-  function splitTextIntoPages(text, plan) {
-    const source = String(text || "");
-    const charsPerLine = Math.max(8, Math.floor(Number(plan?.chars) || 20) - 2);
-    const linesPerPage = Math.max(4, Math.floor(Number(plan?.lines) || 10) - 1);
-    const safeCapacity = Math.max(40, charsPerLine * linesPerPage);
-    const pages = [];
-    for (let index = 0; index < source.length; index += safeCapacity) {
-      pages.push(source.slice(index, index + safeCapacity).trim());
-    }
-
-    if (!pages.length) pages.push("");
-    return pages;
   }
 
   function renderMobileTextPage(pageIndex) {
@@ -1954,3 +1824,6 @@ function snapDownToStep(value, step, min) {
   if (safeValue <= safeMin) return safeValue;
   return Math.max(safeMin, snapped || safeValue);
 }
+
+
+
