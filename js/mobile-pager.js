@@ -41,7 +41,7 @@ function normalizePlan(plan = {}) {
   return {
     chars,
     lines,
-    lineSafetyReserve: Math.max(2, Math.min(3, Math.floor(Number(plan.lineSafetyReserve) || 2))),
+    lineSafetyReserve: Math.max(3, Math.min(4, Math.floor(Number(plan.lineSafetyReserve) || 3))),
     titleLineReserve: Math.max(2, Math.min(4, Math.floor(Number(plan.titleLineReserve) || 3)))
   };
 }
@@ -51,7 +51,9 @@ function tokenizeMobilePageContent(root) {
   const walk = (node, marks = {}) => {
     if (!node) return;
     if (node.nodeType === Node.TEXT_NODE) {
-      pushTextTokens(tokens, node.textContent || "", marks);
+      const text = node.textContent || "";
+      if (/^[\s　]*$/.test(text)) return;
+      pushTextTokens(tokens, text, marks);
       return;
     }
     if (node.nodeType !== Node.ELEMENT_NODE && node.nodeType !== Node.DOCUMENT_FRAGMENT_NODE) return;
