@@ -41,6 +41,7 @@ function normalizePlan(plan = {}) {
   return {
     chars,
     lines,
+    lineSafetyReserve: Math.max(2, Math.min(3, Math.floor(Number(plan.lineSafetyReserve) || 2))),
     titleLineReserve: Math.max(2, Math.min(4, Math.floor(Number(plan.titleLineReserve) || 3)))
   };
 }
@@ -160,7 +161,7 @@ function createPage(chapterMeta, plan, firstPage) {
     html: "",
     anchorIds: new Set(),
     charsPerLine: Math.max(6, plan.chars - 2),
-    linesPerPage: Math.max(3, plan.lines - 1 - reserve),
+    linesPerPage: Math.max(3, plan.lines - plan.lineSafetyReserve - reserve),
     charIndex: 0,
     lineIndex: 0
   };
