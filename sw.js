@@ -1,4 +1,4 @@
-const CACHE_NAME = "tsukuyomi-reader-v0.1.120";
+const CACHE_NAME = "tsukuyomi-reader-v0.1.121";
 const STATIC_ASSETS = [
   "./",
   "./index.html",
@@ -170,6 +170,3 @@ self.addEventListener("fetch", (event) => {
       .catch(() => caches.match(req))
   );
 });
-
-
-

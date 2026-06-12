@@ -92,7 +92,7 @@ function detectChapterHeading(line) {
     new RegExp(`^${marker}${number}[\\s　]*${unit}${sep}(.*)$`, "u"),
     new RegExp(`^${marker}${number}[\\s　]*[、。，，．.,][\\s　]*(.*)$`, "u"),
     new RegExp(`^${marker}${number}[\\s　]+(.{1,36})$`, "u"),
-    /^(序章|終章|最終章|プロローグ|エピローグ|あとがき|まえがき|前書き|後書き)$/,
+    new RegExp(`^${marker}(?:序章|終章|最終章|プロローグ|幕間|エピローグ|あとがき|まえがき|前書き|後書き)$`, "u"),
     /^(chapter|chap\.?|section|part)\s+[0-9ivxlcdm]+[\s:：.\-]*(.*)$/i
   ];
 
