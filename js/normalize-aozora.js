@@ -28,10 +28,17 @@ export function normalizeAozoraInlineHtml(text, options = {}) {
 
   let out = withRuby;
   if (wrapEllipsis) {
-    out = out.replace(ELLIPSIS_PATTERN, (value) => `<span class="jp-tate-upright">${value}</span>`);
+    out = out.replace(ELLIPSIS_PATTERN, (value) => `<span class="jp-tate-upright">${normalizeVerticalEllipsis(value)}</span>`);
   }
   if (wrapDash) {
     out = out.replace(DASH_PATTERN, (value) => `<span class="jp-tate-upright">${value}</span>`);
   }
   return out;
+}
+
+function normalizeVerticalEllipsis(value) {
+  return String(value || "")
+    .replace(/…/g, "･･･")
+    .replace(/‥/g, "･･")
+    .replace(/\.{3}/g, "･･･");
 }

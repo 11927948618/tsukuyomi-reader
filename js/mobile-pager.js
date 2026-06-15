@@ -173,6 +173,9 @@ function normalizeMobileText(text) {
   return String(text || "")
     .replace(/\r\n?/g, "\n")
     .replace(/[ \t\f\v]+/g, "")
+    .replace(/…/g, "･･･")
+    .replace(/‥/g, "･･")
+    .replace(/\.{3}/g, "･･･")
     .replace(/[―—]/g, "︱")
     .replace(/\n{3,}/g, "\n\n");
 }
