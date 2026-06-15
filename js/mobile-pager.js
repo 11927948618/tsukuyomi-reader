@@ -88,6 +88,12 @@ function tokenizeMobilePageContent(root) {
     }
 
     node.childNodes?.forEach((child) => walk(child, nextMarks));
+    if (tag === "div" && node.classList?.contains("txt-line")) {
+      if (tokens.length && tokens[tokens.length - 1]?.type !== "newline") {
+        tokens.push({ type: "newline" });
+      }
+      return;
+    }
     if (tag === "p" || tag === "section" || (tag === "div" && !node.classList?.contains("txt-line"))) {
       tokens.push({ type: "newline" });
     }
