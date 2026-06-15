@@ -678,8 +678,9 @@ body.mode-scrolly .reader-content {
 
 body.mode-scrolly .reader-content.force-vertical {
   inline-size: auto;
-  block-size: var(--scroll-page-block-size, var(--page-width, 100%));
-  max-block-size: 100%;
+  block-size: auto;
+  min-block-size: 100%;
+  max-block-size: none;
   margin-left: auto;
   margin-right: 0;
   column-width: auto;

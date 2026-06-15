@@ -374,12 +374,14 @@ export function initReader({
     applyViewportMetrics();
     applyTopbarLayoutMode();
     applyTopbarOffset();
+    applyImmersivePagedChrome();
     applyPageWidth();
     updatePageDirection({ preservePosition: true });
 
     const settle = () => {
       applyViewportMetrics();
       applyTopbarOffset();
+      applyImmersivePagedChrome();
       applyPageWidth();
       updatePageDirection({ preservePosition: true });
       syncMobileTextPager({ preservePage: true });
