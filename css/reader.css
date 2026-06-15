@@ -333,10 +333,14 @@ body.mobile-text-pager.mode-paged .reader-content.mobile-pager-content {
   box-sizing: border-box;
   display: block;
   inline-size: 100%;
-  block-size: auto;
+  block-size: 100%;
   margin: 0;
   padding: 0;
   white-space: pre-wrap;
+}
+
+.mobile-text-page.has-title .mobile-text-page-body {
+  block-size: calc(100% - 5.4em);
 }
 
 .mobile-text-page .mp-strike,

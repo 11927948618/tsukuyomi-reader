@@ -631,12 +631,8 @@ export function initReader({
     const page = mobileTextPager.pages[safePage] || mobileTextPager.pages[0] || { chapterId: "chapter-001", text: "" };
     mobileTextPager.pageIndex = safePage;
     const bodyHtml = page.html || escapeHtml(page.text || "");
-    bookContent.innerHTML = `
-      <section class="mobile-text-page${page.title ? " has-title" : ""}" id="${escapeAttribute(page.chapterId)}" data-page-index="${safePage}">
-        ${page.title ? `<h1>${escapeHtml(page.title)}</h1>` : ""}
-        <div class="mobile-text-page-body">${bodyHtml}</div>
-      </section>
-    `;
+    const titleHtml = page.title ? `<h1>${escapeHtml(page.title)}</h1>` : "";
+    bookContent.innerHTML = `<section class="mobile-text-page${page.title ? " has-title" : ""}" id="${escapeAttribute(page.chapterId)}" data-page-index="${safePage}">${titleHtml}<div class="mobile-text-page-body">${bodyHtml}</div></section>`;
     refreshHScroll?.();
   }
 
