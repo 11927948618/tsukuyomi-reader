@@ -133,16 +133,19 @@ body.topbar-mobile-wrap .topbar-group-right .button {
   width: min(320px, 86vw);
   height: 100vh;
   height: 100dvh;
+  max-height: var(--reader-viewport-height, 100dvh);
   background: var(--panel);
   border-left: 1px solid var(--border);
   box-shadow: -10px 0 30px rgba(0, 0, 0, 0.25);
   z-index: 900;
   transform: translateX(100%);
   transition: transform 0.12s ease;
-  overflow: auto;
+  overflow: hidden;
   padding: 10px;
-  display: grid;
+  display: flex;
+  flex-direction: column;
   gap: 8px;
+  box-sizing: border-box;
 }
 
 .toc-panel.open {
@@ -165,6 +168,12 @@ body.topbar-mobile-wrap .topbar-group-right .button {
   list-style: none;
   display: grid;
   gap: 5px;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  padding: 0 0 max(16px, env(safe-area-inset-bottom));
+  margin: 0;
 }
 
 .toc-panel ul button {

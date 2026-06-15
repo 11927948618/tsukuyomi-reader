@@ -462,7 +462,7 @@ export function initReader({
   bindSettingsEvents();
   bindSettingsGroupToggles();
   bindPanelWheelScroll(settingsPanel, settingsBody);
-  bindPanelWheelScroll(tocPanel, tocPanel);
+  bindPanelWheelScroll(tocPanel, tocList || tocPanel);
   applyProgress(progress, refreshHScroll);
   bindProgressTracking();
   bindTopEdgeRevealTap(tapZone);
