@@ -38,6 +38,14 @@ export function safeText(text, fallback = "") {
   return value.length ? value : fallback;
 }
 
+export function textWithoutRuby(node) {
+  if (!node) return "";
+  const clone = node.cloneNode?.(true);
+  if (!clone) return node.textContent || "";
+  clone.querySelectorAll?.("rt, rp, script, style").forEach((el) => el.remove());
+  return clone.textContent || "";
+}
+
 export function loadJSON(key, fallback = null) {
   try {
     const raw = localStorage.getItem(key);

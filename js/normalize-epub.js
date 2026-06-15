@@ -1,4 +1,4 @@
-import { safeText } from "./utils.js";
+import { safeText, textWithoutRuby } from "./utils.js";
 
 import { hasAozoraInlineMarkup, normalizeAozoraInlineHtml } from "./normalize-aozora.js";
 
@@ -365,7 +365,7 @@ async function buildTocFromNav(zip, navPath, chapterPathToId) {
     for (const a of Array.from(nav.querySelectorAll("a[href]"))) {
       const mapped = mapHrefToChapter(a.getAttribute("href"), navPath, chapterPathToId);
       if (!mapped) continue;
-      const title = safeText(a.textContent || "", "");
+      const title = safeText(textWithoutRuby(a), "");
       if (!title) continue;
       toc.push({ title, chapterId: mapped });
     }
@@ -393,7 +393,7 @@ async function buildTocFromNcx(zip, ncxPath, chapterPathToId) {
       const mapped = mapHrefToChapter(src, ncxPath, chapterPathToId);
       if (!mapped) continue;
 
-      const title = safeText(labelText?.textContent || "", "");
+      const title = safeText(textWithoutRuby(labelText), "");
       if (!title) continue;
       toc.push({ title, chapterId: mapped });
     }
@@ -1121,13 +1121,13 @@ async function toBlobUrl(rawUrl, chapterPath, zip, mediaTypeByPath, blobUrlCache
 
 function extractChapterTitle(doc) {
   const heading = doc.querySelector("h1, h2, h3, title");
-  return heading ? heading.textContent || "" : "";
+  return heading ? textWithoutRuby(heading) : "";
 }
 
 function hasVisibleHeading(root) {
   if (!root) return false;
   return Array.from(root.querySelectorAll("h1, h2, h3")).some((heading) =>
-    Boolean(compactText(heading.textContent))
+    Boolean(compactText(textWithoutRuby(heading)))
   );
 }
 
@@ -1246,7 +1246,7 @@ function buildTocFromHeadings(chapters) {
     }
 
     headings.forEach((heading, headingIndex) => {
-      const title = safeText(heading.textContent || "", headingIndex === 0 ? chapter.title : `章${i + 1}`);
+      const title = safeText(textWithoutRuby(heading), headingIndex === 0 ? chapter.title : `章${i + 1}`);
       const headingId = ensureHeadingId(heading, chapter.id, headingIndex);
       toc.push({ title, chapterId: headingId });
     });

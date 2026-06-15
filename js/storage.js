@@ -1,4 +1,4 @@
-import { readFileAsArrayBuffer, safeText } from "./utils.js";
+import { readFileAsArrayBuffer, safeText, textWithoutRuby } from "./utils.js";
 
 const VERTICAL_CSS = `
 .vertical-root {
@@ -134,7 +134,7 @@ function generateTocFromHtml(htmlText) {
   return chapters.map((chapter, index) => {
     const chapterId = chapter.getAttribute("id") || `chapter-${String(index + 1).padStart(3, "0")}`;
     const h1 = chapter.querySelector("h1");
-    const title = h1 ? h1.textContent : `章${index + 1}`;
+    const title = h1 ? textWithoutRuby(h1) : `章${index + 1}`;
     return { chapterId, title: safeText(title, `章${index + 1}`) };
   });
 }

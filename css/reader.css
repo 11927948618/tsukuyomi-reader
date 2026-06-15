@@ -1156,7 +1156,7 @@ body {
 @media (max-width: 640px), (pointer: coarse) {
   body.mobile-paged-immersive {
     padding-top: 0;
-    --mobile-reader-bottom-reserve: 74px;
+    --mobile-reader-bottom-reserve: 0px;
     height: var(--reader-viewport-height, 100dvh);
     overflow: hidden;
   }

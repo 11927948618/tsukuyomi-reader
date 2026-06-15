@@ -1,3 +1,5 @@
+import { textWithoutRuby } from "./utils.js";
+
 export function buildMobileTextPagerPages(sourceHtml, options = {}) {
   const plan = normalizePlan(options.plan);
   const template = document.createElement("template");
@@ -9,7 +11,8 @@ export function buildMobileTextPagerPages(sourceHtml, options = {}) {
 
   sourceChapters.forEach((chapter, index) => {
     const chapterId = chapter.getAttribute?.("id") || `chapter-${String(index + 1).padStart(3, "0")}`;
-    const title = chapter.querySelector?.("h1,h2,h3")?.textContent?.trim() || "";
+    const heading = chapter.querySelector?.("h1,h2,h3");
+    const title = heading ? textWithoutRuby(heading).trim() : "";
     const textSource = chapter.cloneNode?.(true) || chapter;
     textSource.querySelectorAll?.("h1,h2,h3").forEach((heading) => heading.remove());
     const tokens = tokenizeMobilePageContent(textSource);

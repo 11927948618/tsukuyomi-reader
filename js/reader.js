@@ -254,6 +254,9 @@ export function initReader({
     const visualHeight = Number(window.visualViewport?.height) || Number(window.innerHeight) || 0;
     if (!visualHeight) return;
     document.documentElement.style.setProperty("--reader-viewport-height", `${Math.round(visualHeight)}px`);
+    const hasVisualViewport = Boolean(window.visualViewport?.height);
+    const bottomReserve = hasVisualViewport ? 0 : 64;
+    document.documentElement.style.setProperty("--mobile-reader-bottom-reserve", `${bottomReserve}px`);
   };
   const shouldUseImmersivePagedChrome = () => {
     if (displayMode !== "paged") return false;

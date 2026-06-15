@@ -1,4 +1,4 @@
-import { qs, readFileAsText, safeText } from "./utils.js";
+import { qs, readFileAsText, safeText, textWithoutRuby } from "./utils.js";
 import { normalizeTxtToBook } from "./normalize-txt.js";
 import { normalizeEpub } from "./normalize-epub.js";
 import { importZipToBook } from "./storage.js";
@@ -336,7 +336,7 @@ function normalizeHtmlToBook(htmlText, filename = "") {
     let title = "";
     const h1 = chapter.querySelector("h1");
     if (h1) {
-      title = h1.textContent || "";
+      title = textWithoutRuby(h1);
     } else {
       title = `章${index + 1}`;
       const newH1 = doc.createElement("h1");
