@@ -1105,13 +1105,11 @@ export function initReader({
     const pageInfo = hScrollPageInfo;
     if (!slider || !content) return;
 
-    const toSliderValue = (logical, max) => {
-      if (pageDirection === "rtl") return max - logical;
+    const toSliderValue = (logical) => {
       return logical;
     };
 
-    const fromSliderValue = (raw, max) => {
-      if (pageDirection === "rtl") return max - raw;
+    const fromSliderValue = (raw) => {
       return raw;
     };
 
@@ -1142,7 +1140,7 @@ export function initReader({
     const refresh = () => {
       const state = getSliderAxisState();
       slider.max = String(state.max);
-      slider.value = String(toSliderValue(state.logical, state.max));
+      slider.value = String(toSliderValue(state.logical));
       slider.disabled = state.max === 0;
       updatePageInfo(state.logical, state.max, state.pageSize);
     };
@@ -1150,7 +1148,7 @@ export function initReader({
     slider.addEventListener("input", () => {
       const state = getSliderAxisState();
       const raw = Number(slider.value) || 0;
-      const logical = fromSliderValue(raw, state.max);
+      const logical = fromSliderValue(raw);
       if (state.mobilePager) {
         setMobileTextPage(logical);
         updatePageInfo(mobileTextPager.pageIndex, state.max, state.pageSize);
@@ -1167,7 +1165,7 @@ export function initReader({
 
     content.addEventListener("scroll", () => {
       const state = getSliderAxisState();
-      slider.value = String(toSliderValue(state.logical, state.max));
+      slider.value = String(toSliderValue(state.logical));
       updatePageInfo(state.logical, state.max, state.pageSize);
     });
 
@@ -1239,12 +1237,12 @@ export function initReader({
       const advanceOnRight = pageDirection !== "rtl";
 
       if (horizontalPaged && y < h * 0.33) {
-        advance();
+        goBack();
         return;
       }
 
       if (horizontalPaged && y > h * 0.66) {
-        goBack();
+        advance();
         return;
       }
 

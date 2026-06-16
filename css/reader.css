@@ -99,6 +99,15 @@ body.topbar-mobile-wrap .topbar-group-right .button {
 .h-scroll {
   width: min(440px, 52vw);
   vertical-align: middle;
+  direction: ltr;
+}
+
+body.writing-vertical .h-scroll {
+  direction: rtl;
+}
+
+body.writing-horizontal .h-scroll {
+  direction: ltr;
 }
 
 .h-scroll-wrap {
