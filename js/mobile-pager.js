@@ -45,7 +45,7 @@ function normalizePlan(plan = {}) {
     chars,
     lines,
     writingMode: String(plan.writingMode || "vertical").toLowerCase() === "horizontal" ? "horizontal" : "vertical",
-    lineSafetyReserve: Math.max(1, Math.min(2, Math.floor(Number(plan.lineSafetyReserve) || 1))),
+    lineSafetyReserve: Math.max(0, Math.min(2, Math.floor(Number(plan.lineSafetyReserve) || 0))),
     titleLineReserve: Math.max(2, Math.min(4, Math.floor(Number(plan.titleLineReserve) || 3)))
   };
 }

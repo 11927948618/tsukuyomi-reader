@@ -636,7 +636,7 @@ export function initReader({
       capacity: Math.max(40, chars * lines),
       fontScale: plan.fontScale || 1,
       writingMode: mode,
-      lineSafetyReserve: 1
+      lineSafetyReserve: mode === "horizontal" ? 1 : 0
     };
   }
 
@@ -1206,9 +1206,12 @@ export function initReader({
       }
       const rect = tapEl.getBoundingClientRect();
       const x = event.clientX - rect.left;
+      const y = event.clientY - rect.top;
       const w = rect.width || 1;
+      const h = rect.height || 1;
+      const horizontalPaged = displayMode === "paged" && normalizeWritingModePreference(writingModePreference) === "horizontal";
 
-      if (x >= w * 0.33 && x <= w * 0.66) {
+      if (!horizontalPaged && x >= w * 0.33 && x <= w * 0.66) {
         toggleChrome();
         return;
       }
@@ -1232,6 +1235,21 @@ export function initReader({
       };
 
       const advanceOnRight = pageDirection !== "rtl";
+
+      if (horizontalPaged && y < h * 0.33) {
+        advance();
+        return;
+      }
+
+      if (horizontalPaged && y > h * 0.66) {
+        goBack();
+        return;
+      }
+
+      if (horizontalPaged && x >= w * 0.33 && x <= w * 0.66) {
+        toggleChrome();
+        return;
+      }
 
       if (x > w * 0.66) {
         if (advanceOnRight) advance();
