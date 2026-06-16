@@ -1209,9 +1209,11 @@ export function initReader({
       const y = event.clientY - rect.top;
       const w = rect.width || 1;
       const h = rect.height || 1;
-      const horizontalPaged = displayMode === "paged" && normalizeWritingModePreference(writingModePreference) === "horizontal";
+      const writingMode = normalizeWritingModePreference(writingModePreference);
+      const horizontalPaged = displayMode === "paged" && writingMode === "horizontal";
+      const verticalPaged = displayMode === "paged" && writingMode === "vertical";
 
-      if (!horizontalPaged && x >= w * 0.33 && x <= w * 0.66) {
+      if (!horizontalPaged && !verticalPaged && x >= w * 0.33 && x <= w * 0.66) {
         toggleChrome();
         return;
       }
@@ -1247,6 +1249,21 @@ export function initReader({
       }
 
       if (horizontalPaged && x >= w * 0.33 && x <= w * 0.66) {
+        toggleChrome();
+        return;
+      }
+
+      if (verticalPaged && y < h * 0.33) {
+        goBack();
+        return;
+      }
+
+      if (verticalPaged && y > h * 0.66) {
+        advance();
+        return;
+      }
+
+      if (verticalPaged && x >= w * 0.33 && x <= w * 0.66) {
         toggleChrome();
         return;
       }
