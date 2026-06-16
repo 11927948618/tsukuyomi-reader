@@ -1125,7 +1125,7 @@ export function initReader({
           logical: mobileTextPager.pageIndex
         };
       }
-      const verticalAxis = usesVerticalPagedAxis();
+      const verticalAxis = displayMode === "scroll" || usesVerticalPagedAxis();
       const pageSize = verticalAxis ? getVerticalPageSize() : getHorizontalPageSize();
       const max = verticalAxis ? Math.max(0, getMaxTop(content) - getVerticalPagedBoundaryBleed()) : getMaxLeft(content);
       const logical = verticalAxis ? verticalPagedLogicalTop(content.scrollTop) : toLogicalLeft(content, content.scrollLeft, pageDirection);

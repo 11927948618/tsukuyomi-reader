@@ -126,6 +126,14 @@ body.topbar-mobile-wrap .topbar-group-right .button {
   box-sizing: border-box;
 }
 
+body.chrome-hidden .reader-layout {
+  padding-top: 0;
+}
+
+body.chrome-hidden .reader-main {
+  height: var(--reader-viewport-height, 100dvh);
+}
+
 .toc-panel {
   position: fixed;
   top: 0;
