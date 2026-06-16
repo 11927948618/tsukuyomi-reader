@@ -85,7 +85,6 @@ export function initReader({
   };
   const shouldUseMobileTextPager = () => {
     return displayMode === "paged"
-      && normalizeWritingModePreference(writingModePreference) === "vertical"
       && (bookFormat === "txt" || bookFormat === "epub" || bookFormat === "html")
       && isMobileReadingDevice()
       && !getPdfUrl(book);
@@ -237,7 +236,7 @@ export function initReader({
     }
 
     document.documentElement.style.setProperty("--page-width", `${Math.max(240, wrapped)}px`);
-    if (displayMode === "scrolly" && mode === "vertical") {
+    if (displayMode === "scroll" && mode === "vertical") {
       const lineAdvance = Math.max(10, metrics.lineHeightPx);
       const pageBlockSize = snapDownToStep(wrapped, lineAdvance, Math.max(180, lineAdvance * 6));
       document.documentElement.style.setProperty("--scroll-page-block-size", `${Math.max(1, pageBlockSize)}px`);
@@ -331,7 +330,7 @@ export function initReader({
 
   const restoreReaderPosition = (position) => {
     if (!position || !scrollContainer) return;
-    if (displayMode === "scrolly") {
+    if (displayMode === "scroll") {
       scrollContainer.scrollTop = Math.max(0, Number(position.scrollTop) || 0);
       return;
     }
@@ -340,7 +339,7 @@ export function initReader({
 
   const scrollToBookStart = () => {
     if (!scrollContainer) return;
-    if (displayMode === "scrolly") {
+    if (displayMode === "scroll") {
       scrollContainer.scrollTop = 0;
       return;
     }
@@ -599,6 +598,7 @@ export function initReader({
       active: true,
       sourceHtml: source,
       pages: built.pages,
+      plan: built.plan,
       pageIndex: clamp(previousPage, 0, Math.max(0, built.pages.length - 1)),
       chapterPageMap: built.chapterPageMap
     };
@@ -612,20 +612,31 @@ export function initReader({
     const metrics = getReaderTextMetrics();
     const baseCharAdvance = Math.max(6, metrics.fontPx * 0.95 + metrics.letterSpacingPx);
     const baseLineAdvance = Math.max(10, metrics.lineHeightPx);
-    const plan = resolveVerticalPagePlan({
-      inlineBase: getViewportInnerSize("y"),
-      blockBase: getViewportInnerSize("x"),
-      charAdvance: baseCharAdvance,
-      lineAdvance: baseLineAdvance,
-      genkoPreset: false
-    });
-    const chars = Math.max(8, Number(plan.chars) || 20);
-    const lines = Math.max(4, Number(plan.lines) || 10);
+    const mode = normalizeWritingModePreference(writingModePreference) === "horizontal" ? "horizontal" : "vertical";
+    const plan = mode === "vertical"
+      ? resolveVerticalPagePlan({
+          inlineBase: getViewportInnerSize("y"),
+          blockBase: getViewportInnerSize("x"),
+          charAdvance: baseCharAdvance,
+          lineAdvance: baseLineAdvance,
+          genkoPreset: false
+        })
+      : resolveHorizontalPagePlan({
+          inlineBase: getViewportInnerSize("x"),
+          blockBase: getViewportInnerSize("y"),
+          charAdvance: baseCharAdvance,
+          lineAdvance: baseLineAdvance,
+          genkoPreset: false
+        });
+    const chars = Math.max(8, Number(plan.chars) || Math.floor((plan.inlineSize || getViewportInnerSize("x")) / baseCharAdvance) || 20);
+    const lines = Math.max(4, Number(plan.lines) || Math.floor((plan.blockSize || getViewportInnerSize("y")) / baseLineAdvance) || 10);
     return {
       chars,
       lines,
       capacity: Math.max(40, chars * lines),
-      fontScale: plan.fontScale || 1
+      fontScale: plan.fontScale || 1,
+      writingMode: mode,
+      lineSafetyReserve: 1
     };
   }
 
@@ -637,7 +648,8 @@ export function initReader({
     mobileTextPager.pageIndex = safePage;
     const bodyHtml = page.html || escapeHtml(page.text || "");
     const titleHtml = page.title ? `<h1>${escapeHtml(page.title)}</h1>` : "";
-    bookContent.innerHTML = `<section class="mobile-text-page${page.title ? " has-title" : ""}" id="${escapeAttribute(page.chapterId)}" data-page-index="${safePage}">${titleHtml}<div class="mobile-text-page-body">${bodyHtml}</div></section>`;
+    const pageWritingMode = mobileTextPager.plan?.writingMode === "horizontal" ? "horizontal" : "vertical";
+    bookContent.innerHTML = `<section class="mobile-text-page ${pageWritingMode}${page.title ? " has-title" : ""}" id="${escapeAttribute(page.chapterId)}" data-page-index="${safePage}">${titleHtml}<div class="mobile-text-page-body">${bodyHtml}</div></section>`;
     refreshHScroll?.();
   }
 
@@ -744,7 +756,7 @@ export function initReader({
       if (Number.isFinite(pageIndex)) setMobileTextPage(pageIndex);
       return;
     }
-    if (displayMode === "scrolly") {
+    if (displayMode === "scroll") {
       target.scrollIntoView({ behavior: "smooth", block: "start" });
       return;
     }
@@ -1007,7 +1019,7 @@ export function initReader({
       if (mobileTextPager.active) return;
       const chapterId = getCurrentChapterId();
 
-      if (displayMode === "scrolly" || usesVerticalPagedAxis()) {
+      if (displayMode === "scroll" || usesVerticalPagedAxis()) {
         const offset = usesVerticalPagedAxis() ? verticalPagedLogicalTop(scrollContainer.scrollTop) : scrollContainer.scrollTop;
         const size = getVerticalPageSize();
         const pageIndex = Math.round(offset / size);
@@ -1062,7 +1074,7 @@ export function initReader({
           if (typeof refresh === "function") refresh();
           return;
         }
-        if (displayMode === "scrolly" || usesVerticalPagedAxis()) {
+        if (displayMode === "scroll" || usesVerticalPagedAxis()) {
           const topRaw = Number(nextProgress?.scrollTop);
           const top = Number.isFinite(topRaw)
             ? topRaw
@@ -1204,7 +1216,7 @@ export function initReader({
       if (!shouldHandlePagingTap()) return;
 
       const advance = () => {
-        if (displayMode === "scrolly") {
+        if (displayMode === "scroll") {
           pageBy(scrollEl, getVerticalPageSize(), displayMode);
         } else {
           stepHorizontalPage(1, displayMode === "paged" ? "auto" : "smooth");
@@ -1212,7 +1224,7 @@ export function initReader({
       };
 
       const goBack = () => {
-        if (displayMode === "scrolly") {
+        if (displayMode === "scroll") {
           pageBy(scrollEl, -getVerticalPageSize(), displayMode);
         } else {
           stepHorizontalPage(-1, displayMode === "paged" ? "auto" : "smooth");
@@ -1370,7 +1382,7 @@ export function initReader({
       const swipeLeft = deltaX < 0;
       const advanceOnSwipeLeft = pageDirection !== "rtl";
       const step = swipeLeft === advanceOnSwipeLeft ? 1 : -1;
-      if (displayMode === "scrolly") {
+      if (displayMode === "scroll") {
         pageBy(scrollEl, step * getVerticalPageSize(), displayMode);
       } else {
         stepHorizontalPage(step, displayMode === "paged" ? "auto" : "smooth");
@@ -1461,7 +1473,7 @@ export function initReader({
 
   function captureDisplayModePosition(mode = displayMode) {
     if (!scrollContainer) return null;
-    if (mode === "scrolly" || usesVerticalPagedAxis()) {
+    if (normalizeDisplayMode(mode) === "scroll" || usesVerticalPagedAxis()) {
       const pageSize = getVerticalPageSize();
       return {
         pageIndex: Math.max(0, Math.round((Number(scrollContainer.scrollTop) || 0) / pageSize)),
@@ -1478,7 +1490,7 @@ export function initReader({
 
   function restoreDisplayModePosition(position, mode = displayMode) {
     if (!position || !scrollContainer) return;
-    if (mode === "scrolly" || usesVerticalPagedAxis()) {
+    if (normalizeDisplayMode(mode) === "scroll" || usesVerticalPagedAxis()) {
       const top = Number.isFinite(Number(position.scrollTop))
         ? Number(position.scrollTop)
         : (Number(position.pageIndex) || 0) * getVerticalPageSize();
@@ -1506,7 +1518,7 @@ export function initReader({
         if (target && typeof target.closest === "function") {
           if (target.closest("#settingsPanel, #tocPanel")) return;
         }
-        if (displayMode === "scrolly") return;
+        if (displayMode === "scroll") return;
         const axisDelta = Math.abs(event.deltaY) >= Math.abs(event.deltaX) ? event.deltaY : event.deltaX;
         if (Math.abs(axisDelta) < 1) return;
         if (displayMode === "paged") {
@@ -1757,7 +1769,7 @@ function throttle(fn, wait) {
 
 function pageBy(content, delta, mode = "paged") {
   const behavior = mode === "paged" ? "auto" : "smooth";
-  if (mode === "scrolly") {
+  if (normalizeDisplayMode(mode) === "scroll") {
     content.scrollTo({ top: content.scrollTop + delta, behavior });
     return;
   }
@@ -1808,8 +1820,9 @@ function normalizeWrapWidthPercent(value) {
 function normalizeDisplayMode(mode) {
   if (!mode) return "paged";
   const raw = String(mode).toLowerCase();
-  if (raw === "scrollx" || raw === "scroll-x") return "scrollx";
-  if (raw === "scrolly" || raw === "scroll-y" || raw === "scroll" || raw === "vertical") return "scrolly";
+  if (raw === "scrollx" || raw === "scroll-x" || raw === "scrolly" || raw === "scroll-y" || raw === "scroll" || raw === "vertical") {
+    return "scroll";
+  }
   return "paged";
 }
 

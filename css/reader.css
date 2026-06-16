@@ -327,6 +327,11 @@ body.mobile-text-pager.mode-paged .reader-content.mobile-pager-content {
   padding: 0;
 }
 
+.mobile-text-page.horizontal {
+  writing-mode: horizontal-tb;
+  text-orientation: mixed;
+}
+
 .mobile-text-page h1 {
   box-sizing: border-box;
   margin: 0 0 0 0.9em;
@@ -336,6 +341,11 @@ body.mobile-text-pager.mode-paged .reader-content.mobile-pager-content {
   font-weight: 700;
   max-block-size: 4.2em;
   overflow: hidden;
+}
+
+.mobile-text-page.horizontal h1 {
+  margin: 0 0 0.9em;
+  max-block-size: 4.2em;
 }
 
 .mobile-text-page-body {

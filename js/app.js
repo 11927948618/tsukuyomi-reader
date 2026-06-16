@@ -464,7 +464,7 @@ function captureCurrentReaderProgress() {
   const content = document.getElementById("bookContent");
   const mode = appState.settings?.displayMode || "paged";
   const progress = {};
-  if (mode === "scrolly") {
+  if (mode === "scroll" || mode === "scrolly") {
     const maxTop = Math.max(0, viewport.scrollHeight - viewport.clientHeight);
     progress.scrollTop = viewport.scrollTop;
     progress.pageIndex = Math.round(viewport.scrollTop / Math.max(1, viewport.clientHeight));
@@ -648,7 +648,7 @@ function registerServiceWorker() {
 function getRecommendedDefaultSettings() {
   return {
     ...DEFAULT_SETTINGS,
-    displayMode: isMobileReadingDevice() ? "paged" : "scrollx"
+    displayMode: isMobileReadingDevice() ? "paged" : "scroll"
   };
 }
 
@@ -678,7 +678,7 @@ function buildSettingsPayload(settings) {
     letterSpacing: Number(settings.letterSpacing) || 0,
     wrapWidthPercent: Number(settings.wrapWidthPercent) || 100,
     theme: settings.theme || "light",
-    displayMode: settings.displayMode || "paged",
+    displayMode: normalizeStoredDisplayMode(settings.displayMode),
     tapInScroll: Boolean(settings.tapInScroll),
     wheelPaging: Boolean(settings.wheelPaging),
     writingModePreference: settings.writingModePreference || "vertical",
@@ -687,6 +687,14 @@ function buildSettingsPayload(settings) {
     pageTurnEffect: normalizePageTurnEffect(settings.pageTurnEffect),
     updatedAt: new Date().toISOString()
   };
+}
+
+function normalizeStoredDisplayMode(mode) {
+  const raw = String(mode || "paged").toLowerCase();
+  if (raw === "scroll" || raw === "scrollx" || raw === "scroll-x" || raw === "scrolly" || raw === "scroll-y") {
+    return "scroll";
+  }
+  return "paged";
 }
 
 function saveGlobalSettings(settings) {
