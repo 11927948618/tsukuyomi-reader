@@ -636,6 +636,7 @@ export function initReader({
       capacity: Math.max(40, chars * lines),
       fontScale: plan.fontScale || 1,
       writingMode: mode,
+      // Horizontal glyphs clip more readily at the bottom edge; vertical pages can use the full line count.
       lineSafetyReserve: mode === "horizontal" ? 1 : 0
     };
   }
@@ -1105,6 +1106,8 @@ export function initReader({
     const pageInfo = hScrollPageInfo;
     if (!slider || !content) return;
 
+    // Slider values are reading progress, not physical scroll coordinates.
+    // CSS flips the range direction for vertical writing so the filled track starts at the right edge.
     const toSliderValue = (logical) => {
       return logical;
     };

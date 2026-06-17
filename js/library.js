@@ -156,7 +156,6 @@ export function initLibrary({ siteConfig = null, onOpenBook, onExport, getCurren
       const mode = txtEncoding ? txtEncoding.value : "auto";
       const { text, encoding, debug } = await decodeTxtAuto(file, mode);
       setDebug(debug);
-      console.log("[TXT decode] pick:", encoding);
       const book = attachBookSource(normalizeTxtToBook(text, file.name, {
         autoDetectStructure: loadTxtStructureAutoDetectPreference()
       }), "file-import", {
