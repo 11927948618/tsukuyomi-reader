@@ -8,6 +8,7 @@ export function buildMobileTextPagerPages(sourceHtml, options = {}) {
   const sourceChapters = chapterEls.length ? chapterEls : [template.content];
   const pages = [];
   const chapterPageMap = new Map();
+  let nextLineNumber = 1;
 
   sourceChapters.forEach((chapter, index) => {
     const chapterId = chapter.getAttribute?.("id") || `chapter-${String(index + 1).padStart(3, "0")}`;
@@ -22,6 +23,7 @@ export function buildMobileTextPagerPages(sourceHtml, options = {}) {
     chapterPageMap.set(chapterId, startPage);
     chapterPages.forEach((page, pageOffset) => {
       const pageIndex = pages.length;
+      const lineCount = countPageLines(page.html);
       page.anchorIds.forEach((id) => {
         if (id && !chapterPageMap.has(id)) chapterPageMap.set(id, pageIndex);
       });
@@ -29,8 +31,11 @@ export function buildMobileTextPagerPages(sourceHtml, options = {}) {
         chapterId,
         title: pageOffset === 0 ? title : "",
         html: page.html,
-        anchorIds: page.anchorIds
+        anchorIds: page.anchorIds,
+        lineStart: nextLineNumber,
+        lineCount
       });
+      nextLineNumber += lineCount;
     });
   });
 
@@ -129,6 +134,7 @@ function splitTokensIntoPages(tokens, plan, chapterMeta) {
   const ensureSpace = (weight) => {
     if (weight <= 0) return;
     if (page.charIndex > 0 && page.charIndex + weight > page.charsPerLine) {
+      page.html += "\n";
       page.lineIndex += 1;
       page.charIndex = 0;
     }
@@ -177,6 +183,11 @@ function createPage(chapterMeta, plan, firstPage) {
     charIndex: 0,
     lineIndex: 0
   };
+}
+
+function countPageLines(html) {
+  if (!String(html || "").trim()) return 1;
+  return Math.max(1, String(html).split("\n").length);
 }
 
 function normalizeMobileText(text) {

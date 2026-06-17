@@ -49,6 +49,7 @@ export function initReader({
   const structureAutoDetectCheck = qs("#structureAutoDetectCheck");
   const pageTurnEffectSelect = qs("#pageTurnEffectSelect");
   const pageColumnsCheck = qs("#pageColumnsCheck");
+  const lineNumbersCheck = qs("#lineNumbersCheck");
   const reloadBtn = qs("#reloadBtn");
   const hardReloadBtn = qs("#hardReloadBtn");
   const displayModeRadios = Array.from(document.querySelectorAll('input[name="displayMode"]'));
@@ -62,6 +63,7 @@ export function initReader({
   let structureAutoDetect = settings?.structureAutoDetect !== false;
   let pageTurnEffect = normalizePageTurnEffect(settings?.pageTurnEffect);
   let pageColumns = settings?.pageColumns === true;
+  let lineNumbers = settings?.lineNumbers === true;
   let genkoPreset = false;
   let wrapWidthPercent = normalizeWrapWidthPercent(settings?.wrapWidthPercent);
   let writingModePreference = normalizeWritingModePreference(settings?.writingModePreference);
@@ -628,7 +630,12 @@ export function initReader({
           lineAdvance: baseLineAdvance,
           genkoPreset: false
         });
-    const chars = Math.max(8, Number(plan.chars) || Math.floor((plan.inlineSize || getViewportInnerSize("x")) / baseCharAdvance) || 20);
+    const lineNumberInlineReserve = mode === "horizontal" && lineNumbers
+      ? Math.ceil(baseCharAdvance * 4.6)
+      : 0;
+    const plannedInlineSize = Math.max(baseCharAdvance * 8, (plan.inlineSize || getViewportInnerSize("x")) - lineNumberInlineReserve);
+    const rawChars = Number(plan.chars) || Math.floor((plan.inlineSize || getViewportInnerSize("x")) / baseCharAdvance) || 20;
+    const chars = Math.max(8, Math.min(rawChars, Math.floor(plannedInlineSize / baseCharAdvance) || rawChars));
     const lines = Math.max(4, Number(plan.lines) || Math.floor((plan.blockSize || getViewportInnerSize("y")) / baseLineAdvance) || 10);
     return {
       chars,
@@ -636,8 +643,7 @@ export function initReader({
       capacity: Math.max(40, chars * lines),
       fontScale: plan.fontScale || 1,
       writingMode: mode,
-      // Horizontal glyphs clip more readily at the bottom edge; vertical pages can use the full line count.
-      lineSafetyReserve: mode === "horizontal" ? 1 : 0
+      lineSafetyReserve: 1
     };
   }
 
@@ -647,11 +653,23 @@ export function initReader({
     const safePage = clamp(Number(pageIndex) || 0, 0, maxPage);
     const page = mobileTextPager.pages[safePage] || mobileTextPager.pages[0] || { chapterId: "chapter-001", text: "" };
     mobileTextPager.pageIndex = safePage;
-    const bodyHtml = page.html || escapeHtml(page.text || "");
+    const bodyHtml = formatMobileTextPageBody(page.html || escapeHtml(page.text || ""), page.lineStart || 1);
     const titleHtml = page.title ? `<h1>${escapeHtml(page.title)}</h1>` : "";
     const pageWritingMode = mobileTextPager.plan?.writingMode === "horizontal" ? "horizontal" : "vertical";
-    bookContent.innerHTML = `<section class="mobile-text-page ${pageWritingMode}${page.title ? " has-title" : ""}" id="${escapeAttribute(page.chapterId)}" data-page-index="${safePage}">${titleHtml}<div class="mobile-text-page-body">${bodyHtml}</div></section>`;
+    bookContent.innerHTML = `<section class="mobile-text-page ${pageWritingMode}${page.title ? " has-title" : ""}${lineNumbers ? " line-numbered" : ""}" id="${escapeAttribute(page.chapterId)}" data-page-index="${safePage}">${titleHtml}<div class="mobile-text-page-body">${bodyHtml}</div></section>`;
     refreshHScroll?.();
+  }
+
+  function formatMobileTextPageBody(html, lineStart = 1) {
+    if (!lineNumbers) return html;
+    const lines = String(html || "").split("\n");
+    return lines
+      .map((line, index) => {
+        const number = String(Math.max(1, lineStart + index)).padStart(4, "0");
+        const content = line || "&nbsp;";
+        return `<span class="mobile-text-line" data-line="${escapeAttribute(number)}">${content}</span>`;
+      })
+      .join("");
   }
 
   function setMobileTextPage(pageIndex) {
@@ -804,8 +822,10 @@ export function initReader({
     structureAutoDetect = nextSettings.structureAutoDetect !== false;
     pageTurnEffect = normalizePageTurnEffect(nextSettings.pageTurnEffect);
     pageColumns = nextSettings.pageColumns === true;
+    lineNumbers = nextSettings.lineNumbers === true;
     genkoPreset = false;
     document.body.classList.toggle("page-columns-enabled", pageColumns);
+    document.body.classList.toggle("line-numbers-enabled", lineNumbers);
     document.body.classList.remove("genko-preset-enabled");
     wrapWidthPercent = normalizeWrapWidthPercent(nextSettings.wrapWidthPercent);
     writingModePreference = normalizeWritingModePreference(nextSettings.writingModePreference);
@@ -829,6 +849,7 @@ export function initReader({
     syncStructureAutoDetectControl();
     if (pageTurnEffectSelect) pageTurnEffectSelect.value = pageTurnEffect;
     if (pageColumnsCheck) pageColumnsCheck.checked = pageColumns;
+    if (lineNumbersCheck) lineNumbersCheck.checked = lineNumbers;
     displayModeRadios.forEach((radio) => {
       radio.checked = radio.value === nextDisplayMode;
     });
@@ -866,6 +887,9 @@ export function initReader({
     });
     pageColumnsCheck?.addEventListener("change", () => {
       updateSettings({ pageColumns: Boolean(pageColumnsCheck.checked) });
+    });
+    lineNumbersCheck?.addEventListener("change", () => {
+      updateSettings({ lineNumbers: Boolean(lineNumbersCheck.checked) });
     });
     saveSettingsBtn?.addEventListener("click", () => {
       const next = getCurrentSettings();
@@ -991,6 +1015,7 @@ export function initReader({
       structureAutoDetect: structureAutoDetectCheck ? Boolean(structureAutoDetectCheck.checked) : structureAutoDetect,
       pageTurnEffect: normalizePageTurnEffect(pageTurnEffectSelect?.value || pageTurnEffect),
       pageColumns: Boolean(pageColumnsCheck?.checked),
+      lineNumbers: Boolean(lineNumbersCheck?.checked),
       writingModePreference: normalizeWritingModePreference(writingModeSelect?.value || writingModePreference),
       ...patch
     };
@@ -1004,13 +1029,21 @@ export function initReader({
   function getReaderTextMetrics() {
     const baseFontPx = parseFloat(window.getComputedStyle(document.documentElement).fontSize) || 16;
     const fontPercent = Number(fontSizeRange?.value) || Number(settings?.fontSize) || 100;
-    const fontPx = (fontPercent / 100) * baseFontPx;
+    const contentStyle = bookContent ? window.getComputedStyle(bookContent) : null;
+    const computedFontPx = parseFloat(contentStyle?.fontSize || "");
+    const fontPx = Number.isFinite(computedFontPx) && computedFontPx > 0
+      ? computedFontPx
+      : (fontPercent / 100) * baseFontPx;
     const lineHeight = Number(lineHeightRange?.value) || Number(settings?.lineHeight) || 1.8;
-    const letterSpacingPx = Number(letterSpacingRange?.value) || Number(settings?.letterSpacing) || 0;
+    const computedLineHeightPx = parseFloat(contentStyle?.lineHeight || "");
+    const computedLetterSpacingPx = parseFloat(contentStyle?.letterSpacing || "");
+    const letterSpacingPx = Number.isFinite(computedLetterSpacingPx)
+      ? computedLetterSpacingPx
+      : Number(letterSpacingRange?.value) || Number(settings?.letterSpacing) || 0;
     return {
       baseFontPx,
       fontPx,
-      lineHeightPx: fontPx * lineHeight,
+      lineHeightPx: Number.isFinite(computedLineHeightPx) && computedLineHeightPx > 0 ? computedLineHeightPx : fontPx * lineHeight,
       letterSpacingPx
     };
   }

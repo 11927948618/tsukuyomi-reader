@@ -103,6 +103,7 @@ export async function exportZipFromBook(book, options = {}) {
       wheelPaging: Boolean(settings.wheelPaging),
       writingModePreference: settings.writingModePreference || "vertical",
       pageColumns: settings.pageColumns === true,
+      lineNumbers: settings.lineNumbers === true,
     },
     toc: Array.isArray(book.toc) ? book.toc : []
   };
