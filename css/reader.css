@@ -398,7 +398,7 @@ body.mobile-text-pager.mode-paged .reader-content.mobile-pager-content {
 }
 
 .mobile-text-page.horizontal.line-numbered .mobile-text-page-body {
-  padding-inline-start: 3.8em;
+  padding-inline-start: var(--line-number-gutter, 2.8em);
 }
 
 .mobile-text-page.horizontal.line-numbered .mobile-text-line {
@@ -406,10 +406,14 @@ body.mobile-text-pager.mode-paged .reader-content.mobile-pager-content {
 }
 
 .mobile-text-page.horizontal.line-numbered .mobile-text-line::before {
-  inset-inline-start: -3.8em;
-  inset-block-start: 0.35em;
-  inline-size: 3.2em;
+  inset-inline-start: calc(-1 * var(--line-number-gutter, 2.8em) + 4px);
+  inset-block-start: 0.32em;
+  inline-size: calc(var(--line-number-gutter, 2.8em) - 10px);
   text-align: end;
+}
+
+.mobile-text-page.vertical.line-numbered .mobile-text-page-body {
+  padding-inline-start: var(--line-number-gutter, 1.9em);
 }
 
 .mobile-text-page.vertical.line-numbered .mobile-text-line {
@@ -418,11 +422,12 @@ body.mobile-text-pager.mode-paged .reader-content.mobile-pager-content {
 }
 
 .mobile-text-page.vertical.line-numbered .mobile-text-line::before {
-  inset-inline-end: -1.4em;
-  inset-block-start: 50%;
+  top: calc(-1 * var(--line-number-gutter, 1.9em) + 6px);
+  left: 50%;
+  inline-size: auto;
   writing-mode: horizontal-tb;
-  transform: translateY(-50%) rotate(90deg);
-  transform-origin: center;
+  font-size: 0.42em;
+  transform: translateX(-50%);
 }
 
 .mobile-text-page.has-title .mobile-text-page-body {

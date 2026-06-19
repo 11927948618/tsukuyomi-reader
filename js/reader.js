@@ -2,6 +2,9 @@ import { qs, escapeHtml } from "./utils.js";
 import { buildMobileTextPagerPages } from "./mobile-pager.js";
 import { APP_VERSION } from "./version.js";
 
+const HORIZONTAL_LINE_NUMBER_GUTTER_EM = 2.8;
+const VERTICAL_LINE_NUMBER_GUTTER_EM = 1.9;
+
 export function initReader({
   book,
   settings,
@@ -631,11 +634,16 @@ export function initReader({
           lineAdvance: baseLineAdvance,
           genkoPreset: false
         });
-    const lineNumberInlineReserve = mode === "horizontal" && lineNumbers
-      ? Math.ceil(baseCharAdvance * 4.6)
+    const fallbackInlineSize = mode === "horizontal" ? getViewportInnerSize("x") : getViewportInnerSize("y");
+    const lineNumberGutterEm = mode === "horizontal"
+      ? HORIZONTAL_LINE_NUMBER_GUTTER_EM
+      : VERTICAL_LINE_NUMBER_GUTTER_EM;
+    const lineNumberInlineReserve = lineNumbers
+      ? Math.ceil(metrics.fontPx * lineNumberGutterEm)
       : 0;
-    const plannedInlineSize = Math.max(baseCharAdvance * 8, (plan.inlineSize || getViewportInnerSize("x")) - lineNumberInlineReserve);
-    const rawChars = Number(plan.chars) || Math.floor((plan.inlineSize || getViewportInnerSize("x")) / baseCharAdvance) || 20;
+    const availableInlineSize = plan.inlineSize || fallbackInlineSize;
+    const plannedInlineSize = Math.max(baseCharAdvance * 8, availableInlineSize - lineNumberInlineReserve);
+    const rawChars = Number(plan.chars) || Math.floor(availableInlineSize / baseCharAdvance) || 20;
     const chars = Math.max(8, Math.min(rawChars, Math.floor(plannedInlineSize / baseCharAdvance) || rawChars));
     const lines = Math.max(4, Number(plan.lines) || Math.floor((plan.blockSize || getViewportInnerSize("y")) / baseLineAdvance) || 10);
     return {
@@ -657,7 +665,12 @@ export function initReader({
     const bodyHtml = formatMobileTextPageBody(page.html || escapeHtml(page.text || ""), page.lineStart || 1);
     const titleHtml = page.title ? `<h1>${escapeHtml(page.title)}</h1>` : "";
     const pageWritingMode = mobileTextPager.plan?.writingMode === "horizontal" ? "horizontal" : "vertical";
-    bookContent.innerHTML = `<section class="mobile-text-page ${pageWritingMode}${page.title ? " has-title" : ""}${lineNumbers ? " line-numbered" : ""}" id="${escapeAttribute(page.chapterId)}" data-page-index="${safePage}">${titleHtml}<div class="mobile-text-page-body">${bodyHtml}</div></section>`;
+    const lineNumberGutterEm = pageWritingMode === "horizontal"
+      ? HORIZONTAL_LINE_NUMBER_GUTTER_EM
+      : VERTICAL_LINE_NUMBER_GUTTER_EM;
+    const lineNumberGutterPx = Math.round(getReaderTextMetrics().fontPx * lineNumberGutterEm * 100) / 100;
+    const lineNumberStyle = lineNumbers ? ` style="--line-number-gutter:${escapeAttribute(lineNumberGutterPx)}px"` : "";
+    bookContent.innerHTML = `<section class="mobile-text-page ${pageWritingMode}${page.title ? " has-title" : ""}${lineNumbers ? " line-numbered" : ""}" id="${escapeAttribute(page.chapterId)}" data-page-index="${safePage}"${lineNumberStyle}>${titleHtml}<div class="mobile-text-page-body">${bodyHtml}</div></section>`;
     refreshHScroll?.();
   }
 
