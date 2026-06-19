@@ -1104,8 +1104,8 @@ body.theme-dark .settings-panel select option {
 }
 
 .settings-panel .button.ghost {
-  border-color: color-mix(in srgb, var(--accent), var(--border) 32%);
-  background: color-mix(in srgb, var(--panel), var(--accent) 6%);
+  border-color: color-mix(in srgb, var(--accent), var(--text) 38%);
+  background: color-mix(in srgb, var(--panel), var(--accent) 8%);
 }
 
 .settings-panel .button.ghost.danger {

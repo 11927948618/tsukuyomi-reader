@@ -345,6 +345,30 @@ select.input option {
 #libraryScreen .button {
   min-height: 40px;
   padding: 8px 14px;
+  border: 1px solid color-mix(in srgb, var(--accent), var(--text) 32%);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent), transparent 82%);
+}
+
+#libraryScreen .button.ghost {
+  border-color: color-mix(in srgb, var(--accent), var(--text) 38%);
+  background: color-mix(in srgb, var(--panel), var(--accent) 8%);
+}
+
+#libraryScreen .button.ghost.danger {
+  border-color: color-mix(in srgb, var(--danger), var(--text) 34%);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--danger), transparent 80%);
+}
+
+#libraryScreen .button:hover,
+#libraryScreen .button:focus-visible {
+  border-color: color-mix(in srgb, var(--accent), var(--text) 55%);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent), transparent 66%);
+}
+
+#libraryScreen .button.ghost.danger:hover,
+#libraryScreen .button.ghost.danger:focus-visible {
+  border-color: color-mix(in srgb, var(--danger), var(--text) 48%);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--danger), transparent 70%);
 }
 
 #libraryScreen .library-card-stack {
