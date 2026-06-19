@@ -1086,6 +1086,30 @@ body.theme-dark .settings-panel select option {
 
 .settings-panel .button {
   padding: 8px 12px;
+  border: 1px solid color-mix(in srgb, var(--accent), var(--text) 32%);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent), transparent 82%);
+}
+
+.settings-panel .button.ghost {
+  border-color: color-mix(in srgb, var(--accent), var(--border) 32%);
+  background: color-mix(in srgb, var(--panel), var(--accent) 6%);
+}
+
+.settings-panel .button.ghost.danger {
+  border-color: color-mix(in srgb, var(--danger), var(--border) 25%);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--danger), transparent 84%);
+}
+
+.settings-panel .button:hover,
+.settings-panel .button:focus-visible {
+  border-color: color-mix(in srgb, var(--accent), var(--text) 48%);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent), transparent 72%);
+}
+
+.settings-panel .button.ghost.danger:hover,
+.settings-panel .button.ghost.danger:focus-visible {
+  border-color: color-mix(in srgb, var(--danger), var(--text) 42%);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--danger), transparent 74%);
 }
 
 .build-info {
