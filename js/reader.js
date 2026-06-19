@@ -90,9 +90,10 @@ export function initReader({
     return coarsePointer || shortSide <= 640;
   };
   const shouldUseMobileTextPager = () => {
+    // Explicit pagination is shared by mobile and desktop. Browser CSS columns
+    // remain useful for scrolling, but are not stable enough to define pages.
     return displayMode === "paged"
       && (bookFormat === "txt" || bookFormat === "epub" || bookFormat === "html")
-      && isMobileReadingDevice()
       && !getPdfUrl(book);
   };
   const getViewportInnerSize = (axis = "x") => {
