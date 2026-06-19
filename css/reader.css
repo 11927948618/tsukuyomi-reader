@@ -26,6 +26,19 @@
   pointer-events: none;
 }
 
+.reader-topbar .button.ghost {
+  border-color: color-mix(in srgb, var(--accent), var(--text) 38%);
+  background: color-mix(in srgb, var(--panel), var(--accent) 8%);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent), transparent 78%);
+}
+
+.reader-topbar .button.ghost:hover,
+.reader-topbar .button.ghost:focus-visible {
+  border-color: color-mix(in srgb, var(--accent), var(--text) 55%);
+  background: color-mix(in srgb, var(--panel), var(--accent) 14%);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent), transparent 66%);
+}
+
 .topbar-group {
   display: flex;
   align-items: center;
