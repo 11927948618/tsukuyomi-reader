@@ -21,7 +21,7 @@ export function buildMobileTextPagerPages(sourceHtml, options = {}) {
     const title = heading ? textWithoutRuby(heading).trim() : "";
     const textSource = chapter.cloneNode?.(true) || chapter;
     textSource.querySelectorAll?.("h1,h2,h3").forEach((heading) => heading.remove());
-    const tokens = tokenizeMobilePageContent(textSource);
+    const tokens = tokenizeMobilePageContent(textSource, plan.writingMode);
     const chapterPages = splitTokensIntoPages(tokens, plan, { chapterId, title });
     const startPage = pages.length;
 
@@ -64,14 +64,14 @@ function normalizePlan(plan = {}) {
   };
 }
 
-function tokenizeMobilePageContent(root) {
+function tokenizeMobilePageContent(root, writingMode = "vertical") {
   const tokens = [];
   const walk = (node, marks = {}) => {
     if (!node) return;
     if (node.nodeType === Node.TEXT_NODE) {
       const text = node.textContent || "";
       if (/^[\s　]*$/.test(text)) return;
-      pushTextTokens(tokens, text, marks);
+      pushTextTokens(tokens, text, marks, writingMode);
       return;
     }
     if (node.nodeType !== Node.ELEMENT_NODE && node.nodeType !== Node.DOCUMENT_FRAGMENT_NODE) return;
@@ -93,7 +93,7 @@ function tokenizeMobilePageContent(root) {
 
     if (tag === "ruby") {
       const html = decorateInlineHtml(node.outerHTML || escapeHtml(node.textContent || ""), nextMarks);
-      tokens.push({ type: "inline", html, weight: measureRubyBaseText(node) });
+      tokens.push({ type: "inline", html, weight: measureRubyBaseText(node, writingMode) });
       return;
     }
 
@@ -118,8 +118,8 @@ function tokenizeMobilePageContent(root) {
   return trimBoundaryNewlines(tokens);
 }
 
-function pushTextTokens(tokens, value, marks = {}) {
-  const text = normalizeMobileText(value);
+function pushTextTokens(tokens, value, marks = {}, writingMode = "vertical") {
+  const text = normalizeMobileText(value, writingMode);
   for (const char of Array.from(text)) {
     if (char === "\n") {
       tokens.push({ type: "newline" });
@@ -242,15 +242,17 @@ function countPageLines(html) {
   return Math.max(1, String(html).split("\n").length);
 }
 
-function normalizeMobileText(text) {
-  return String(text || "")
+function normalizeMobileText(text, writingMode = "vertical") {
+  const normalized = String(text || "")
     .replace(/\r\n?/g, "\n")
     .replace(/[ \t\f\v]+/g, "")
+    .replace(/\n{3,}/g, "\n\n");
+  if (String(writingMode || "vertical").toLowerCase() === "horizontal") return normalized;
+  return normalized
     .replace(/…/g, "･･･")
     .replace(/‥/g, "･･")
     .replace(/\.{3}/g, "･･･")
-    .replace(/[―—]/g, "︱")
-    .replace(/\n{3,}/g, "\n\n");
+    .replace(/[―—]/g, "︱");
 }
 
 function trimBoundaryNewlines(tokens) {
@@ -275,10 +277,10 @@ function decorateInlineHtml(html, marks = {}) {
   return `<span class="mp-strike">${html}</span>`;
 }
 
-function measureRubyBaseText(rubyNode) {
+function measureRubyBaseText(rubyNode, writingMode = "vertical") {
   const clone = rubyNode.cloneNode(true);
   clone.querySelectorAll?.("rt,rp").forEach((node) => node.remove());
-  return Math.max(1, Array.from(normalizeMobileText(clone.textContent || "").replace(/\n/g, "")).length);
+  return Math.max(1, Array.from(normalizeMobileText(clone.textContent || "", writingMode).replace(/\n/g, "")).length);
 }
 
 function escapeHtml(value) {
