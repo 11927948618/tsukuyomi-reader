@@ -288,7 +288,7 @@ async function applyBook(book) {
     ...DEFAULT_PROGRESS,
     ...(resumeFromBookmark ? bookmark : {})
   };
-  startAnalyticsSession(appState.currentBook, appState.siteConfig);
+  startAnalyticsSession(appState.currentBook, appState.siteConfig, buildAppViewerProfile());
 }
 
 function chooseBookmarkStart(book) {
@@ -425,6 +425,7 @@ function saveProgress(bookId, progress) {
     pageIndex: Number(progress.pageIndex) || 0,
     progressPercent: Number(progress.progressPercent) || 0,
     chapterId: progress.chapterId || null,
+    viewerProfile: normalizeStoredViewerProfile(progress.viewerProfile || buildAppViewerProfile()),
     updatedAt: new Date().toISOString()
   };
   const ok = saveJSON(`tsukiyomi:bookmark:${bookId}`, payload);
@@ -432,6 +433,65 @@ function saveProgress(bookId, progress) {
   if (!ok) {
     appState.startupMessage = "栞の保存に失敗しました（容量不足の可能性）";
   }
+}
+
+function buildAppViewerProfile() {
+  return normalizeStoredViewerProfile({
+    appVersion: APP_VERSION,
+    displayMode: appState.settings.displayMode,
+    writingMode: appState.settings.writingModePreference,
+    fontSize: appState.settings.fontSize,
+    lineHeight: appState.settings.lineHeight,
+    letterSpacing: appState.settings.letterSpacing,
+    wrapWidthPercent: appState.settings.wrapWidthPercent,
+    fontFamilyPreference: appState.settings.fontFamilyPreference,
+    pageColumns: appState.settings.pageColumns,
+    lineNumbers: appState.settings.lineNumbers,
+    viewportWidth: window.innerWidth || 0,
+    viewportHeight: window.innerHeight || 0,
+    screenWidth: window.screen?.width || 0,
+    screenHeight: window.screen?.height || 0
+  });
+}
+
+function normalizeStoredViewerProfile(profile) {
+  if (!profile || typeof profile !== "object") return null;
+  return {
+    appVersion: String(profile.appVersion || APP_VERSION).slice(0, 32),
+    displayMode: normalizeStoredDisplayMode(profile.displayMode),
+    writingMode: String(profile.writingMode || profile.writingModePreference || "vertical").slice(0, 16),
+    fontSize: finiteNumber(profile.fontSize, 100),
+    fontPx: finiteNumber(profile.fontPx, null),
+    lineHeight: finiteNumber(profile.lineHeight, 1.8),
+    lineHeightPx: finiteNumber(profile.lineHeightPx, null),
+    letterSpacing: finiteNumber(profile.letterSpacing, 0),
+    wrapWidthPercent: finiteNumber(profile.wrapWidthPercent, 100),
+    fontFamilyPreference: String(profile.fontFamilyPreference || "system").slice(0, 32),
+    pageColumns: profile.pageColumns === true,
+    lineNumbers: profile.lineNumbers === true,
+    viewportWidth: finiteInteger(profile.viewportWidth, 0),
+    viewportHeight: finiteInteger(profile.viewportHeight, 0),
+    screenWidth: finiteInteger(profile.screenWidth, 0),
+    screenHeight: finiteInteger(profile.screenHeight, 0),
+    pageIndex: finiteInteger(profile.pageIndex, null),
+    pageCount: finiteInteger(profile.pageCount, null),
+    charsPerLine: finiteInteger(profile.charsPerLine, null),
+    linesPerPage: finiteInteger(profile.linesPerPage, null)
+  };
+}
+
+function finiteNumber(value, fallback) {
+  if (value == null || value === "") return fallback;
+  const number = Number(value);
+  if (!Number.isFinite(number)) return fallback;
+  return Math.round(number * 100) / 100;
+}
+
+function finiteInteger(value, fallback) {
+  if (value == null || value === "") return fallback;
+  const number = Number(value);
+  if (!Number.isFinite(number)) return fallback;
+  return Math.max(0, Math.round(number));
 }
 
 function loadBookmark(bookId) {

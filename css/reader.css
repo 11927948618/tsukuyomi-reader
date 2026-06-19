@@ -665,11 +665,11 @@ body.page-turn-flash .reader-viewport::after {
   background: color-mix(in srgb, var(--panel), #fff 28%);
   pointer-events: none;
   z-index: 6;
-  animation: page-flash 140ms ease-out;
+  animation: page-flash 260ms ease-out;
 }
 
 body.page-turn-slide .reader-viewport {
-  animation: page-slide-forward 170ms ease-out;
+  animation: page-slide-forward 300ms cubic-bezier(0.22, 0.72, 0.24, 1);
 }
 
 body.page-turn-slide.page-turn-back .reader-viewport {
@@ -685,7 +685,7 @@ body.page-turn-shadow .reader-viewport::after {
   pointer-events: none;
   z-index: 6;
   opacity: 0;
-  animation: page-shadow 150ms ease-out;
+  animation: page-shadow 260ms ease-out;
 }
 
 body.page-turn-shadow.page-turn-forward .reader-viewport::after {
@@ -700,7 +700,7 @@ body.page-turn-shadow.page-turn-back .reader-viewport::after {
 
 @keyframes page-flash {
   0% {
-    opacity: 0.42;
+    opacity: 0.5;
   }
   100% {
     opacity: 0;
@@ -709,28 +709,40 @@ body.page-turn-shadow.page-turn-back .reader-viewport::after {
 
 @keyframes page-slide-forward {
   0% {
-    transform: translateX(10px);
+    transform: translateX(26px);
+    opacity: 0.76;
   }
   100% {
     transform: translateX(0);
+    opacity: 1;
   }
 }
 
 @keyframes page-slide-back {
   0% {
-    transform: translateX(-10px);
+    transform: translateX(-26px);
+    opacity: 0.76;
   }
   100% {
     transform: translateX(0);
+    opacity: 1;
   }
 }
 
 @keyframes page-shadow {
   0% {
-    opacity: 0.85;
+    opacity: 1;
   }
   100% {
     opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body.page-turn-flash .reader-viewport::after,
+  body.page-turn-slide .reader-viewport,
+  body.page-turn-shadow .reader-viewport::after {
+    animation-duration: 1ms;
   }
 }
 

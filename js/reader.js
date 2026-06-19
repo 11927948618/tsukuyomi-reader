@@ -1,5 +1,6 @@
 import { qs, escapeHtml } from "./utils.js";
 import { buildMobileTextPagerPages } from "./mobile-pager.js";
+import { APP_VERSION } from "./version.js";
 
 export function initReader({
   book,
@@ -367,7 +368,7 @@ export function initReader({
         "page-turn-forward",
         "page-turn-back"
       );
-    }, pageTurnEffect === "slide" ? 170 : 140);
+    }, pageTurnEffect === "slide" ? 300 : 260);
   };
 
   const reflowReaderLayout = (options = {}) => {
@@ -687,7 +688,12 @@ export function initReader({
     const pageIndex = clamp(mobileTextPager.pageIndex, 0, maxPage);
     const page = mobileTextPager.pages[pageIndex] || {};
     const progressPercent = maxPage > 0 ? Math.round((pageIndex / maxPage) * 100) : 100;
-    onUpdateProgress({ chapterId: page.chapterId || "chapter-001", pageIndex, progressPercent });
+    onUpdateProgress({
+      chapterId: page.chapterId || "chapter-001",
+      pageIndex,
+      progressPercent,
+      viewerProfile: createViewerProfile({ pageIndex, pageCount: mobileTextPager.pages.length })
+    });
   }
 
   function renderToc(currentBook) {
@@ -1048,6 +1054,32 @@ export function initReader({
     };
   }
 
+  function createViewerProfile(extra = {}) {
+    const metrics = getReaderTextMetrics();
+    const plan = mobileTextPager.active ? mobileTextPager.plan : null;
+    return {
+      appVersion: APP_VERSION,
+      displayMode,
+      writingMode: normalizeWritingModePreference(writingModePreference),
+      fontSize: Number(fontSizeRange?.value) || Number(settings?.fontSize) || 100,
+      fontPx: metrics.fontPx,
+      lineHeight: Number(lineHeightRange?.value) || Number(settings?.lineHeight) || 1.8,
+      lineHeightPx: metrics.lineHeightPx,
+      letterSpacing: Number(letterSpacingRange?.value) || Number(settings?.letterSpacing) || 0,
+      wrapWidthPercent,
+      fontFamilyPreference: normalizeFontFamilyPreference(fontFamilySelect?.value || settings?.fontFamilyPreference),
+      pageColumns,
+      lineNumbers,
+      viewportWidth: readerViewport?.clientWidth || window.innerWidth || 0,
+      viewportHeight: readerViewport?.clientHeight || window.innerHeight || 0,
+      screenWidth: window.screen?.width || 0,
+      screenHeight: window.screen?.height || 0,
+      charsPerLine: plan?.chars || null,
+      linesPerPage: plan ? Math.max(0, (Number(plan.lines) || 0) - (Number(plan.lineSafetyReserve) || 0)) : null,
+      ...extra
+    };
+  }
+
   function bindProgressTracking() {
     const handler = throttle(() => {
       if (mobileTextPager.active) return;
@@ -1060,7 +1092,13 @@ export function initReader({
         const maxTop = Math.max(0, scrollContainer.scrollHeight - scrollContainer.clientHeight);
         const logicalMaxTop = usesVerticalPagedAxis() ? Math.max(0, maxTop - getVerticalPagedBoundaryBleed()) : maxTop;
         const progressPercent = logicalMaxTop > 0 ? Math.round((offset / logicalMaxTop) * 100) : 100;
-        onUpdateProgress({ chapterId, scrollTop: offset, pageIndex, progressPercent });
+        onUpdateProgress({
+          chapterId,
+          scrollTop: offset,
+          pageIndex,
+          progressPercent,
+          viewerProfile: createViewerProfile({ pageIndex })
+        });
         return;
       }
 
@@ -1070,7 +1108,13 @@ export function initReader({
       const pageIndex = Math.round(logical / size);
       const maxLeft = getMaxLeft(scrollContainer);
       const progressPercent = maxLeft > 0 ? Math.round((logical / maxLeft) * 100) : 100;
-      onUpdateProgress({ chapterId, scrollLeft: logical, pageIndex, progressPercent });
+      onUpdateProgress({
+        chapterId,
+        scrollLeft: logical,
+        pageIndex,
+        progressPercent,
+        viewerProfile: createViewerProfile({ pageIndex })
+      });
     }, 250);
 
     scrollContainer.addEventListener("scroll", handler);

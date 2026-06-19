@@ -19,6 +19,7 @@ export async function recordLiteAnalytics(bucket, event, options = {}) {
   const books = normalizeMap(stats.books);
   const book = normalizeBookStats(books[event.bookId]);
   const progress = normalizeProgress(event.progressPercent);
+  const viewerProfile = normalizeViewerProfile(event.viewerProfileJson || event.viewerProfile);
 
   book.events += 1;
   book.lastEventAt = now;
@@ -48,6 +49,7 @@ export async function recordLiteAnalytics(bucket, event, options = {}) {
     reviewerBook.events += 1;
     reviewerBook.lastEventAt = now;
     reviewerBook.maxProgress = Math.max(Number(reviewerBook.maxProgress) || 0, progress || 0);
+    if (viewerProfile) reviewerBook.latestViewerProfile = viewerProfile;
     if (event.eventType === "open") reviewerBook.opens += 1;
     if (event.eventType === "finish") reviewerBook.finishes += 1;
     reviewer.books[event.bookId] = reviewerBook;
@@ -64,7 +66,8 @@ export async function recordLiteAnalytics(bucket, event, options = {}) {
       progressPercent: progress,
       chapterId: event.chapterId || "",
       country: event.country || "",
-      accessEmail: event.accessEmail || ""
+      accessEmail: event.accessEmail || "",
+      viewerProfile
     },
     ...normalizeRecent(stats.recent)
   ].slice(0, recentLimit);
@@ -178,7 +181,8 @@ function normalizeReviewerBookStats(value) {
     opens: Number(book.opens) || 0,
     finishes: Number(book.finishes) || 0,
     maxProgress: Number(book.maxProgress) || 0,
-    lastEventAt: typeof book.lastEventAt === "string" ? book.lastEventAt : ""
+    lastEventAt: typeof book.lastEventAt === "string" ? book.lastEventAt : "",
+    latestViewerProfile: normalizeViewerProfile(book.latestViewerProfile)
   };
 }
 
@@ -192,6 +196,7 @@ function reviewersToAdminRows(reviewers) {
         opens: book.opens,
         finishes: book.finishes,
         maxProgress: book.maxProgress,
+        latestViewerProfile: book.latestViewerProfile || null,
         lastEventAt: book.lastEventAt || reviewer.lastEventAt || ""
       }))
     )
@@ -213,8 +218,68 @@ function normalizeRecent(value) {
     progressPercent: normalizeProgress(row?.progressPercent),
     chapterId: typeof row?.chapterId === "string" ? row.chapterId : "",
     country: typeof row?.country === "string" ? row.country : "",
-    accessEmail: typeof row?.accessEmail === "string" ? row.accessEmail : ""
+    accessEmail: typeof row?.accessEmail === "string" ? row.accessEmail : "",
+    viewerProfile: normalizeViewerProfile(row?.viewerProfile)
   }));
+}
+
+function normalizeViewerProfile(value) {
+  let profile = value;
+  if (typeof profile === "string") {
+    try {
+      profile = JSON.parse(profile);
+    } catch (err) {
+      return null;
+    }
+  }
+  if (!profile || typeof profile !== "object" || Array.isArray(profile)) return null;
+  return compactViewerProfile({
+    v: normalizeViewerInteger(profile.v),
+    app: normalizeViewerText(profile.app, 16),
+    mode: normalizeViewerText(profile.mode, 8),
+    wm: normalizeViewerText(profile.wm, 8),
+    fs: normalizeViewerNumber(profile.fs),
+    fpx: normalizeViewerNumber(profile.fpx),
+    lh: normalizeViewerNumber(profile.lh),
+    lhpx: normalizeViewerNumber(profile.lhpx),
+    ls: normalizeViewerNumber(profile.ls),
+    ww: normalizeViewerNumber(profile.ww),
+    font: normalizeViewerText(profile.font, 16),
+    cols: profile.cols === true,
+    nums: profile.nums === true,
+    vw: normalizeViewerInteger(profile.vw),
+    vh: normalizeViewerInteger(profile.vh),
+    svw: normalizeViewerInteger(profile.svw),
+    svh: normalizeViewerInteger(profile.svh),
+    page: normalizeViewerInteger(profile.page),
+    pages: normalizeViewerInteger(profile.pages),
+    cpl: normalizeViewerInteger(profile.cpl),
+    lpp: normalizeViewerInteger(profile.lpp)
+  });
+}
+
+function compactViewerProfile(profile) {
+  return Object.fromEntries(
+    Object.entries(profile).filter(([, value]) => value !== null && value !== "" && value !== false)
+  );
+}
+
+function normalizeViewerText(value, maxLength) {
+  return String(value || "").trim().replace(/[\u0000-\u001f\u007f]/g, "").slice(0, maxLength);
+}
+
+function normalizeViewerNumber(value) {
+  if (value == null || value === "") return null;
+  const number = Number(value);
+  if (!Number.isFinite(number)) return null;
+  return Math.round(number * 100) / 100;
+}
+
+function normalizeViewerInteger(value) {
+  if (value == null || value === "") return null;
+  const number = Number(value);
+  if (!Number.isFinite(number)) return null;
+  return Math.max(0, Math.round(number));
 }
 
 function normalizeProgress(value) {

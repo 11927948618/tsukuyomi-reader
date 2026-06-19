@@ -1,6 +1,7 @@
 const READER_ID_KEY = "tsukiyomi:analyticsReaderId";
 const DEFAULT_ENDPOINT = "/api/analytics/event";
 const PROGRESS_THRESHOLDS = [25, 50, 75];
+const VIEWER_PROFILE_SCHEMA = 1;
 
 let analyticsConfig = normalizeAnalyticsConfig(null);
 let activeSession = null;
@@ -18,7 +19,7 @@ export function applyAnalyticsNotice(siteConfig) {
   });
 }
 
-export function startAnalyticsSession(book, siteConfig) {
+export function startAnalyticsSession(book, siteConfig, viewerProfile = null) {
   configureAnalytics(siteConfig);
   const bookId = getAnalyticsBookId(book);
   if (!canTrack(book, bookId)) {
@@ -30,11 +31,12 @@ export function startAnalyticsSession(book, siteConfig) {
     bookId,
     sourceType: getSourceType(book),
     sessionId: createId(),
+    viewerProfile: normalizeViewerProfile(viewerProfile),
     sentProgress: new Set(),
     finishSent: false
   };
 
-  sendAnalyticsEvent("open", { progressPercent: 0, chapterId: "" });
+  sendAnalyticsEvent("open", { progressPercent: 0, chapterId: "", viewerProfile: activeSession.viewerProfile });
 }
 
 export function trackAnalyticsProgress(book, progress) {
@@ -43,13 +45,15 @@ export function trackAnalyticsProgress(book, progress) {
 
   const percent = normalizePercent(progress?.progressPercent);
   if (percent == null) return;
+  const viewerProfile = normalizeViewerProfile(progress?.viewerProfile) || activeSession.viewerProfile;
 
   for (const threshold of PROGRESS_THRESHOLDS) {
     if (percent >= threshold && !activeSession.sentProgress.has(threshold)) {
       activeSession.sentProgress.add(threshold);
       sendAnalyticsEvent("progress", {
         progressPercent: threshold,
-        chapterId: progress?.chapterId || ""
+        chapterId: progress?.chapterId || "",
+        viewerProfile
       });
     }
   }
@@ -58,7 +62,8 @@ export function trackAnalyticsProgress(book, progress) {
     activeSession.finishSent = true;
     sendAnalyticsEvent("finish", {
       progressPercent: 100,
-      chapterId: progress?.chapterId || ""
+      chapterId: progress?.chapterId || "",
+      viewerProfile
     });
   }
 }
@@ -76,7 +81,8 @@ function sendAnalyticsEvent(eventType, detail = {}) {
     sessionId: activeSession.sessionId,
     sourceType: activeSession.sourceType,
     progressPercent: detail.progressPercent ?? null,
-    chapterId: detail.chapterId || ""
+    chapterId: detail.chapterId || "",
+    viewerProfile: normalizeViewerProfile(detail.viewerProfile) || activeSession.viewerProfile || null
   };
   const body = JSON.stringify(payload);
 
@@ -95,6 +101,58 @@ function sendAnalyticsEvent(eventType, detail = {}) {
   } catch (err) {
     // Analytics must never interrupt reading.
   }
+}
+
+function normalizeViewerProfile(profile) {
+  if (!profile || typeof profile !== "object") return null;
+  // Keep this compact: it is attached only to existing analytics events.
+  return compactProfile({
+    v: VIEWER_PROFILE_SCHEMA,
+    app: normalizeProfileText(profile.app ?? profile.appVersion, 16),
+    mode: normalizeProfileText(profile.mode ?? profile.displayMode, 8),
+    wm: normalizeProfileText(profile.wm ?? profile.writingMode, 8),
+    fs: normalizeProfileNumber(profile.fs ?? profile.fontSize),
+    fpx: normalizeProfileNumber(profile.fpx ?? profile.fontPx),
+    lh: normalizeProfileNumber(profile.lh ?? profile.lineHeight),
+    lhpx: normalizeProfileNumber(profile.lhpx ?? profile.lineHeightPx),
+    ls: normalizeProfileNumber(profile.ls ?? profile.letterSpacing),
+    ww: normalizeProfileNumber(profile.ww ?? profile.wrapWidthPercent),
+    font: normalizeProfileText(profile.font ?? profile.fontFamilyPreference, 16),
+    cols: profile.cols === true || profile.pageColumns === true,
+    nums: profile.nums === true || profile.lineNumbers === true,
+    vw: normalizeProfileInteger(profile.vw ?? profile.viewportWidth),
+    vh: normalizeProfileInteger(profile.vh ?? profile.viewportHeight),
+    svw: normalizeProfileInteger(profile.svw ?? profile.screenWidth),
+    svh: normalizeProfileInteger(profile.svh ?? profile.screenHeight),
+    page: normalizeProfileInteger(profile.page ?? profile.pageIndex),
+    pages: normalizeProfileInteger(profile.pages ?? profile.pageCount),
+    cpl: normalizeProfileInteger(profile.cpl ?? profile.charsPerLine),
+    lpp: normalizeProfileInteger(profile.lpp ?? profile.linesPerPage)
+  });
+}
+
+function compactProfile(profile) {
+  return Object.fromEntries(
+    Object.entries(profile).filter(([, value]) => value !== null && value !== "" && value !== false)
+  );
+}
+
+function normalizeProfileText(value, maxLength) {
+  return String(value || "").trim().replace(/[\u0000-\u001f\u007f]/g, "").slice(0, maxLength);
+}
+
+function normalizeProfileNumber(value) {
+  if (value == null || value === "") return null;
+  const number = Number(value);
+  if (!Number.isFinite(number)) return null;
+  return Math.round(number * 100) / 100;
+}
+
+function normalizeProfileInteger(value) {
+  if (value == null || value === "") return null;
+  const number = Number(value);
+  if (!Number.isFinite(number)) return null;
+  return Math.max(0, Math.round(number));
 }
 
 function normalizeAnalyticsConfig(siteConfig) {
