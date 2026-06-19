@@ -74,12 +74,14 @@ export function initReader({
   let pageDirection = writingModePreference === "vertical" ? "rtl" : "ltr";
   let isInitialLayout = true;
   let skipNextTap = false;
+  let viewportResizeTimer = 0;
   let mobileTextPager = {
     active: false,
     sourceHtml: "",
     pages: [],
     pageIndex: 0,
-    chapterPageMap: new Map()
+    chapterPageMap: new Map(),
+    sourceLocator: null
   };
   const refreshHScroll = setupHScroll(scrollContainer);
   const isMobileReadingDevice = () => {
@@ -479,7 +481,12 @@ export function initReader({
   bindWheelScroll(readerViewport, scrollContainer, tapZone);
   applyDisplayMode(displayMode, { tapInScroll, preservePosition: hasInitialProgress });
   reflowReaderLayout({ preservePosition: hasInitialProgress });
-  const handleViewportResize = () => reflowReaderLayout({ preservePosition: true });
+  const handleViewportResize = () => {
+    window.clearTimeout(viewportResizeTimer);
+    viewportResizeTimer = window.setTimeout(() => {
+      reflowReaderLayout({ preservePosition: true });
+    }, 140);
+  };
   window.addEventListener("resize", handleViewportResize);
   window.addEventListener("orientationchange", handleViewportResize);
   if (window.visualViewport) window.visualViewport.addEventListener("resize", handleViewportResize);
@@ -598,21 +605,74 @@ export function initReader({
     const previousPage = mobileTextPager.active && options.preservePage !== false
       ? mobileTextPager.pageIndex
       : Number(options.pageIndex) || 0;
+    const previousLocator = mobileTextPager.active && options.preservePage !== false
+      ? captureMobileTextPagerLocator()
+      : null;
     const source = mobileTextPager.sourceHtml || book.html || "";
     const plan = resolveMobileTextPagerPlan();
     const built = buildMobileTextPagerPages(source, { plan });
+    const locatedPage = previousLocator
+      ? findMobileTextPagerPage(built.pages, previousLocator)
+      : null;
+    const nextPageIndex = clamp(locatedPage ?? previousPage, 0, Math.max(0, built.pages.length - 1));
+    const nextLocator = locatedPage != null && previousLocator
+      ? previousLocator
+      : createMobileTextPagerLocator(built.pages[nextPageIndex]);
     mobileTextPager = {
       active: true,
       sourceHtml: source,
       pages: built.pages,
       plan: built.plan,
-      pageIndex: clamp(previousPage, 0, Math.max(0, built.pages.length - 1)),
-      chapterPageMap: built.chapterPageMap
+      pageIndex: nextPageIndex,
+      chapterPageMap: built.chapterPageMap,
+      sourceLocator: nextLocator
     };
     bookContent.classList.add("mobile-pager-content");
     renderMobileTextPage(mobileTextPager.pageIndex);
     updateMobileTextPagerProgress();
     refreshHScroll?.();
+  }
+
+  function captureMobileTextPagerLocator() {
+    const stored = mobileTextPager.sourceLocator;
+    if (stored && Number.isFinite(Number(stored.sourceOffset))) {
+      return {
+        chapterId: String(stored.chapterId || "chapter-001"),
+        sourceOffset: Math.max(0, Number(stored.sourceOffset) || 0)
+      };
+    }
+    return createMobileTextPagerLocator(mobileTextPager.pages[mobileTextPager.pageIndex]);
+  }
+
+  function createMobileTextPagerLocator(page) {
+    if (!page) return null;
+    const sourceOffset = Number(page.sourceStart);
+    if (!Number.isFinite(sourceOffset)) return null;
+    return {
+      chapterId: String(page.chapterId || "chapter-001"),
+      sourceOffset: Math.max(0, sourceOffset)
+    };
+  }
+
+  function findMobileTextPagerPage(pages, locator) {
+    if (!Array.isArray(pages) || !pages.length || !locator) return null;
+    const chapterId = String(locator.chapterId || "");
+    const sourceOffset = Math.max(0, Number(locator.sourceOffset) || 0);
+    let firstChapterPage = null;
+    let nearestPage = null;
+    let nearestStart = -1;
+
+    pages.forEach((page, index) => {
+      if (String(page?.chapterId || "") !== chapterId) return;
+      if (firstChapterPage == null) firstChapterPage = index;
+      const start = Math.max(0, Number(page?.sourceStart) || 0);
+      if (start <= sourceOffset && start >= nearestStart) {
+        nearestStart = start;
+        nearestPage = index;
+      }
+    });
+
+    return nearestPage ?? firstChapterPage;
   }
 
   function resolveMobileTextPagerPlan() {
@@ -671,7 +731,9 @@ export function initReader({
       : VERTICAL_LINE_NUMBER_GUTTER_EM;
     const lineNumberGutterPx = Math.round(getReaderTextMetrics().fontPx * lineNumberGutterEm * 100) / 100;
     const lineNumberStyle = lineNumbers ? ` style="--line-number-gutter:${escapeAttribute(lineNumberGutterPx)}px"` : "";
-    bookContent.innerHTML = `<section class="mobile-text-page ${pageWritingMode}${page.title ? " has-title" : ""}${lineNumbers ? " line-numbered" : ""}" id="${escapeAttribute(page.chapterId)}" data-page-index="${safePage}"${lineNumberStyle}>${titleHtml}<div class="mobile-text-page-body">${bodyHtml}</div></section>`;
+    const sourceStart = Math.max(0, Number(page.sourceStart) || 0);
+    const sourceEnd = Math.max(sourceStart, Number(page.sourceEnd) || sourceStart);
+    bookContent.innerHTML = `<section class="mobile-text-page ${pageWritingMode}${page.title ? " has-title" : ""}${lineNumbers ? " line-numbered" : ""}" id="${escapeAttribute(page.chapterId)}" data-page-index="${safePage}" data-source-start="${sourceStart}" data-source-end="${sourceEnd}"${lineNumberStyle}>${titleHtml}<div class="mobile-text-page-body">${bodyHtml}</div></section>`;
     refreshHScroll?.();
   }
 
@@ -692,6 +754,7 @@ export function initReader({
     const maxPage = Math.max(0, mobileTextPager.pages.length - 1);
     const nextPage = clamp(Math.round(Number(pageIndex) || 0), 0, maxPage);
     if (nextPage === mobileTextPager.pageIndex) return;
+    mobileTextPager.sourceLocator = createMobileTextPagerLocator(mobileTextPager.pages[nextPage]);
     renderMobileTextPage(nextPage);
     updateMobileTextPagerProgress();
   }

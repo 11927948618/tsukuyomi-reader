@@ -1,5 +1,10 @@
 import { textWithoutRuby } from "./utils.js";
 
+const NO_LINE_START_CHARS = new Set(Array.from(
+  "、。，．・･…‥：；？！‼⁇⁈⁉ヽヾ々ー︱ァィゥェォッャュョヮぁぃぅぇぉっゃゅょゎ」』）〕］｝〉》】〙〗〟’”»)]}"
+));
+const NO_LINE_END_CHARS = new Set(Array.from("「『（〔［｛〈《【〘〖〝‘“«([{"));
+
 export function buildMobileTextPagerPages(sourceHtml, options = {}) {
   const plan = normalizePlan(options.plan);
   const template = document.createElement("template");
@@ -32,6 +37,8 @@ export function buildMobileTextPagerPages(sourceHtml, options = {}) {
         title: pageOffset === 0 ? title : "",
         html: page.html,
         anchorIds: page.anchorIds,
+        sourceStart: page.sourceStart,
+        sourceEnd: page.sourceEnd,
         lineStart: nextLineNumber,
         lineCount
       });
@@ -39,7 +46,9 @@ export function buildMobileTextPagerPages(sourceHtml, options = {}) {
     });
   });
 
-  if (!pages.length) pages.push({ chapterId: "chapter-001", title: "", html: "", anchorIds: [] });
+  if (!pages.length) {
+    pages.push({ chapterId: "chapter-001", title: "", html: "", anchorIds: [], sourceStart: 0, sourceEnd: 0 });
+  }
   return { pages, chapterPageMap, plan };
 }
 
@@ -115,39 +124,62 @@ function pushTextTokens(tokens, value, marks = {}) {
     if (char === "\n") {
       tokens.push({ type: "newline" });
     } else {
-      tokens.push({ type: "inline", html: decorateInlineHtml(escapeHtml(char), marks), weight: 1 });
+      tokens.push({ type: "inline", html: decorateInlineHtml(escapeHtml(char), marks), weight: 1, char });
     }
   }
 }
 
 function splitTokensIntoPages(tokens, plan, chapterMeta) {
   const pages = [];
-  let page = createPage(chapterMeta, plan, true);
+  let sourceOffset = 0;
+  let page = createPage(chapterMeta, plan, true, sourceOffset);
 
   const flushPage = () => {
     if (page.html.trim() || page.anchorIds.size || pages.length === 0) {
-      pages.push({ html: page.html.trim(), anchorIds: [...page.anchorIds] });
+      pages.push({
+        html: page.html.trim(),
+        anchorIds: [...page.anchorIds],
+        sourceStart: page.sourceStart,
+        sourceEnd: sourceOffset
+      });
     }
-    page = createPage(chapterMeta, plan, false);
+    page = createPage(chapterMeta, plan, false, sourceOffset);
   };
 
-  const ensureSpace = (weight) => {
-    if (weight <= 0) return;
-    if (page.charIndex > 0 && page.charIndex + weight > page.charsPerLine) {
-      page.html += "\n";
-      page.lineIndex += 1;
-      page.charIndex = 0;
-    }
+  const breakLine = () => {
+    page.html += "\n";
+    page.lineIndex += 1;
+    page.charIndex = 0;
     if (page.lineIndex >= page.linesPerPage) flushPage();
   };
 
-  for (const token of Array.isArray(tokens) ? tokens : []) {
+  const ensureSpace = (weight, char = "", trailingNoLineStartWeight = 0) => {
+    if (weight <= 0) return;
+    const noLineStart = NO_LINE_START_CHARS.has(char);
+    const noLineEnd = NO_LINE_END_CHARS.has(char);
+    if (noLineEnd && page.charIndex > 0 && page.charIndex + weight >= page.charsPerLine) {
+      breakLine();
+    }
+    if (!noLineStart && !noLineEnd && trailingNoLineStartWeight > 0) {
+      const groupedLimit = page.charsPerLine + 1;
+      if (page.charIndex > 0 && page.charIndex + weight + trailingNoLineStartWeight > groupedLimit) {
+        breakLine();
+      }
+    }
+    const lineLimit = page.charsPerLine + (noLineStart ? 1 : 0);
+    if (page.charIndex > 0 && page.charIndex + weight > lineLimit) breakLine();
+  };
+
+  const sourceTokens = Array.isArray(tokens) ? tokens : [];
+  for (let tokenIndex = 0; tokenIndex < sourceTokens.length; tokenIndex += 1) {
+    const token = sourceTokens[tokenIndex];
     if (token.type === "anchor") {
       if (token.id) page.anchorIds.add(token.id);
       continue;
     }
 
     if (token.type === "newline") {
+      sourceOffset += 1;
       if (page.charIndex > 0) {
         page.html += "\n";
         page.lineIndex += 1;
@@ -162,23 +194,43 @@ function splitTokensIntoPages(tokens, plan, chapterMeta) {
     }
 
     const weight = Math.max(1, Number(token.weight) || 1);
-    ensureSpace(weight);
+    const trailingNoLineStartWeight = getTrailingNoLineStartWeight(sourceTokens, tokenIndex + 1);
+    ensureSpace(weight, String(token.char || ""), trailingNoLineStartWeight);
     page.html += token.html || "";
     page.charIndex += weight;
+    sourceOffset += weight;
   }
 
   if (page.html.trim() || page.anchorIds.size || pages.length === 0) {
-    pages.push({ html: page.html.trim(), anchorIds: [...page.anchorIds] });
+    pages.push({
+      html: page.html.trim(),
+      anchorIds: [...page.anchorIds],
+      sourceStart: page.sourceStart,
+      sourceEnd: sourceOffset
+    });
   }
   return pages;
 }
 
-function createPage(chapterMeta, plan, firstPage) {
+function getTrailingNoLineStartWeight(tokens, startIndex) {
+  let weight = 0;
+  for (let index = startIndex; index < tokens.length; index += 1) {
+    const token = tokens[index];
+    if (token?.type === "anchor") continue;
+    if (token?.type !== "inline" || !NO_LINE_START_CHARS.has(String(token.char || ""))) break;
+    weight += Math.max(1, Number(token.weight) || 1);
+  }
+  return weight;
+}
+
+function createPage(chapterMeta, plan, firstPage, sourceStart = 0) {
   const reserve = firstPage && chapterMeta?.title ? plan.titleLineReserve : 0;
   return {
     html: "",
     anchorIds: new Set(),
-    charsPerLine: Math.max(6, plan.chars - 2),
+    sourceStart: Math.max(0, Number(sourceStart) || 0),
+    // Reserve one additional cell for hanging punctuation and closing brackets.
+    charsPerLine: Math.max(6, plan.chars - 3),
     linesPerPage: Math.max(3, plan.lines - plan.lineSafetyReserve - reserve),
     charIndex: 0,
     lineIndex: 0
