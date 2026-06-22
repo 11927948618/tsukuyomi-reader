@@ -1,3 +1,3 @@
-export const APP_VERSION = "0.1.149";
-export const BUILD_TIME = "2026-06-22 11:02 JST";
-export const COMMIT = "measured-pager-v2-foundation";
+export const APP_VERSION = "0.1.150";
+export const BUILD_TIME = "2026-06-22 16:37 JST";
+export const COMMIT = "epub-document-model-foundation";

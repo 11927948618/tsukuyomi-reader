@@ -99,12 +99,17 @@ function tokenizeMobilePageContent(root, writingMode = "vertical") {
       if (id) tokens.push({ type: "anchor", id });
     }
 
-    const nextMarks = { ...marks };
-    if (isStrikeElement(node)) nextMarks.strike = true;
+    const nextMarks = extendInlineMarks(node, marks);
 
     if (tag === "ruby") {
       const html = decorateInlineHtml(node.outerHTML || escapeHtml(node.textContent || ""), nextMarks);
       tokens.push({ type: "inline", html, weight: measureRubyBaseText(node, writingMode) });
+      return;
+    }
+
+    if (tag === "img" || tag === "svg") {
+      const html = decorateInlineHtml(node.outerHTML || "", nextMarks);
+      tokens.push({ type: "inline", html, weight: 1, char: "\uFFFC", atomic: true });
       return;
     }
 
@@ -283,9 +288,33 @@ function isStrikeElement(node) {
   return /(^|[-_\s])(strike|strikethrough|line-through|deleted)([-_\s]|$)/.test(className);
 }
 
+function extendInlineMarks(node, marks = {}) {
+  const nextMarks = { ...marks };
+  if (!node || node.nodeType !== Node.ELEMENT_NODE) return nextMarks;
+  const tag = String(node.tagName || "").toLowerCase();
+  const inlineStyle = String(node.getAttribute("style") || "").toLowerCase();
+  const className = String(node.getAttribute("class") || "").toLowerCase();
+
+  if (isStrikeElement(node)) nextMarks.strike = true;
+  if (tag === "strong" || tag === "b" || /font-weight\s*:\s*(bold|[6-9]00)/.test(inlineStyle)) nextMarks.bold = true;
+  if (tag === "em" || tag === "i" || /font-style\s*:\s*italic/.test(inlineStyle)) nextMarks.italic = true;
+  if (tag === "u" || /text-decoration[^;]*underline/.test(inlineStyle)) nextMarks.underline = true;
+  if (/text-emphasis[^;]*:/.test(inlineStyle)
+    || /(^|[-_\s])(bouten|emphasis|sesame)([-_\s]|$)/.test(className)) {
+    nextMarks.emphasis = true;
+  }
+  return nextMarks;
+}
+
 function decorateInlineHtml(html, marks = {}) {
-  if (!marks.strike) return html;
-  return `<span class="mp-strike">${html}</span>`;
+  const classes = [];
+  if (marks.strike) classes.push("mp-strike");
+  if (marks.bold) classes.push("mp-bold");
+  if (marks.italic) classes.push("mp-italic");
+  if (marks.underline) classes.push("mp-underline");
+  if (marks.emphasis) classes.push("mp-emphasis");
+  if (!classes.length) return html;
+  return `<span class="${classes.join(" ")}">${html}</span>`;
 }
 
 function measureRubyBaseText(rubyNode, writingMode = "vertical") {

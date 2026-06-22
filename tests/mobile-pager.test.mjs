@@ -111,6 +111,25 @@ test("measured pager keeps ruby atomic and cancels stale builds", async () => {
   );
 });
 
+test("measured pager preserves EPUB decoration and atomic images", async () => {
+  const tokens = [
+    { type: "inline", html: '<ruby data-token="ruby">漢字<rt>かんじ</rt></ruby>', weight: 2 },
+    { type: "inline", html: '<span class="mp-emphasis" data-token="emphasis">強調</span>', weight: 2 },
+    { type: "inline", html: '<span class="mp-strike" data-token="strike">取消</span>', weight: 2 },
+    { type: "inline", html: '<img data-token="image" src="blob:fixture">', weight: 1, char: "\uFFFC", atomic: true },
+    ...plainTokens(8, 0)
+  ];
+  const pages = await splitMeasuredPagerTokens(tokens, { ...PLAN, capacity: 4 }, {
+    measurePage: ({ html }) => countTokenIds(html) <= 4
+  });
+  const joined = pages.map((page) => page.html).join("");
+
+  for (const marker of ["ruby", "emphasis", "strike", "image"]) {
+    assert.equal((joined.match(new RegExp(`data-token="${marker}"`, "g")) || []).length, 1);
+  }
+  assertContiguousRanges(pages, 15);
+});
+
 function plainTokens(count, startIndex) {
   return Array.from({ length: count }, (_, offset) => {
     const index = startIndex + offset;

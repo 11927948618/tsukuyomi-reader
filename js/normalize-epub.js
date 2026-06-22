@@ -1,6 +1,7 @@
 import { safeText, textWithoutRuby } from "./utils.js";
 
 import { hasAozoraInlineMarkup, normalizeAozoraInlineHtml } from "./normalize-aozora.js";
+import { buildHtmlDocumentModel } from "./document-model.js";
 
 const BLOCKED_SELECTORS = [
   "script",
@@ -141,6 +142,8 @@ export async function normalizeEpubToBook(file) {
 
   const titleFallback = filenameStem(file?.name || "") || "Untitled";
   const title = safeText(opfInfo.title, titleFallback);
+  const revisionHtml = chapters.map((chapter) => chapter.section.outerHTML).join("\n");
+  const documentModel = buildHtmlDocumentModel(revisionHtml, chapters, "epub");
   const html = chapters.map((chapter) => chapter.section.outerHTML).join("\n");
   const writingModePreference = resolveEpubWritingModePreference(
     chapterWritingModeHints,
@@ -151,6 +154,7 @@ export async function normalizeEpubToBook(file) {
     title,
     html,
     toc,
+    documentModel,
     settings: writingModePreference ? { writingModePreference } : null,
     meta: writingModePreference ? { writingModeHint: writingModePreference } : null
   };

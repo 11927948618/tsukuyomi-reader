@@ -475,6 +475,33 @@ body.mobile-text-pager.mode-paged .reader-content.mobile-pager-content {
   text-decoration-skip-ink: none;
 }
 
+.mobile-text-page .mp-bold {
+  font-weight: 700;
+}
+
+.mobile-text-page .mp-italic {
+  font-style: italic;
+}
+
+.mobile-text-page .mp-underline {
+  text-decoration-line: underline;
+  text-decoration-skip-ink: auto;
+}
+
+.mobile-text-page .mp-emphasis {
+  text-emphasis-style: sesame;
+  text-emphasis-position: over right;
+  -webkit-text-emphasis-style: sesame;
+  -webkit-text-emphasis-position: over right;
+}
+
+.mobile-text-page img,
+.mobile-text-page svg {
+  max-inline-size: 100%;
+  max-block-size: 100%;
+  object-fit: contain;
+}
+
 body.distribution-mode .reader-content,
 body.distribution-mode .reader-content * {
   user-select: none;

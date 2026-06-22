@@ -43,6 +43,65 @@ export function buildTxtDocumentModel(sourceText, sourceChapters = []) {
   };
 }
 
+export function buildStructuredDocumentModel(sourceRevisionSource, sourceChapters = [], format = "html") {
+  const normalizedFormat = sanitizeRevisionPart(format);
+  let sourceOffset = 0;
+  const chapters = sourceChapters.map((chapter, chapterIndex) => {
+    const chapterId = chapter.chapterId || `chapter-${String(chapterIndex + 1).padStart(3, "0")}`;
+    const blocks = (Array.isArray(chapter.blocks) ? chapter.blocks : []).map((block, blockIndex) => {
+      const text = String(block.text || "");
+      const sourceStart = sourceOffset;
+      const sourceEnd = sourceStart + countCodePoints(text);
+      sourceOffset = sourceEnd + 1;
+      return {
+        blockId: block.blockId || `${chapterId}-block-${String(blockIndex + 1).padStart(4, "0")}`,
+        kind: normalizeBlockKind(block.kind),
+        sourceStart,
+        sourceEnd,
+        logicalLine: positiveInteger(block.logicalLine, blockIndex + 1),
+        text
+      };
+    });
+    return {
+      chapterId,
+      title: String(chapter.title || ""),
+      blocks
+    };
+  });
+
+  return {
+    version: DOCUMENT_MODEL_VERSION,
+    format: normalizedFormat,
+    sourceRevision: createTextSourceRevision(sourceRevisionSource, normalizedFormat),
+    sourceLength: Math.max(0, sourceOffset - 1),
+    chapters
+  };
+}
+
+export function buildHtmlDocumentModel(sourceHtml, sourceChapters = [], format = "html") {
+  const chapterDescriptors = sourceChapters.map((chapter, chapterIndex) => {
+    const chapterId = chapter.chapterId || chapter.id || `chapter-${String(chapterIndex + 1).padStart(3, "0")}`;
+    const elements = collectHtmlBlockElements(chapter.section || chapter.root);
+    const blocks = elements.map((element, blockIndex) => {
+      const blockId = element.getAttribute?.("data-document-block-id")
+        || `${chapterId}-block-${String(blockIndex + 1).padStart(4, "0")}`;
+      element.setAttribute?.("data-document-block-id", blockId);
+      return {
+        blockId,
+        kind: classifyHtmlBlock(element),
+        text: extractHtmlBlockText(element),
+        logicalLine: blockIndex + 1
+      };
+    });
+    return {
+      chapterId,
+      title: String(chapter.title || ""),
+      blocks
+    };
+  });
+  return buildStructuredDocumentModel(sourceHtml, chapterDescriptors, format);
+}
+
 export function createReaderLocator(model, options = {}) {
   const located = findBlock(model, options.chapterId, options.blockId);
   if (!located) return null;
@@ -113,8 +172,43 @@ function normalizeSourceText(value) {
 
 function normalizeBlockKind(value) {
   const kind = String(value || "paragraph");
-  if (kind === "heading" || kind === "blank" || kind === "forced-page-break") return kind;
+  if (kind === "heading" || kind === "blank" || kind === "forced-page-break" || kind === "image") return kind;
   return "paragraph";
+}
+
+function collectHtmlBlockElements(root) {
+  if (!root?.querySelectorAll) return [];
+  const selectors = "h1,h2,h3,h4,h5,h6,p,li,blockquote,pre,figure,hr,div.epub-blank-line";
+  return Array.from(root.querySelectorAll(selectors)).filter((element) => {
+    if (element.matches?.("div.epub-blank-line")) return true;
+    return !element.parentElement?.closest?.("p,li,blockquote,pre,figure");
+  });
+}
+
+function classifyHtmlBlock(element) {
+  const tag = String(element?.tagName || "").toLowerCase();
+  const className = String(element?.getAttribute?.("class") || "").toLowerCase();
+  const style = String(element?.getAttribute?.("style") || "").toLowerCase();
+  const epubType = String(element?.getAttribute?.("epub:type") || "").toLowerCase();
+  if (/^h[1-6]$/.test(tag)) return "heading";
+  if (tag === "figure" && element?.querySelector?.("img,svg")) return "image";
+  if (className.includes("epub-blank-line") || (!extractHtmlBlockText(element) && tag !== "hr")) return "blank";
+  if (tag === "hr" || /(^|\s)(pagebreak|page-break)(\s|$)/.test(epubType)
+    || /(break-before\s*:\s*page|page-break-before\s*:\s*always)/.test(style)
+    || /(^|[-_\s])(pagebreak|page-break)([-_\s]|$)/.test(className)) {
+    return "forced-page-break";
+  }
+  return "paragraph";
+}
+
+function extractHtmlBlockText(element) {
+  if (!element?.cloneNode) return String(element?.textContent || "").trim();
+  const clone = element.cloneNode(true);
+  clone.querySelectorAll?.("rt,rp,script,style").forEach((node) => node.remove());
+  const text = String(clone.textContent || "").replace(/\s+/g, " ").trim();
+  if (text) return text;
+  const alt = clone.querySelector?.("img[alt]")?.getAttribute?.("alt");
+  return String(alt || "").trim();
 }
 
 function findBlock(model, chapterId, blockId) {

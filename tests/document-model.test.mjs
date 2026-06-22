@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 
 import { normalizeTxtToBook } from "../js/normalize-txt.js";
 import {
+  buildStructuredDocumentModel,
   compareReaderLocators,
   countCodePoints,
   createReaderLocator,
@@ -67,4 +68,30 @@ test("reader locators clamp offsets and compare in document order", () => {
   assert.equal(compareReaderLocators(model, second, first), 1);
   assert.equal(compareReaderLocators(model, first, first), 0);
   assert.equal(createReaderLocator(model, { blockId: heading.blockId })?.blockId, heading.blockId);
+});
+
+test("EPUB structured model assigns stable monotonic ranges", () => {
+  const model = buildStructuredDocumentModel("<section>fixture</section>", [
+    {
+      chapterId: "chapter-001",
+      title: "第一章",
+      blocks: [
+        { blockId: "heading-1", kind: "heading", text: "第一章" },
+        { blockId: "paragraph-1", kind: "paragraph", text: "漢字を読む。" },
+        { blockId: "image-1", kind: "image", text: "挿絵" }
+      ]
+    },
+    {
+      chapterId: "chapter-002",
+      title: "第二章",
+      blocks: [{ blockId: "paragraph-2", kind: "paragraph", text: "続き。" }]
+    }
+  ], "epub");
+
+  assert.equal(model.format, "epub");
+  assert.equal(model.chapters.length, 2);
+  assert.equal(model.chapters[0].blocks[1].text, "漢字を読む。");
+  assert.equal(model.chapters[0].blocks[2].kind, "image");
+  assert.equal(validateDocumentModel(model).valid, true);
+  assert.ok(model.chapters[1].blocks[0].sourceStart > model.chapters[0].blocks[2].sourceEnd);
 });
