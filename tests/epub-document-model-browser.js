@@ -25,9 +25,11 @@ async function run() {
   const htmlBlockCount = template.content.querySelectorAll("[data-document-block-id]").length;
   const rubyCount = template.content.querySelectorAll("ruby").length;
   const chapterCount = book.documentModel.chapters.length;
+  const tocCount = Array.isArray(book.toc) ? book.toc.length : 0;
   const checks = {
     validModel: validation.valid,
-    chapterCount: chapterCount > 1,
+    chapterCount: chapterCount >= 1,
+    headingToc: tocCount > 1,
     blockCount: modelBlockCount > 10,
     blockIdsAttached: htmlBlockCount === modelBlockCount,
     rubyPreserved: rubyCount > 0,
@@ -38,6 +40,7 @@ async function run() {
     checks,
     title: book.title,
     chapterCount,
+    tocCount,
     modelBlockCount,
     htmlBlockCount,
     rubyCount,
