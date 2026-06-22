@@ -4,7 +4,10 @@ import { normalizeEpubToBook } from "../js/normalize-epub.js";
 const result = document.querySelector("#result");
 
 run().catch((error) => {
-  result.textContent = `FAIL\n${error?.stack || error}`;
+  const current = String(result.textContent || "");
+  result.textContent = current.startsWith("FAIL\n{")
+    ? `${current}\n${error?.stack || error}`
+    : `FAIL\n${error?.stack || error}`;
   console.error(error);
 });
 
