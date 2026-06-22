@@ -122,6 +122,12 @@
 - 管理画面の削除、並び順変更、プレビュー
 - 汎用版への再拡張
 
+## コミット時のバージョン更新
+- `☆backup_push.bat` はコミット承認後、`scripts/update-version-meta.mjs --bump` を自動実行します
+- スクリプトはパッチバージョン、設定画面の Build time、変更識別子、Service Worker のキャッシュ版をまとめて更新します
+- 手動またはCodexでコミットする場合は、コミット前に `node scripts/update-version-meta.mjs --bump --ref <変更識別子>` を実行します
+- 変更識別子はGitハッシュではなく、公開内容を短く表す英数字の名前です
+
 ## 配布前チェックリスト
 - Windows / Android / iPhone で起動し、Library 画面が崩れないこと
 - 作品一覧で長いタイトルや説明が枠からはみ出さないこと

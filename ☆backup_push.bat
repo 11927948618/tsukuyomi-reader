@@ -56,6 +56,17 @@ if /i not "%ANS%"=="Y" (
   exit /b 0
 )
 
+REM --- update version/build metadata immediately before commit ---
+echo [backup] Updating version metadata...
+echo [backup] Updating version metadata...>> "%LOG%"
+node "%~dp0scripts\update-version-meta.mjs" --bump >> "%LOG%" 2>&1
+if errorlevel 1 (
+  echo [backup] Version metadata update failed. See log: %LOG%
+  echo [backup] Version metadata update failed.>> "%LOG%"
+  pause
+  exit /b 1
+)
+
 REM --- add/commit ---
 git add -A >> "%LOG%" 2>&1
 
