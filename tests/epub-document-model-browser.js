@@ -4,6 +4,7 @@ import { normalizeEpubToBook } from "../js/normalize-epub.js";
 const result = document.querySelector("#result");
 
 run().catch((error) => {
+  document.body.dataset.testResult = "fail";
   const current = String(result.textContent || "");
   result.textContent = current.startsWith("FAIL\n{")
     ? `${current}\n${error?.stack || error}`
@@ -36,6 +37,7 @@ async function run() {
     sourceRevision: Boolean(book.documentModel.sourceRevision)
   };
   const passed = Object.values(checks).every(Boolean);
+  document.body.dataset.testResult = passed ? "pass" : "fail";
   result.textContent = `${passed ? "PASS" : "FAIL"}\n${JSON.stringify({
     checks,
     title: book.title,
