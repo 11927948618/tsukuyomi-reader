@@ -1,5 +1,6 @@
 import { qs, escapeHtml } from "./utils.js";
 import { buildMobileTextPagerPages } from "./mobile-pager.js";
+import { buildMeasuredTextPagerPages, MeasuredPagerCancelledError } from "./measured-pager.js";
 import { APP_VERSION } from "./version.js";
 
 const HORIZONTAL_LINE_NUMBER_GUTTER_EM = 2.8;
@@ -75,13 +76,16 @@ export function initReader({
   let isInitialLayout = true;
   let skipNextTap = false;
   let viewportResizeTimer = 0;
+  let measuredPagerGeneration = 0;
+  let measuredPagerProbe = null;
   let mobileTextPager = {
     active: false,
     sourceHtml: "",
     pages: [],
     pageIndex: 0,
     chapterPageMap: new Map(),
-    sourceLocator: null
+    sourceLocator: null,
+    engine: "legacy"
   };
   const refreshHScroll = setupHScroll(scrollContainer);
   const isMobileReadingDevice = () => {
@@ -555,6 +559,8 @@ export function initReader({
   function renderBook(currentBook) {
     if (!currentBook) return;
 
+    measuredPagerGeneration += 1;
+    removeMeasuredPagerProbe();
     bookTitle.innerHTML = escapeHtml(currentBook.title || "Untitled");
     const pdfUrl = getPdfUrl(currentBook);
     const isPdf = Boolean(pdfUrl);
@@ -588,9 +594,12 @@ export function initReader({
   function syncMobileTextPager(options = {}) {
     if (!bookContent || getPdfUrl(book)) return;
     const enabled = shouldUseMobileTextPager();
+    const measuredEnabled = enabled && shouldUseMeasuredPagerV2();
+    const measuredGeneration = ++measuredPagerGeneration;
     document.body.classList.toggle("mobile-text-pager", enabled);
 
     if (!enabled) {
+      removeMeasuredPagerProbe();
       if (mobileTextPager.active) {
         const source = mobileTextPager.sourceHtml || book.html || "";
         mobileTextPager.active = false;
@@ -625,12 +634,117 @@ export function initReader({
       plan: built.plan,
       pageIndex: nextPageIndex,
       chapterPageMap: built.chapterPageMap,
-      sourceLocator: nextLocator
+      sourceLocator: nextLocator,
+      engine: "legacy"
     };
     bookContent.classList.add("mobile-pager-content");
     renderMobileTextPage(mobileTextPager.pageIndex);
     updateMobileTextPagerProgress();
     refreshHScroll?.();
+    if (measuredEnabled) {
+      void upgradeToMeasuredPager({ generation: measuredGeneration });
+    } else {
+      removeMeasuredPagerProbe();
+    }
+  }
+
+  function shouldUseMeasuredPagerV2() {
+    if (bookFormat !== "txt") return false;
+    if (siteConfig?.measuredPagerV2 === true) return true;
+    return new URLSearchParams(window.location.search).get("measuredPagerV2") === "1";
+  }
+
+  async function upgradeToMeasuredPager({ generation }) {
+    try {
+      if (document.fonts?.ready) await document.fonts.ready;
+      if (generation !== measuredPagerGeneration || !mobileTextPager.active) return;
+
+      const probe = ensureMeasuredPagerProbe();
+      if (!probe) return;
+      const source = mobileTextPager.sourceHtml || book.html || "";
+      const plan = resolveMobileTextPagerPlan();
+      const built = await buildMeasuredTextPagerPages(source, {
+        plan,
+        shouldCancel: () => generation !== measuredPagerGeneration || !mobileTextPager.active,
+        measurePage: (candidate) => measureMobileTextPageCandidate(probe, candidate, plan)
+      });
+      if (generation !== measuredPagerGeneration || !mobileTextPager.active) return;
+
+      const currentLocator = captureMobileTextPagerLocator();
+      const locatedPage = findMobileTextPagerPage(built.pages, currentLocator);
+      const nextPageIndex = clamp(
+        locatedPage ?? mobileTextPager.pageIndex,
+        0,
+        Math.max(0, built.pages.length - 1)
+      );
+      mobileTextPager = {
+        active: true,
+        sourceHtml: source,
+        pages: built.pages,
+        plan: built.plan,
+        pageIndex: nextPageIndex,
+        chapterPageMap: built.chapterPageMap,
+        sourceLocator: createMobileTextPagerLocator(built.pages[nextPageIndex]),
+        engine: built.engine || "measured-v2"
+      };
+      renderMobileTextPage(nextPageIndex);
+      updateMobileTextPagerProgress();
+      refreshHScroll?.();
+    } catch (err) {
+      if (err instanceof MeasuredPagerCancelledError) return;
+      console.warn("Measured pager fallback:", err);
+    }
+  }
+
+  function ensureMeasuredPagerProbe() {
+    const rect = bookContent?.getBoundingClientRect?.();
+    if (!rect || rect.width <= 1 || rect.height <= 1) return null;
+    if (!measuredPagerProbe) {
+      measuredPagerProbe = document.createElement("div");
+      measuredPagerProbe.setAttribute("aria-hidden", "true");
+      document.body.appendChild(measuredPagerProbe);
+    }
+
+    measuredPagerProbe.className = `${bookContent.className} measured-pager-probe`;
+    measuredPagerProbe.style.width = `${rect.width}px`;
+    measuredPagerProbe.style.height = `${rect.height}px`;
+    const styles = window.getComputedStyle(bookContent);
+    measuredPagerProbe.style.fontSize = styles.fontSize;
+    measuredPagerProbe.style.fontFamily = styles.fontFamily;
+    measuredPagerProbe.style.lineHeight = styles.lineHeight;
+    measuredPagerProbe.style.letterSpacing = styles.letterSpacing;
+    return measuredPagerProbe;
+  }
+
+  function measureMobileTextPageCandidate(probe, candidate, plan) {
+    probe.innerHTML = buildMobileTextPageMarkup({
+      chapterId: "measured-probe",
+      title: candidate.title,
+      html: candidate.html,
+      lineStart: 1,
+      sourceStart: 0,
+      sourceEnd: 0
+    }, candidate.pageIndex, plan);
+    const pageEl = probe.querySelector(".mobile-text-page");
+    const bodyEl = probe.querySelector(".mobile-text-page-body");
+    if (!pageEl || !bodyEl) return false;
+
+    const endMarker = document.createElement("span");
+    endMarker.className = "measured-page-end";
+    endMarker.setAttribute("aria-hidden", "true");
+    bodyEl.appendChild(endMarker);
+    const epsilon = 1;
+    const bodyRect = bodyEl.getBoundingClientRect();
+    const markerRect = endMarker.getBoundingClientRect();
+    return markerRect.left >= bodyRect.left - epsilon
+      && markerRect.right <= bodyRect.right + epsilon
+      && markerRect.top >= bodyRect.top - epsilon
+      && markerRect.bottom <= bodyRect.bottom + epsilon;
+  }
+
+  function removeMeasuredPagerProbe() {
+    measuredPagerProbe?.remove();
+    measuredPagerProbe = null;
   }
 
   function captureMobileTextPagerLocator() {
@@ -723,9 +837,14 @@ export function initReader({
     const safePage = clamp(Number(pageIndex) || 0, 0, maxPage);
     const page = mobileTextPager.pages[safePage] || mobileTextPager.pages[0] || { chapterId: "chapter-001", text: "" };
     mobileTextPager.pageIndex = safePage;
+    bookContent.innerHTML = buildMobileTextPageMarkup(page, safePage, mobileTextPager.plan);
+    refreshHScroll?.();
+  }
+
+  function buildMobileTextPageMarkup(page, pageIndex, plan = null) {
     const bodyHtml = formatMobileTextPageBody(page.html || escapeHtml(page.text || ""), page.lineStart || 1);
     const titleHtml = page.title ? `<h1>${escapeHtml(page.title)}</h1>` : "";
-    const pageWritingMode = mobileTextPager.plan?.writingMode === "horizontal" ? "horizontal" : "vertical";
+    const pageWritingMode = plan?.writingMode === "horizontal" ? "horizontal" : "vertical";
     const lineNumberGutterEm = pageWritingMode === "horizontal"
       ? HORIZONTAL_LINE_NUMBER_GUTTER_EM
       : VERTICAL_LINE_NUMBER_GUTTER_EM;
@@ -733,8 +852,8 @@ export function initReader({
     const lineNumberStyle = lineNumbers ? ` style="--line-number-gutter:${escapeAttribute(lineNumberGutterPx)}px"` : "";
     const sourceStart = Math.max(0, Number(page.sourceStart) || 0);
     const sourceEnd = Math.max(sourceStart, Number(page.sourceEnd) || sourceStart);
-    bookContent.innerHTML = `<section class="mobile-text-page ${pageWritingMode}${page.title ? " has-title" : ""}${lineNumbers ? " line-numbered" : ""}" id="${escapeAttribute(page.chapterId)}" data-page-index="${safePage}" data-source-start="${sourceStart}" data-source-end="${sourceEnd}"${lineNumberStyle}>${titleHtml}<div class="mobile-text-page-body">${bodyHtml}</div></section>`;
-    refreshHScroll?.();
+    const chapterId = escapeAttribute(page.chapterId || "chapter-001");
+    return `<section class="mobile-text-page ${pageWritingMode}${page.title ? " has-title" : ""}${lineNumbers ? " line-numbered" : ""}" id="${chapterId}" data-page-index="${Math.max(0, Number(pageIndex) || 0)}" data-source-start="${sourceStart}" data-source-end="${sourceEnd}"${lineNumberStyle}>${titleHtml}<div class="mobile-text-page-body">${bodyHtml}</div></section>`;
   }
 
   function formatMobileTextPageBody(html, lineStart = 1) {

@@ -344,6 +344,24 @@ body.mobile-text-pager.mode-paged .reader-content.mobile-pager-content {
   padding-inline: var(--vertical-page-gutter, 0px);
 }
 
+.measured-pager-probe {
+  position: fixed !important;
+  top: 0 !important;
+  left: -100000px !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+  z-index: -1 !important;
+  margin: 0 !important;
+  overflow: hidden !important;
+}
+
+.measured-page-end {
+  display: inline-block;
+  inline-size: 0;
+  block-size: 0;
+  overflow: hidden;
+}
+
 .mobile-text-page {
   position: relative;
   box-sizing: border-box;

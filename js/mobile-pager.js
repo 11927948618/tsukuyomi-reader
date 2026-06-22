@@ -7,22 +7,13 @@ const NO_LINE_END_CHARS = new Set(Array.from("「『（〔［｛〈《【〘〖�
 
 export function buildMobileTextPagerPages(sourceHtml, options = {}) {
   const plan = normalizePlan(options.plan);
-  const template = document.createElement("template");
-  template.innerHTML = sourceHtml || "";
-  const chapterEls = Array.from(template.content.querySelectorAll("section.chapter"));
-  const sourceChapters = chapterEls.length ? chapterEls : [template.content];
+  const sourceChapters = tokenizeMobilePagerSource(sourceHtml, plan.writingMode);
   const pages = [];
   const chapterPageMap = new Map();
   let nextLineNumber = 1;
 
-  sourceChapters.forEach((chapter, index) => {
-    const chapterId = chapter.getAttribute?.("id") || `chapter-${String(index + 1).padStart(3, "0")}`;
-    const heading = chapter.querySelector?.("h1,h2,h3");
-    const title = heading ? textWithoutRuby(heading).trim() : "";
-    const textSource = chapter.cloneNode?.(true) || chapter;
-    textSource.querySelectorAll?.("h1,h2,h3").forEach((heading) => heading.remove());
-    const tokens = tokenizeMobilePageContent(textSource, plan.writingMode);
-    const chapterPages = splitTokensIntoPages(tokens, plan, { chapterId, title });
+  sourceChapters.forEach(({ chapterId, title, tokens }) => {
+    const chapterPages = splitMobilePagerTokens(tokens, plan, { chapterId, title });
     const startPage = pages.length;
 
     chapterPageMap.set(chapterId, startPage);
@@ -50,6 +41,26 @@ export function buildMobileTextPagerPages(sourceHtml, options = {}) {
     pages.push({ chapterId: "chapter-001", title: "", html: "", anchorIds: [], sourceStart: 0, sourceEnd: 0 });
   }
   return { pages, chapterPageMap, plan };
+}
+
+export function tokenizeMobilePagerSource(sourceHtml, writingMode = "vertical") {
+  const template = document.createElement("template");
+  template.innerHTML = sourceHtml || "";
+  const chapterEls = Array.from(template.content.querySelectorAll("section.chapter"));
+  const sourceChapters = chapterEls.length ? chapterEls : [template.content];
+
+  return sourceChapters.map((chapter, index) => {
+    const chapterId = chapter.getAttribute?.("id") || `chapter-${String(index + 1).padStart(3, "0")}`;
+    const heading = chapter.querySelector?.("h1,h2,h3");
+    const title = heading ? textWithoutRuby(heading).trim() : "";
+    const textSource = chapter.cloneNode?.(true) || chapter;
+    textSource.querySelectorAll?.("h1,h2,h3").forEach((element) => element.remove());
+    return {
+      chapterId,
+      title,
+      tokens: tokenizeMobilePageContent(textSource, writingMode)
+    };
+  });
 }
 
 function normalizePlan(plan = {}) {
@@ -129,7 +140,7 @@ function pushTextTokens(tokens, value, marks = {}, writingMode = "vertical") {
   }
 }
 
-function splitTokensIntoPages(tokens, plan, chapterMeta) {
+export function splitMobilePagerTokens(tokens, plan, chapterMeta = {}) {
   const pages = [];
   let sourceOffset = 0;
   let page = createPage(chapterMeta, plan, true, sourceOffset);

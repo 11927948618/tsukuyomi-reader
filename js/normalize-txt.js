@@ -1,8 +1,10 @@
 import { escapeHtml, safeText } from "./utils.js";
 import { normalizeAozoraInlineHtml } from "./normalize-aozora.js";
+import { buildTxtDocumentModel, countCodePoints } from "./document-model.js";
 
 export function normalizeTxtToBook(text, filename = "", options = {}) {
-  const lines = text.replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n");
+  const normalizedText = String(text || "").replace(/\r\n?/g, "\n");
+  const lines = normalizedText.split("\n");
   const autoDetectStructure = options.autoDetectStructure !== false;
   const chapters = [];
   let current = null;
@@ -10,21 +12,33 @@ export function normalizeTxtToBook(text, filename = "", options = {}) {
   let pendingBlankLines = 0;
   const normalizeLineHtml = (line) => normalizeAozoraInlineHtml(line);
 
-  const startChapter = (title) => {
+  const startChapter = (title, headingBlock = null) => {
     pendingBlankLines = 0;
     chapterIndex += 1;
     current = {
       title: safeText(title, `章${chapterIndex}`),
-      blocks: []
+      blocks: [],
+      modelBlocks: headingBlock ? [headingBlock] : []
     };
     chapters.push(current);
   };
 
-  for (const line of lines) {
+  let sourceOffset = 0;
+  for (let lineIndex = 0; lineIndex < lines.length; lineIndex += 1) {
+    const line = lines[lineIndex];
+    const sourceStart = sourceOffset;
+    const sourceEnd = sourceStart + countCodePoints(line);
+    sourceOffset = sourceEnd + (lineIndex < lines.length - 1 ? 1 : 0);
+    const sourceBlock = {
+      sourceStart,
+      sourceEnd,
+      logicalLine: lineIndex + 1,
+      text: line
+    };
     const heading = autoDetectStructure ? detectChapterHeading(line) : null;
     if (line.startsWith("# ") || heading) {
       const title = line.startsWith("# ") ? line.slice(2) : heading;
-      startChapter(title);
+      startChapter(title, { ...sourceBlock, kind: "heading" });
       continue;
     }
 
@@ -33,6 +47,7 @@ export function normalizeTxtToBook(text, filename = "", options = {}) {
     }
 
     if (line.trim() === "") {
+      current.modelBlocks.push({ ...sourceBlock, kind: "blank" });
       if (current.blocks.length > 0) {
         pendingBlankLines += 1;
       }
@@ -44,6 +59,7 @@ export function normalizeTxtToBook(text, filename = "", options = {}) {
       pendingBlankLines = 0;
     }
 
+    current.modelBlocks.push({ ...sourceBlock, kind: "paragraph" });
     current.blocks.push({ type: "line", html: normalizeLineHtml(line) });
   }
 
@@ -67,10 +83,17 @@ export function normalizeTxtToBook(text, filename = "", options = {}) {
     return `\n<section class=\"chapter\" data-chapter=\"${chapterId}\" id=\"${chapterId}\">\n  <h1>${escapeHtml(ch.title)}</h1>\n  ${body || ""}\n</section>`;
   }).join("\n");
 
+  const documentModel = buildTxtDocumentModel(normalizedText, chapters.map((chapter, index) => ({
+    chapterId: `chapter-${String(index + 1).padStart(3, "0")}`,
+    title: chapter.title,
+    modelBlocks: chapter.modelBlocks
+  })));
+
   return {
     title: safeText(filename.replace(/\.[^.]+$/, ""), "Untitled"),
     html,
     toc,
+    documentModel,
     meta: {
       format: "txt",
       textStructureAutoDetected: autoDetectStructure
