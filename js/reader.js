@@ -827,6 +827,7 @@ export function initReader({
       capacity: Math.max(40, chars * lines),
       fontScale: plan.fontScale || 1,
       writingMode: mode,
+      lineAdvancePx: baseLineAdvance,
       lineSafetyReserve: 1
     };
   }
@@ -845,15 +846,47 @@ export function initReader({
     const bodyHtml = formatMobileTextPageBody(page.html || escapeHtml(page.text || ""), page.lineStart || 1);
     const titleHtml = page.title ? `<h1>${escapeHtml(page.title)}</h1>` : "";
     const pageWritingMode = plan?.writingMode === "horizontal" ? "horizontal" : "vertical";
+    const pageStyle = buildMobileTextPageStyle(page, plan, pageWritingMode);
+    const bodyStyle = buildMobileTextPageBodyStyle(page, plan, pageWritingMode);
+    const bodyStyleAttr = bodyStyle ? ` style="${bodyStyle}"` : "";
+    const bodyClass = pageWritingMode === "vertical" ? "mobile-text-page-body is-balanced" : "mobile-text-page-body";
+    const sourceStart = Math.max(0, Number(page.sourceStart) || 0);
+    const sourceEnd = Math.max(sourceStart, Number(page.sourceEnd) || sourceStart);
+    const chapterId = escapeAttribute(page.chapterId || "chapter-001");
+    return `<section class="mobile-text-page ${pageWritingMode}${page.title ? " has-title" : ""}${lineNumbers ? " line-numbered" : ""}" id="${chapterId}" data-page-index="${Math.max(0, Number(pageIndex) || 0)}" data-source-start="${sourceStart}" data-source-end="${sourceEnd}"${pageStyle}>${titleHtml}<div class="${bodyClass}"${bodyStyleAttr}>${bodyHtml}</div></section>`;
+  }
+
+  function buildMobileTextPageStyle(page, plan, pageWritingMode) {
+    const styles = [];
     const lineNumberGutterEm = pageWritingMode === "horizontal"
       ? HORIZONTAL_LINE_NUMBER_GUTTER_EM
       : VERTICAL_LINE_NUMBER_GUTTER_EM;
     const lineNumberGutterPx = Math.round(getReaderTextMetrics().fontPx * lineNumberGutterEm * 100) / 100;
-    const lineNumberStyle = lineNumbers ? ` style="--line-number-gutter:${escapeAttribute(lineNumberGutterPx)}px"` : "";
-    const sourceStart = Math.max(0, Number(page.sourceStart) || 0);
-    const sourceEnd = Math.max(sourceStart, Number(page.sourceEnd) || sourceStart);
-    const chapterId = escapeAttribute(page.chapterId || "chapter-001");
-    return `<section class="mobile-text-page ${pageWritingMode}${page.title ? " has-title" : ""}${lineNumbers ? " line-numbered" : ""}" id="${chapterId}" data-page-index="${Math.max(0, Number(pageIndex) || 0)}" data-source-start="${sourceStart}" data-source-end="${sourceEnd}"${lineNumberStyle}>${titleHtml}<div class="mobile-text-page-body">${bodyHtml}</div></section>`;
+    if (lineNumbers) styles.push(`--line-number-gutter:${escapeAttribute(lineNumberGutterPx)}px`);
+    return styles.length ? ` style="${styles.join(";")}"` : "";
+  }
+
+  function buildMobileTextPageBodyStyle(page, plan, pageWritingMode) {
+    if (pageWritingMode !== "vertical") return "";
+    const lineCount = Math.max(1, Math.floor(Number(page?.lineCount) || 1));
+    const lineCapacity = resolveMobileTextPageLineCapacity(page, plan);
+    const spareLines = Math.max(0, lineCapacity - lineCount);
+    if (spareLines <= 0) return "";
+    const fallbackLineAdvance = getReaderTextMetrics().lineHeightPx;
+    const lineAdvance = Math.max(1, Number(plan?.lineAdvancePx) || fallbackLineAdvance);
+    const balancePx = Math.round((spareLines * lineAdvance / 2) * 100) / 100;
+    if (balancePx <= 0.5) return "";
+    return `--mobile-page-balance-block:${escapeAttribute(balancePx)}px`;
+  }
+
+  function resolveMobileTextPageLineCapacity(page, plan = null) {
+    const totalLines = Math.max(4, Math.floor(Number(plan?.lines) || 10));
+    const safety = Math.max(0, Math.floor(Number(plan?.lineSafetyReserve) || 0));
+    const titleReserve = page?.title
+      ? Math.max(0, Math.floor(Number(plan?.titleLineReserve) || 3))
+      : 0;
+    const capacity = totalLines - safety - titleReserve;
+    return Math.max(1, capacity);
   }
 
   function formatMobileTextPageBody(html, lineStart = 1) {

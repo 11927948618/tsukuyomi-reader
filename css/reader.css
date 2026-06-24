@@ -406,6 +406,11 @@ body.mobile-text-pager.mode-paged .reader-content.mobile-pager-content {
   white-space: pre-wrap;
 }
 
+.mobile-text-page.vertical .mobile-text-page-body.is-balanced {
+  padding-block-start: var(--mobile-page-balance-block, 0px);
+  padding-block-end: var(--mobile-page-balance-block, 0px);
+}
+
 .mobile-text-page.line-numbered .mobile-text-line {
   position: relative;
 }

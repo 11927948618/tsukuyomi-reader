@@ -67,6 +67,7 @@ function normalizePlan(plan = {}) {
   const chars = Math.max(8, Math.floor(Number(plan.chars) || 20));
   const lines = Math.max(4, Math.floor(Number(plan.lines) || 10));
   return {
+    ...plan,
     chars,
     lines,
     writingMode: String(plan.writingMode || "vertical").toLowerCase() === "horizontal" ? "horizontal" : "vertical",
