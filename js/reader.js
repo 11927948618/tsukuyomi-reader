@@ -99,6 +99,25 @@ export function initReader({
     if (!pageColumns) return 0;
     return Math.round(Math.max(18, Math.min(56, Number(lineAdvance) * 1.8 || 28)));
   };
+  const resolvePageColumnFrame = ({ mode, width, height, wrapped, columnGap }) => {
+    const safeWidth = Math.max(1, Number(width) || 1);
+    const safeHeight = Math.max(1, Number(height) || 1);
+    const safeWrapped = Math.max(1, Number(wrapped) || safeWidth);
+    const safeGap = Math.max(0, Number(columnGap) || 0);
+    if (!pageColumns) {
+      return { inlineBase: mode === "horizontal" ? safeWrapped : safeHeight, blockBase: mode === "horizontal" ? safeHeight : safeWrapped };
+    }
+    if (mode === "horizontal") {
+      return {
+        inlineBase: Math.max(1, Math.floor((safeWrapped - safeGap) / 2)),
+        blockBase: safeHeight
+      };
+    }
+    return {
+      inlineBase: Math.max(1, Math.floor((safeHeight - safeGap) / 2)),
+      blockBase: safeWrapped
+    };
+  };
   const shouldUseMobileTextPager = () => {
     // Explicit pagination is shared by mobile and desktop. Browser CSS columns
     // remain useful for scrolling, but are not stable enough to define pages.
@@ -221,13 +240,18 @@ export function initReader({
       const pageFrameWidth = Math.max(1, width);
       const pageFrameHeight = Math.max(1, height);
       const columnGap = getPageColumnGapPx(baseLineAdvance);
-      const columnBlockBase = pageColumns ? Math.max(1, Math.floor((pageFrameWidth - columnGap) / 2)) : pageFrameWidth;
-      const columnInlineBase = pageColumns ? Math.max(1, Math.floor((wrapped - columnGap) / 2)) : wrapped;
+      const frame = resolvePageColumnFrame({
+        mode,
+        width: pageFrameWidth,
+        height: pageFrameHeight,
+        wrapped,
+        columnGap
+      });
       const verticalBlockLimit = isMobileReadingDevice()
-        ? Math.min(columnBlockBase, wrapped)
-        : Math.min(columnBlockBase, Math.max(360, pageColumns ? columnBlockBase : wrapped));
-      const inlineBase = mode === "horizontal" ? columnInlineBase : pageFrameHeight;
-      const blockBase = mode === "horizontal" ? pageFrameHeight : verticalBlockLimit;
+        ? Math.min(frame.blockBase, wrapped)
+        : Math.min(frame.blockBase, Math.max(360, wrapped));
+      const inlineBase = frame.inlineBase;
+      const blockBase = mode === "horizontal" ? frame.blockBase : verticalBlockLimit;
       const pagePlan = mode === "vertical"
         ? resolveVerticalPagePlan({
             inlineBase,
@@ -809,17 +833,26 @@ export function initReader({
     const baseLineAdvance = Math.max(10, metrics.lineHeightPx);
     const columnGap = getPageColumnGapPx(baseLineAdvance);
     const mode = normalizeWritingModePreference(writingModePreference) === "horizontal" ? "horizontal" : "vertical";
+    const frame = resolvePageColumnFrame({
+      mode,
+      width: getViewportInnerSize("x"),
+      height: getViewportInnerSize("y"),
+      wrapped: mode === "horizontal"
+        ? getViewportInnerSize("x")
+        : Math.round(getViewportInnerSize("x") * (wrapWidthPercent / 100)),
+      columnGap
+    });
     const plan = mode === "vertical"
       ? resolveVerticalPagePlan({
-          inlineBase: getViewportInnerSize("y"),
-          blockBase: pageColumns ? Math.max(1, Math.floor((getViewportInnerSize("x") - columnGap) / 2)) : getViewportInnerSize("x"),
+          inlineBase: frame.inlineBase,
+          blockBase: frame.blockBase,
           charAdvance: baseCharAdvance,
           lineAdvance: baseLineAdvance,
           genkoPreset: false
         })
       : resolveHorizontalPagePlan({
-          inlineBase: pageColumns ? Math.max(1, Math.floor((getViewportInnerSize("x") - columnGap) / 2)) : getViewportInnerSize("x"),
-          blockBase: getViewportInnerSize("y"),
+          inlineBase: frame.inlineBase,
+          blockBase: frame.blockBase,
           charAdvance: baseCharAdvance,
           lineAdvance: baseLineAdvance,
           genkoPreset: false

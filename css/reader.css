@@ -378,7 +378,6 @@ body.mobile-text-pager.mode-paged .reader-content.mobile-pager-content {
 .mobile-text-spread {
   box-sizing: border-box;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: var(--mobile-text-spread-gap, 28px);
   inline-size: 100%;
   block-size: 100%;
@@ -386,10 +385,12 @@ body.mobile-text-pager.mode-paged .reader-content.mobile-pager-content {
 }
 
 .mobile-text-spread.vertical {
-  direction: rtl;
+  grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
+  direction: ltr;
 }
 
 .mobile-text-spread.horizontal {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   direction: ltr;
 }
 

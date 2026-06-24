@@ -1,3 +1,3 @@
-export const APP_VERSION = "0.1.156";
+export const APP_VERSION = "0.1.157";
 export const BUILD_TIME = "2026-06-24 00:00 JST";
-export const COMMIT = "implement-explicit-page-columns";
+export const COMMIT = "fix-vertical-column-spread";
