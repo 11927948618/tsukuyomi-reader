@@ -666,10 +666,10 @@ export function initReader({
       if (document.fonts?.ready) await document.fonts.ready;
       if (generation !== measuredPagerGeneration || !mobileTextPager.active) return;
 
-      const probe = ensureMeasuredPagerProbe();
-      if (!probe) return;
       const source = mobileTextPager.sourceHtml || book.html || "";
       const plan = resolveMobileTextPagerPlan();
+      const probe = ensureMeasuredPagerProbe(plan);
+      if (!probe) return;
       const built = await buildMeasuredTextPagerPages(source, {
         plan,
         shouldCancel: () => generation !== measuredPagerGeneration || !mobileTextPager.active,
@@ -703,7 +703,7 @@ export function initReader({
     }
   }
 
-  function ensureMeasuredPagerProbe() {
+  function ensureMeasuredPagerProbe(plan = null) {
     const rect = bookContent?.getBoundingClientRect?.();
     if (!rect || rect.width <= 1 || rect.height <= 1) return null;
     if (!measuredPagerProbe) {
@@ -713,8 +713,15 @@ export function initReader({
     }
 
     measuredPagerProbe.className = `${bookContent.className} measured-pager-probe`;
-    measuredPagerProbe.style.width = `${rect.width}px`;
-    measuredPagerProbe.style.height = `${rect.height}px`;
+    const mode = plan?.writingMode === "horizontal" ? "horizontal" : "vertical";
+    const probeWidth = mode === "vertical"
+      ? Math.max(1, Number(plan?.blockSize) || rect.width)
+      : Math.max(1, Number(plan?.inlineSize) || rect.width);
+    const probeHeight = mode === "vertical"
+      ? Math.max(1, Number(plan?.inlineSize) || rect.height)
+      : Math.max(1, Number(plan?.blockSize) || rect.height);
+    measuredPagerProbe.style.width = `${probeWidth}px`;
+    measuredPagerProbe.style.height = `${probeHeight}px`;
     const styles = window.getComputedStyle(bookContent);
     measuredPagerProbe.style.fontSize = styles.fontSize;
     measuredPagerProbe.style.fontFamily = styles.fontFamily;
