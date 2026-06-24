@@ -85,7 +85,8 @@ export function initReader({
     pageIndex: 0,
     chapterPageMap: new Map(),
     sourceLocator: null,
-    engine: "legacy"
+    engine: "legacy",
+    fitGuardLevel: 0
   };
   const refreshHScroll = setupHScroll(scrollContainer);
   const isMobileReadingDevice = () => {
@@ -649,7 +650,7 @@ export function initReader({
       ? captureMobileTextPagerLocator()
       : null;
     const source = mobileTextPager.sourceHtml || book.html || "";
-    const plan = resolveMobileTextPagerPlan();
+    const plan = resolveMobileTextPagerPlan({ fitGuardLevel: 0 });
     const built = buildMobileTextPagerPages(source, { plan });
     const locatedPage = previousLocator
       ? findMobileTextPagerPage(built.pages, previousLocator)
@@ -666,7 +667,8 @@ export function initReader({
       pageIndex: nextPageIndex,
       chapterPageMap: built.chapterPageMap,
       sourceLocator: nextLocator,
-      engine: "legacy"
+      engine: "legacy",
+      fitGuardLevel: 0
     };
     bookContent.classList.add("mobile-pager-content");
     renderMobileTextPage(mobileTextPager.pageIndex);
@@ -691,7 +693,7 @@ export function initReader({
       if (generation !== measuredPagerGeneration || !mobileTextPager.active) return;
 
       const source = mobileTextPager.sourceHtml || book.html || "";
-      const plan = resolveMobileTextPagerPlan();
+      const plan = resolveMobileTextPagerPlan({ fitGuardLevel: mobileTextPager.fitGuardLevel || 0 });
       const probe = ensureMeasuredPagerProbe(plan);
       if (!probe) return;
       const built = await buildMeasuredTextPagerPages(source, {
@@ -716,7 +718,8 @@ export function initReader({
         pageIndex: nextPageIndex,
         chapterPageMap: built.chapterPageMap,
         sourceLocator: createMobileTextPagerLocator(built.pages[nextPageIndex]),
-        engine: built.engine || "measured-v2"
+        engine: built.engine || "measured-v2",
+        fitGuardLevel: mobileTextPager.fitGuardLevel || 0
       };
       renderMobileTextPage(nextPageIndex);
       updateMobileTextPagerProgress();
@@ -827,7 +830,7 @@ export function initReader({
     return nearestPage ?? firstChapterPage;
   }
 
-  function resolveMobileTextPagerPlan() {
+  function resolveMobileTextPagerPlan(options = {}) {
     const metrics = getReaderTextMetrics();
     const baseCharAdvance = Math.max(6, metrics.fontPx * 0.95 + metrics.letterSpacingPx);
     const baseLineAdvance = Math.max(10, metrics.lineHeightPx);
@@ -867,6 +870,9 @@ export function initReader({
     const availableInlineSize = plan.inlineSize || fallbackInlineSize;
     const plannedInlineSize = Math.max(baseCharAdvance * 8, availableInlineSize - lineNumberInlineReserve);
     const rawChars = Number(plan.chars) || Math.floor(availableInlineSize / baseCharAdvance) || 20;
+    const fitGuardLevel = Math.max(0, Math.min(2, Math.floor(Number(options.fitGuardLevel) || 0)));
+    const charSafetyReserve = 1 + fitGuardLevel;
+    const lineSafetyReserve = 1 + (fitGuardLevel >= 2 ? 1 : 0);
     const chars = Math.max(8, Math.min(rawChars, Math.floor(plannedInlineSize / baseCharAdvance) || rawChars));
     const lines = Math.max(4, Number(plan.lines) || Math.floor((plan.blockSize || getViewportInnerSize("y")) / baseLineAdvance) || 10);
     return {
@@ -876,8 +882,8 @@ export function initReader({
       fontScale: plan.fontScale || 1,
       writingMode: mode,
       lineAdvancePx: baseLineAdvance,
-      charSafetyReserve: 1,
-      lineSafetyReserve: 1
+      charSafetyReserve,
+      lineSafetyReserve
     };
   }
 
@@ -886,7 +892,68 @@ export function initReader({
     const safePage = normalizeMobileTextPagerPageIndex(pageIndex);
     mobileTextPager.pageIndex = safePage;
     bookContent.innerHTML = buildMobileTextPagerMarkup(safePage);
+    bookContent.classList.remove("pager-fit-warning");
+    window.requestAnimationFrame(() => guardMobileTextPagerFit(safePage));
     refreshHScroll?.();
+  }
+
+  function guardMobileTextPagerFit(pageIndex) {
+    if (!mobileTextPager.active || mobileTextPager.pageIndex !== pageIndex) return;
+    if (!isMobileTextPagerOverflowing()) {
+      bookContent.classList.remove("pager-fit-warning");
+      return;
+    }
+
+    const currentLevel = Math.max(0, Math.floor(Number(mobileTextPager.fitGuardLevel) || 0));
+    if (currentLevel < 2) {
+      rebuildMobileTextPagerForFit(currentLevel + 1);
+      return;
+    }
+
+    bookContent.classList.add("pager-fit-warning");
+    console.warn("TsukuyomiReader: pager content overflow remains after safety rebuild", {
+      pageIndex: mobileTextPager.pageIndex,
+      plan: mobileTextPager.plan,
+      engine: mobileTextPager.engine
+    });
+  }
+
+  function isMobileTextPagerOverflowing() {
+    const pages = Array.from(bookContent.querySelectorAll(".mobile-text-page"));
+    if (!pages.length) return false;
+    const epsilon = 2;
+    return pages.some((page) => {
+      const body = page.querySelector(".mobile-text-page-body") || page;
+      return body.scrollWidth > body.clientWidth + epsilon
+        || body.scrollHeight > body.clientHeight + epsilon
+        || page.scrollWidth > page.clientWidth + epsilon
+        || page.scrollHeight > page.clientHeight + epsilon;
+    });
+  }
+
+  function rebuildMobileTextPagerForFit(fitGuardLevel) {
+    const source = mobileTextPager.sourceHtml || book.html || "";
+    const locator = captureMobileTextPagerLocator();
+    const plan = resolveMobileTextPagerPlan({ fitGuardLevel });
+    const built = buildMobileTextPagerPages(source, { plan });
+    const nextPageIndex = clamp(
+      findMobileTextPagerPage(built.pages, locator) ?? mobileTextPager.pageIndex,
+      0,
+      Math.max(0, built.pages.length - 1)
+    );
+    mobileTextPager = {
+      active: true,
+      sourceHtml: source,
+      pages: built.pages,
+      plan: built.plan,
+      pageIndex: nextPageIndex,
+      chapterPageMap: built.chapterPageMap,
+      sourceLocator: createMobileTextPagerLocator(built.pages[nextPageIndex]),
+      engine: "legacy-fit-guard",
+      fitGuardLevel
+    };
+    renderMobileTextPage(nextPageIndex);
+    updateMobileTextPagerProgress();
   }
 
   function buildMobileTextPagerMarkup(startPageIndex) {

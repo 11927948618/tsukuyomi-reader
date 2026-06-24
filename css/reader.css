@@ -500,6 +500,26 @@ body.mobile-text-pager.mode-paged .reader-content.mobile-pager-content {
   block-size: calc(100% - 5.4em);
 }
 
+.reader-content.pager-fit-warning::after {
+  content: "表示が収まりません。設定を少し小さくしてください";
+  position: fixed;
+  inset-inline: 16px;
+  inset-block-end: 18px;
+  z-index: 20;
+  box-sizing: border-box;
+  padding: 8px 12px;
+  border: 1px solid var(--danger, #dc2626);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--surface), #dc2626 12%);
+  color: var(--danger, #dc2626);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.4;
+  writing-mode: horizontal-tb;
+  text-align: center;
+  pointer-events: none;
+}
+
 .mobile-text-page .mp-strike,
 .mobile-text-page s,
 .mobile-text-page del,
