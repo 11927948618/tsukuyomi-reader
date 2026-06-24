@@ -375,6 +375,30 @@ body.mobile-text-pager.mode-paged .reader-content.mobile-pager-content {
   padding: 0;
 }
 
+.mobile-text-spread {
+  box-sizing: border-box;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--mobile-text-spread-gap, 28px);
+  inline-size: 100%;
+  block-size: 100%;
+  overflow: hidden;
+}
+
+.mobile-text-spread.vertical {
+  direction: rtl;
+}
+
+.mobile-text-spread.horizontal {
+  direction: ltr;
+}
+
+.mobile-text-spread .mobile-text-page {
+  min-inline-size: 0;
+  min-block-size: 0;
+  direction: ltr;
+}
+
 .mobile-text-page.horizontal {
   writing-mode: horizontal-tb;
   text-orientation: mixed;

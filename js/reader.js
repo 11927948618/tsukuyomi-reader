@@ -95,6 +95,10 @@ export function initReader({
     const coarsePointer = window.matchMedia?.("(pointer: coarse)")?.matches || false;
     return coarsePointer || shortSide <= 640;
   };
+  const getPageColumnGapPx = (lineAdvance = 24) => {
+    if (!pageColumns) return 0;
+    return Math.round(Math.max(18, Math.min(56, Number(lineAdvance) * 1.8 || 28)));
+  };
   const shouldUseMobileTextPager = () => {
     // Explicit pagination is shared by mobile and desktop. Browser CSS columns
     // remain useful for scrolling, but are not stable enough to define pages.
@@ -157,7 +161,7 @@ export function initReader({
   };
   const stepHorizontalPage = (stepCount, behavior = "auto") => {
     if (mobileTextPager.active) {
-      setMobileTextPage(mobileTextPager.pageIndex + stepCount);
+      setMobileTextPage(mobileTextPager.pageIndex + stepCount * getMobileTextPagerVisiblePageCount());
       playPageTurnEffect(stepCount > 0 ? "forward" : "back");
       return;
     }
@@ -216,10 +220,13 @@ export function initReader({
       const baseLineAdvance = Math.max(10, metrics.lineHeightPx);
       const pageFrameWidth = Math.max(1, width);
       const pageFrameHeight = Math.max(1, height);
+      const columnGap = getPageColumnGapPx(baseLineAdvance);
+      const columnBlockBase = pageColumns ? Math.max(1, Math.floor((pageFrameWidth - columnGap) / 2)) : pageFrameWidth;
+      const columnInlineBase = pageColumns ? Math.max(1, Math.floor((wrapped - columnGap) / 2)) : wrapped;
       const verticalBlockLimit = isMobileReadingDevice()
-        ? Math.min(pageFrameWidth, wrapped)
-        : Math.min(pageFrameWidth, Math.max(360, wrapped));
-      const inlineBase = mode === "horizontal" ? wrapped : pageFrameHeight;
+        ? Math.min(columnBlockBase, wrapped)
+        : Math.min(columnBlockBase, Math.max(360, pageColumns ? columnBlockBase : wrapped));
+      const inlineBase = mode === "horizontal" ? columnInlineBase : pageFrameHeight;
       const blockBase = mode === "horizontal" ? pageFrameHeight : verticalBlockLimit;
       const pagePlan = mode === "vertical"
         ? resolveVerticalPagePlan({
@@ -237,13 +244,12 @@ export function initReader({
             lineAdvance: baseLineAdvance,
             genkoPreset: false
           });
-      const columnGap = pageColumns ? Math.max(pagePlan.lineAdvance * 2.4, metrics.fontPx * pagePlan.fontScale * 3.2) : 0;
-
       document.documentElement.style.setProperty("--page-font-scale", `${pagePlan.fontScale}`);
       document.documentElement.style.setProperty("--page-width", `${Math.max(1, pagePlan.inlineSize)}px`);
       document.documentElement.style.setProperty("--paged-inline-size", `${Math.max(1, pagePlan.inlineSize)}px`);
       document.documentElement.style.setProperty("--paged-block-size", `${Math.max(1, pagePlan.blockSize)}px`);
       document.documentElement.style.setProperty("--page-column-gap", `${Math.round(columnGap)}px`);
+      document.documentElement.style.setProperty("--mobile-text-spread-gap", `${Math.round(columnGap)}px`);
       document.documentElement.style.setProperty("--vertical-page-gutter", `${pagePlan.verticalPageGutter}px`);
       return;
     }
@@ -260,6 +266,7 @@ export function initReader({
     document.documentElement.style.removeProperty("--paged-inline-size");
     document.documentElement.style.removeProperty("--paged-block-size");
     document.documentElement.style.removeProperty("--page-column-gap");
+    document.documentElement.style.removeProperty("--mobile-text-spread-gap");
     document.documentElement.style.removeProperty("--vertical-page-gutter");
   };
   const applyViewportMetrics = () => {
@@ -793,17 +800,18 @@ export function initReader({
     const metrics = getReaderTextMetrics();
     const baseCharAdvance = Math.max(6, metrics.fontPx * 0.95 + metrics.letterSpacingPx);
     const baseLineAdvance = Math.max(10, metrics.lineHeightPx);
+    const columnGap = getPageColumnGapPx(baseLineAdvance);
     const mode = normalizeWritingModePreference(writingModePreference) === "horizontal" ? "horizontal" : "vertical";
     const plan = mode === "vertical"
       ? resolveVerticalPagePlan({
           inlineBase: getViewportInnerSize("y"),
-          blockBase: getViewportInnerSize("x"),
+          blockBase: pageColumns ? Math.max(1, Math.floor((getViewportInnerSize("x") - columnGap) / 2)) : getViewportInnerSize("x"),
           charAdvance: baseCharAdvance,
           lineAdvance: baseLineAdvance,
           genkoPreset: false
         })
       : resolveHorizontalPagePlan({
-          inlineBase: getViewportInnerSize("x"),
+          inlineBase: pageColumns ? Math.max(1, Math.floor((getViewportInnerSize("x") - columnGap) / 2)) : getViewportInnerSize("x"),
           blockBase: getViewportInnerSize("y"),
           charAdvance: baseCharAdvance,
           lineAdvance: baseLineAdvance,
@@ -834,15 +842,39 @@ export function initReader({
 
   function renderMobileTextPage(pageIndex) {
     if (!mobileTextPager.active) return;
-    const maxPage = Math.max(0, mobileTextPager.pages.length - 1);
-    const safePage = clamp(Number(pageIndex) || 0, 0, maxPage);
-    const page = mobileTextPager.pages[safePage] || mobileTextPager.pages[0] || { chapterId: "chapter-001", text: "" };
+    const safePage = normalizeMobileTextPagerPageIndex(pageIndex);
     mobileTextPager.pageIndex = safePage;
-    bookContent.innerHTML = buildMobileTextPageMarkup(page, safePage, mobileTextPager.plan);
+    bookContent.innerHTML = buildMobileTextPagerMarkup(safePage);
     refreshHScroll?.();
   }
 
-  function buildMobileTextPageMarkup(page, pageIndex, plan = null) {
+  function buildMobileTextPagerMarkup(startPageIndex) {
+    const mode = mobileTextPager.plan?.writingMode === "horizontal" ? "horizontal" : "vertical";
+    const pageCount = getMobileTextPagerVisiblePageCount();
+    const maxPage = Math.max(0, mobileTextPager.pages.length - 1);
+    if (pageCount <= 1) {
+      const page = mobileTextPager.pages[startPageIndex] || mobileTextPager.pages[0] || { chapterId: "chapter-001", text: "" };
+      return buildMobileTextPageMarkup(page, startPageIndex, mobileTextPager.plan);
+    }
+
+    const pages = [];
+    for (let offset = 0; offset < pageCount; offset += 1) {
+      const index = startPageIndex + offset;
+      if (index > maxPage) break;
+      const page = mobileTextPager.pages[index];
+      if (!page) continue;
+      pages.push(buildMobileTextPageMarkup(page, index, mobileTextPager.plan, { inSpread: true }));
+    }
+    if (pages.length <= 1) {
+      const page = mobileTextPager.pages[startPageIndex] || mobileTextPager.pages[0] || { chapterId: "chapter-001", text: "" };
+      return buildMobileTextPageMarkup(page, startPageIndex, mobileTextPager.plan);
+    }
+    const sourceStart = Math.max(0, Number(mobileTextPager.pages[startPageIndex]?.sourceStart) || 0);
+    const sourceEnd = Math.max(sourceStart, Number(mobileTextPager.pages[Math.min(maxPage, startPageIndex + pageCount - 1)]?.sourceEnd) || sourceStart);
+    return `<div class="mobile-text-spread ${mode}" data-page-index="${Math.max(0, startPageIndex)}" data-source-start="${sourceStart}" data-source-end="${sourceEnd}">${pages.join("")}</div>`;
+  }
+
+  function buildMobileTextPageMarkup(page, pageIndex, plan = null, options = {}) {
     const bodyHtml = formatMobileTextPageBody(page.html || escapeHtml(page.text || ""), page.lineStart || 1);
     const titleHtml = page.title ? `<h1>${escapeHtml(page.title)}</h1>` : "";
     const pageWritingMode = plan?.writingMode === "horizontal" ? "horizontal" : "vertical";
@@ -853,7 +885,10 @@ export function initReader({
     const sourceStart = Math.max(0, Number(page.sourceStart) || 0);
     const sourceEnd = Math.max(sourceStart, Number(page.sourceEnd) || sourceStart);
     const chapterId = escapeAttribute(page.chapterId || "chapter-001");
-    return `<section class="mobile-text-page ${pageWritingMode}${page.title ? " has-title" : ""}${lineNumbers ? " line-numbered" : ""}" id="${chapterId}" data-page-index="${Math.max(0, Number(pageIndex) || 0)}" data-source-start="${sourceStart}" data-source-end="${sourceEnd}"${pageStyle}>${titleHtml}<div class="${bodyClass}"${bodyStyleAttr}>${bodyHtml}</div></section>`;
+    const safePageIndex = Math.max(0, Number(pageIndex) || 0);
+    const id = options.inSpread ? `${chapterId}-page-${safePageIndex}` : chapterId;
+    const spreadClass = options.inSpread ? " in-spread" : "";
+    return `<section class="mobile-text-page ${pageWritingMode}${spreadClass}${page.title ? " has-title" : ""}${lineNumbers ? " line-numbered" : ""}" id="${escapeAttribute(id)}" data-chapter-id="${chapterId}" data-page-index="${safePageIndex}" data-source-start="${sourceStart}" data-source-end="${sourceEnd}"${pageStyle}>${titleHtml}<div class="${bodyClass}"${bodyStyleAttr}>${bodyHtml}</div></section>`;
   }
 
   function buildMobileTextPageStyle(page, plan, pageWritingMode) {
@@ -901,10 +936,21 @@ export function initReader({
       .join("");
   }
 
+  function getMobileTextPagerVisiblePageCount() {
+    return pageColumns ? 2 : 1;
+  }
+
+  function normalizeMobileTextPagerPageIndex(pageIndex) {
+    const maxPage = Math.max(0, mobileTextPager.pages.length - 1);
+    const raw = clamp(Math.round(Number(pageIndex) || 0), 0, maxPage);
+    const visibleCount = getMobileTextPagerVisiblePageCount();
+    if (visibleCount <= 1) return raw;
+    return clamp(Math.floor(raw / visibleCount) * visibleCount, 0, maxPage);
+  }
+
   function setMobileTextPage(pageIndex) {
     if (!mobileTextPager.active) return;
-    const maxPage = Math.max(0, mobileTextPager.pages.length - 1);
-    const nextPage = clamp(Math.round(Number(pageIndex) || 0), 0, maxPage);
+    const nextPage = normalizeMobileTextPagerPageIndex(pageIndex);
     if (nextPage === mobileTextPager.pageIndex) return;
     mobileTextPager.sourceLocator = createMobileTextPagerLocator(mobileTextPager.pages[nextPage]);
     renderMobileTextPage(nextPage);
@@ -1424,10 +1470,11 @@ export function initReader({
 
     const getSliderAxisState = () => {
       if (mobileTextPager.active) {
+        const visibleCount = getMobileTextPagerVisiblePageCount();
         return {
           mobilePager: true,
           verticalAxis: true,
-          pageSize: 1,
+          pageSize: visibleCount,
           max: Math.max(0, mobileTextPager.pages.length - 1),
           logical: mobileTextPager.pageIndex
         };
@@ -1439,8 +1486,17 @@ export function initReader({
       return { verticalAxis, pageSize, max, logical };
     };
 
-    const updatePageInfo = (logical, max, pageSize = getHorizontalPageSize()) => {
+    const updatePageInfo = (logical, max, pageSize = getHorizontalPageSize(), mobilePager = false) => {
       if (!pageInfo) return;
+      if (mobilePager) {
+        const totalPages = max + 1;
+        const startPage = Math.min(totalPages, Math.max(1, Math.round(logical) + 1));
+        const endPage = Math.min(totalPages, startPage + Math.max(1, pageSize) - 1);
+        pageInfo.textContent = endPage > startPage
+          ? `${startPage}-${endPage} / ${totalPages}`
+          : `${startPage} / ${totalPages}`;
+        return;
+      }
       const totalPages = Math.max(1, Math.floor(max / pageSize) + 1);
       const currentPage = Math.min(totalPages, Math.max(1, Math.round(logical / pageSize) + 1));
       pageInfo.textContent = `${currentPage} / ${totalPages}`;
@@ -1451,7 +1507,7 @@ export function initReader({
       slider.max = String(state.max);
       slider.value = String(toSliderValue(state.logical));
       slider.disabled = state.max === 0;
-      updatePageInfo(state.logical, state.max, state.pageSize);
+      updatePageInfo(state.logical, state.max, state.pageSize, state.mobilePager);
     };
 
     slider.addEventListener("input", () => {
@@ -1460,7 +1516,7 @@ export function initReader({
       const logical = fromSliderValue(raw);
       if (state.mobilePager) {
         setMobileTextPage(logical);
-        updatePageInfo(mobileTextPager.pageIndex, state.max, state.pageSize);
+        updatePageInfo(mobileTextPager.pageIndex, state.max, state.pageSize, true);
         return;
       }
       if (state.verticalAxis) {
