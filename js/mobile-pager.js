@@ -71,6 +71,7 @@ function normalizePlan(plan = {}) {
     chars,
     lines,
     writingMode: String(plan.writingMode || "vertical").toLowerCase() === "horizontal" ? "horizontal" : "vertical",
+    charSafetyReserve: Math.max(0, Math.min(3, Math.floor(Number(plan.charSafetyReserve) || 1))),
     lineSafetyReserve: Math.max(0, Math.min(2, Math.floor(Number(plan.lineSafetyReserve) || 0))),
     titleLineReserve: Math.max(2, Math.min(4, Math.floor(Number(plan.titleLineReserve) || 3)))
   };
@@ -242,12 +243,13 @@ function getTrailingNoLineStartWeight(tokens, startIndex) {
 
 function createPage(chapterMeta, plan, firstPage, sourceStart = 0) {
   const reserve = firstPage && chapterMeta?.title ? plan.titleLineReserve : 0;
+  const charSafetyReserve = Math.max(0, Math.min(3, Math.floor(Number(plan.charSafetyReserve) || 1)));
   return {
     html: "",
     anchorIds: new Set(),
     sourceStart: Math.max(0, Number(sourceStart) || 0),
-    // Reserve one additional cell for hanging punctuation and closing brackets.
-    charsPerLine: Math.max(6, plan.chars - 3),
+    // Keep a small buffer for hanging punctuation and closing brackets.
+    charsPerLine: Math.max(6, plan.chars - charSafetyReserve),
     linesPerPage: Math.max(3, plan.lines - plan.lineSafetyReserve - reserve),
     charIndex: 0,
     lineIndex: 0

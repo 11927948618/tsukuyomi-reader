@@ -59,19 +59,19 @@ test("legacy pager counts explicit newlines without breaking source ranges", () 
 
 test("legacy pager hangs closing punctuation instead of starting the next line with it", () => {
   const tokens = [
-    ...Array.from("あいうえお").map((char, index) => ({
+    ...Array.from("あいうえおかき").map((char, index) => ({
       type: "inline",
       html: `<span data-token="${index}">${char}</span>`,
       weight: 1,
       char
     })),
-    { type: "inline", html: '<span data-token="5">、</span>', weight: 1, char: "、" },
-    { type: "inline", html: '<span data-token="6">次</span>', weight: 1, char: "次" }
+    { type: "inline", html: '<span data-token="7">、</span>', weight: 1, char: "、" },
+    { type: "inline", html: '<span data-token="8">次</span>', weight: 1, char: "次" }
   ];
   const [page] = splitMobilePagerTokens(tokens, PLAN, { chapterId: "chapter-001", title: "" });
   const lines = page.html.split("\n").map(stripTags).filter(Boolean);
 
-  assert.equal(lines[0], "あいうえお、");
+  assert.equal(lines[0], "あいうえおかき、");
   assert.equal(lines[1], "次");
 });
 

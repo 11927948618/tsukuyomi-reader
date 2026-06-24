@@ -876,6 +876,7 @@ export function initReader({
       fontScale: plan.fontScale || 1,
       writingMode: mode,
       lineAdvancePx: baseLineAdvance,
+      charSafetyReserve: 1,
       lineSafetyReserve: 1
     };
   }
