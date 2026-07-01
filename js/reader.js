@@ -114,8 +114,8 @@ export function initReader({
       };
     }
     return {
-      inlineBase: Math.max(1, Math.floor((safeHeight - safeGap) / 2)),
-      blockBase: safeWrapped
+      inlineBase: safeHeight,
+      blockBase: Math.max(1, Math.floor((safeWrapped - safeGap) / 2))
     };
   };
   const shouldUseMobileTextPager = () => {

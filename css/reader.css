@@ -386,8 +386,8 @@ body.mobile-text-pager.mode-paged .reader-content.mobile-pager-content {
 }
 
 .mobile-text-spread.vertical {
-  grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
-  direction: ltr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  direction: rtl;
 }
 
 .mobile-text-spread.horizontal {
