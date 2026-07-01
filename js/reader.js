@@ -1879,6 +1879,7 @@ export function initReader({
       }
       topbar.classList.add("hidden");
       document.body.classList.add("chrome-hidden");
+      skipNextTap = true;
     };
 
     if (window.PointerEvent) {
