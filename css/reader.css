@@ -1435,11 +1435,11 @@ body {
     max-height: 100%;
     padding-inline: clamp(30px, 8vw, 38px);
     transition: transform 140ms ease;
-    transform-origin: center center;
+    transform-origin: top center;
   }
 
   body.mobile-paged-immersive.mode-paged:not(.chrome-hidden) .reader-viewport {
-    transform: translateY(calc(var(--reader-topbar-height, 64px) * 0.45)) scale(0.86);
+    transform: translateY(calc(var(--reader-topbar-height, 64px) * 0.82)) scale(0.8);
   }
 
   body.mobile-paged-immersive.mode-paged.writing-vertical .reader-viewport {

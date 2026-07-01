@@ -95,8 +95,9 @@ export function initReader({
     const coarsePointer = window.matchMedia?.("(pointer: coarse)")?.matches || false;
     return coarsePointer || shortSide <= 640;
   };
+  const isSpreadViewActive = () => pageColumns && !isMobileReadingDevice();
   const getPageColumnGapPx = (lineAdvance = 24) => {
-    if (!pageColumns) return 0;
+    if (!isSpreadViewActive()) return 0;
     return Math.round(Math.max(18, Math.min(56, Number(lineAdvance) * 1.8 || 28)));
   };
   const resolvePageColumnFrame = ({ mode, width, height, wrapped, columnGap }) => {
@@ -104,7 +105,7 @@ export function initReader({
     const safeHeight = Math.max(1, Number(height) || 1);
     const safeWrapped = Math.max(1, Number(wrapped) || safeWidth);
     const safeGap = Math.max(0, Number(columnGap) || 0);
-    if (!pageColumns) {
+    if (!isSpreadViewActive()) {
       return { inlineBase: mode === "horizontal" ? safeWrapped : safeHeight, blockBase: mode === "horizontal" ? safeHeight : safeWrapped };
     }
     if (mode === "horizontal") {
@@ -228,6 +229,7 @@ export function initReader({
     playPageTurnEffect(stepCount > 0 ? "forward" : "back");
   };
   const applyPageWidth = () => {
+    document.body.classList.toggle("page-columns-enabled", isSpreadViewActive());
     const width = getHorizontalPageSize();
     const height = getVerticalPageSize();
     const wrapped = Math.round(width * (wrapWidthPercent / 100));
@@ -1008,7 +1010,7 @@ export function initReader({
   }
 
   function getMobileTextPagerVisiblePageCount() {
-    return pageColumns ? 2 : 1;
+    return isSpreadViewActive() ? 2 : 1;
   }
 
   function normalizeMobileTextPagerPageIndex(pageIndex) {
@@ -1176,7 +1178,7 @@ export function initReader({
     pageColumns = nextSettings.pageColumns === true;
     lineNumbers = nextSettings.lineNumbers === true;
     genkoPreset = false;
-    document.body.classList.toggle("page-columns-enabled", pageColumns);
+    document.body.classList.toggle("page-columns-enabled", isSpreadViewActive());
     document.body.classList.toggle("line-numbers-enabled", lineNumbers);
     document.body.classList.remove("genko-preset-enabled");
     wrapWidthPercent = normalizeWrapWidthPercent(nextSettings.wrapWidthPercent);
