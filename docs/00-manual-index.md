@@ -40,8 +40,12 @@
   - F5連打・アクセス負荷対策設計。
 - `30-dialogueassembler-mobile-pdf-export-spec.md`
   - DialogueAssemblerのスマホ向けPDF出力メモ。
+- `40-reader-rendering-pager-redesign.md`
+  - Readerの縦書き、ページ送り、DOM計測ページャ再設計メモ。
 
-## 履歴
+## 履歴・引継ぎ
 
+- `90-handoff-20260701.md`
+  - TsukuyomiReaderの現状、表示まわりの注意点、検証、デプロイ手順。
 - `99-work-progress-log.md`
   - 作業履歴と検証ログ。通常運用では最後に参照する。
