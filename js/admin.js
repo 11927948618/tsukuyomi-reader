@@ -1,7 +1,9 @@
 import { escapeHtml } from "./utils.js";
+import { APP_VERSION, BUILD_TIME, COMMIT } from "./version.js";
 
 const TOKEN_KEY = "tsukuyomi:adminToken";
 const adminToken = document.getElementById("adminToken");
+const adminBuildInfo = document.getElementById("adminBuildInfo");
 const adminTokenAuth = document.getElementById("adminTokenAuth");
 const adminOtpAuth = document.getElementById("adminOtpAuth");
 const adminOtpEmail = document.getElementById("adminOtpEmail");
@@ -100,6 +102,7 @@ const ACCESS_HELP_HTML = `
 
 adminToken.value = localStorage.getItem(TOKEN_KEY) || "";
 updatedAt.value = new Date().toISOString().slice(0, 10);
+renderAdminBuildInfo();
 
 saveTokenBtn?.addEventListener("click", () => {
   adminAuthenticated = true;
@@ -1606,9 +1609,20 @@ function formatFetchError(err, fallback, uploadBytes = 0) {
   const message = err?.message || "";
   if (message === "Failed to fetch" || err?.name === "TypeError") {
     const sizeText = uploadBytes > 0 ? ` 選択ファイル合計: ${formatBytes(uploadBytes)}。` : "";
-    return `${fallback}: 通信が途中で切断されました。VPN/回線、ファイルサイズ、Cloudflare Pages Functionsログを確認してください。${sizeText}`;
+    const timestamp = new Date().toISOString();
+    return `${fallback}: 通信が途中で切断されました。API: POST /api/admin/books。時刻: ${timestamp}。VPN/回線、Cloudflare Pages Functionsログを確認してください。${sizeText}`;
   }
   return message || fallback;
+}
+
+function renderAdminBuildInfo() {
+  if (!adminBuildInfo) return;
+  const parts = [
+    `v${APP_VERSION || "-"}`,
+    BUILD_TIME || "",
+    COMMIT || ""
+  ].filter(Boolean);
+  adminBuildInfo.textContent = parts.join(" / ");
 }
 
 function formatDateTime(value) {
