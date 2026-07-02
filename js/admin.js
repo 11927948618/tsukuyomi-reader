@@ -14,7 +14,9 @@ const adminOtpLogoutBtn = document.getElementById("adminOtpLogoutBtn");
 const adminOtpNote = document.getElementById("adminOtpNote");
 const adminAuthLogBlock = document.getElementById("adminAuthLogBlock");
 const adminAuthLog = document.getElementById("adminAuthLog");
+const adminAuthLogNote = document.getElementById("adminAuthLogNote");
 const downloadAdminAuthLogBtn = document.getElementById("downloadAdminAuthLogBtn");
+const toggleAdminAuthLogBtn = document.getElementById("toggleAdminAuthLogBtn");
 const saveTokenBtn = document.getElementById("saveTokenBtn");
 const clearTokenBtn = document.getElementById("clearTokenBtn");
 const bookForm = document.getElementById("bookForm");
@@ -42,7 +44,9 @@ const generateReviewerIdBtn = document.getElementById("generateReviewerIdBtn");
 const reviewPasswordResult = document.getElementById("reviewPasswordResult");
 const reviewAuthSummary = document.getElementById("reviewAuthSummary");
 const reviewAuthLog = document.getElementById("reviewAuthLog");
+const reviewAuthLogNote = document.getElementById("reviewAuthLogNote");
 const downloadReviewAuthLogBtn = document.getElementById("downloadReviewAuthLogBtn");
+const toggleReviewAuthLogBtn = document.getElementById("toggleReviewAuthLogBtn");
 const analyticsStatus = document.getElementById("analyticsStatus");
 const analyticsSummary = document.getElementById("analyticsSummary");
 const analyticsRecent = document.getElementById("analyticsRecent");
@@ -59,6 +63,8 @@ let reviewAuthSummaryData = null;
 let reviewAuthLogEvents = [];
 let reviewAuthLogUpdatedAt = "";
 let adminAuthLogEvents = [];
+let showAllReviewAuthLog = false;
+let showAllAdminAuthLog = false;
 let adminAuthMode = "token";
 let adminAuthenticated = false;
 let adminOtpChallengeId = "";
@@ -130,6 +136,14 @@ verifyAdminOtpBtn?.addEventListener("click", verifyAdminOtp);
 adminOtpLogoutBtn?.addEventListener("click", logoutAdminOtp);
 downloadAdminAuthLogBtn?.addEventListener("click", downloadAdminAuthLog);
 downloadReviewAuthLogBtn?.addEventListener("click", downloadReviewAuthLog);
+toggleAdminAuthLogBtn?.addEventListener("click", () => {
+  showAllAdminAuthLog = !showAllAdminAuthLog;
+  renderAdminAuthLog();
+});
+toggleReviewAuthLogBtn?.addEventListener("click", () => {
+  showAllReviewAuthLog = !showAllReviewAuthLog;
+  renderReviewAuthLog();
+});
 
 reloadBooksBtn?.addEventListener("click", loadBooks);
 reloadAnalyticsBtn?.addEventListener("click", loadAnalytics);
@@ -780,6 +794,7 @@ function clearReviewAccess(message = adminAuthRequiredMessage(), type = "") {
   reviewAuthSummaryData = null;
   reviewAuthLogEvents = [];
   reviewAuthLogUpdatedAt = "";
+  showAllReviewAuthLog = false;
   setReviewAccessStatus(message, type);
   if (reviewAccessList) reviewAccessList.innerHTML = "";
   if (reviewPasswordResult) {
@@ -830,7 +845,20 @@ function renderReviewAuthSummary() {
 
 function renderReviewAuthLog() {
   if (!reviewAuthLog) return;
-  const events = Array.isArray(reviewAuthLogEvents) ? reviewAuthLogEvents.slice(0, 30) : [];
+  const allEvents = Array.isArray(reviewAuthLogEvents) ? reviewAuthLogEvents : [];
+  const events = showAllReviewAuthLog ? allEvents : allEvents.slice(0, 30);
+  if (toggleReviewAuthLogBtn) {
+    toggleReviewAuthLogBtn.hidden = allEvents.length <= 30;
+    toggleReviewAuthLogBtn.textContent = showAllReviewAuthLog ? "直近表示" : "全件表示";
+  }
+  if (reviewAuthLogNote) {
+    const visible = events.length;
+    const total = allEvents.length;
+    const base = total
+      ? `${showAllReviewAuthLog ? "全件" : "直近"} ${visible.toLocaleString()} / ${total.toLocaleString()}件を表示中。`
+      : "";
+    reviewAuthLogNote.textContent = `${base}未知IDの失敗は攻撃リストや個人情報を残さないため詳細には出さず、「認証振り返り」の件数だけに集計します。`.trim();
+  }
   if (!events.length) {
     reviewAuthLog.innerHTML = `<p class="admin-note">認証ログはまだありません。</p>`;
     return;
@@ -1510,6 +1538,7 @@ async function downloadReviewAuthLog() {
 
 function clearAdminAuthLog() {
   adminAuthLogEvents = [];
+  showAllAdminAuthLog = false;
   renderAdminAuthLog("");
 }
 
@@ -1518,13 +1547,25 @@ function renderAdminAuthLog(message = "") {
   if (!adminAuthLog) return;
   if (!isAdminReady()) {
     adminAuthLog.innerHTML = "";
+    if (adminAuthLogNote) adminAuthLogNote.textContent = "";
     return;
   }
   if (message) {
     adminAuthLog.innerHTML = `<p class="admin-note">${escapeHtml(message)}</p>`;
+    if (adminAuthLogNote) adminAuthLogNote.textContent = "";
     return;
   }
-  const events = adminAuthLogEvents.slice(0, 20);
+  const allEvents = Array.isArray(adminAuthLogEvents) ? adminAuthLogEvents : [];
+  const events = showAllAdminAuthLog ? allEvents : allEvents.slice(0, 20);
+  if (toggleAdminAuthLogBtn) {
+    toggleAdminAuthLogBtn.hidden = allEvents.length <= 20;
+    toggleAdminAuthLogBtn.textContent = showAllAdminAuthLog ? "直近表示" : "全件表示";
+  }
+  if (adminAuthLogNote) {
+    adminAuthLogNote.textContent = allEvents.length
+      ? `${showAllAdminAuthLog ? "全件" : "直近"} ${events.length.toLocaleString()} / ${allEvents.length.toLocaleString()}件を表示中。ログ取得は全件JSONを保存します。`
+      : "";
+  }
   if (!events.length) {
     adminAuthLog.innerHTML = `<p class="admin-note">管理者認証ログはまだありません。</p>`;
     return;

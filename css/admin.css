@@ -99,6 +99,14 @@
   justify-content: space-between;
 }
 
+.admin-log-actions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
 .admin-book-list {
   display: grid;
   gap: 10px;
@@ -670,12 +678,14 @@ textarea.input {
   }
 
   .admin-token-row,
-  .admin-actions {
+  .admin-actions,
+  .admin-log-actions {
     flex-wrap: wrap;
   }
 
   .admin-token-row .button,
-  .admin-actions .button {
+  .admin-actions .button,
+  .admin-log-actions .button {
     flex: 1 1 auto;
   }
 

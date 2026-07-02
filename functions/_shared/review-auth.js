@@ -301,8 +301,15 @@ export async function verifyReviewLogin(bucket, env, identifier, password) {
   return { ok: true, email: entry.email || normalized.email, reviewerId: entry.reviewerId || normalized.reviewerId, entry };
 }
 
-export async function recordReviewLogout() {
-  return null;
+export async function recordReviewLogout(bucket, decision) {
+  if (!bucket || (!decision?.email && !decision?.reviewerId)) return null;
+  return recordReviewAuthEvent(bucket, {
+    type: "logout",
+    result: "ok",
+    email: decision.email || "",
+    reviewerId: decision.reviewerId || "",
+    reason: "reader"
+  });
 }
 
 export async function recordReviewSessionActivity(bucket, request, reviewAuth, env, kind = "api") {
@@ -541,7 +548,16 @@ async function recordReviewLoginAttempt(bucket, identity, success, reason, curre
   }
 
   await writeReviewAccessList(bucket, entries, { includeSecrets: true }).catch(() => null);
-  if (success) return;
+  if (success) {
+    await recordReviewAuthEvent(bucket, {
+      type: "login",
+      result: "ok",
+      email: matchedEntry.email || normalized.email,
+      reviewerId: matchedEntry.reviewerId || normalized.reviewerId,
+      reason: "password"
+    });
+    return;
+  }
 
   const detailType = reviewLoginFailureEventType(reason);
   if (detailType) {
