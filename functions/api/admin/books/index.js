@@ -54,10 +54,16 @@ export async function onRequestPost(context) {
   const auth = await requireAdmin(context.request, context.env);
   if (!auth.ok) return auth.response;
 
-  const form = await context.request.formData();
   const target = resolveAdminBooksBucket(context.env, "limited");
   const bucket = target.bucket;
   if (!bucket) return error(target.missingMessage, 500);
+
+  let form;
+  try {
+    form = await context.request.formData();
+  } catch (err) {
+    return error(`アップロード内容を読み取れませんでした: ${err?.message || String(err || "")}`, 400);
+  }
 
   const title = safeText(form.get("title"), "");
   if (!title) return error("タイトルは必須です");
@@ -92,29 +98,46 @@ export async function onRequestPost(context) {
   let contentUploaded = false;
   let coverUploaded = false;
 
-  if (bookFile && typeof bookFile.arrayBuffer === "function" && bookFile.size > 0) {
-    const ext = extFromFile(bookFile, "epub");
-    if (!["epub", "txt", "pdf"].includes(ext)) return error("本文ファイルはEPUB、TXT、PDFを選択してください");
-    format = ext;
-    contentKey = `works/${id}-${nowCompact}.${ext}`;
-    if (current.contentKey && current.contentKey !== contentKey) staleKeys.push(current.contentKey);
-    await bucket.put(contentKey, await bookFile.arrayBuffer(), {
-      httpMetadata: { contentType: contentTypeForExt(ext) }
-    });
-    contentUploaded = true;
-  }
-
-  if (cover && typeof cover.arrayBuffer === "function" && cover.size > 0) {
-    const ext = extFromFile(cover, "jpg");
-    if (!["jpg", "jpeg", "png", "webp"].includes(ext)) {
-      return error("表紙画像は jpg / png / webp を選択してください");
+  try {
+    if (bookFile && typeof bookFile.arrayBuffer === "function" && bookFile.size > 0) {
+      const ext = extFromFile(bookFile, "epub");
+      if (!["epub", "txt", "pdf"].includes(ext)) return error("本文ファイルはEPUB、TXT、PDFを選択してください");
+      format = ext;
+      contentKey = `works/${id}-${nowCompact}.${ext}`;
+      if (current.contentKey && current.contentKey !== contentKey) staleKeys.push(current.contentKey);
+      await bucket.put(contentKey, await bookFile.arrayBuffer(), {
+        httpMetadata: { contentType: contentTypeForExt(ext) }
+      });
+      contentUploaded = true;
     }
-    coverKey = `covers/${id}-${nowCompact}.${ext}`;
-    if (current.coverKey && current.coverKey !== coverKey) staleKeys.push(current.coverKey);
-    await bucket.put(coverKey, await cover.arrayBuffer(), {
-      httpMetadata: { contentType: contentTypeForExt(ext) }
+
+    if (cover && typeof cover.arrayBuffer === "function" && cover.size > 0) {
+      const ext = extFromFile(cover, "jpg");
+      if (!["jpg", "jpeg", "png", "webp"].includes(ext)) {
+        return error("表紙画像は jpg / png / webp を選択してください");
+      }
+      coverKey = `covers/${id}-${nowCompact}.${ext}`;
+      if (current.coverKey && current.coverKey !== coverKey) staleKeys.push(current.coverKey);
+      await bucket.put(coverKey, await cover.arrayBuffer(), {
+        httpMetadata: { contentType: contentTypeForExt(ext) }
+      });
+      coverUploaded = true;
+    }
+  } catch (err) {
+    await recordAdminOperationEvent(bucket, {
+      type: "book-save-failed",
+      result: "failed",
+      actor: adminOperationActor(auth),
+      bookId: id,
+      title,
+      reason: "r2-upload-failed",
+      details: {
+        message: err?.message || String(err || ""),
+        bookFileSize: Number(bookFile?.size) || 0,
+        coverSize: Number(cover?.size) || 0
+      }
     });
-    coverUploaded = true;
+    return error(`R2へのアップロードに失敗しました: ${err?.message || String(err || "")}`, 500);
   }
 
   if (!contentKey) return error("初回登録では本文ファイルが必須です");

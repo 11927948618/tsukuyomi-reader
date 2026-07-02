@@ -176,6 +176,9 @@ bookForm?.addEventListener("submit", async (event) => {
 
   const formData = new FormData(bookForm);
   formData.set("published", document.getElementById("publishedCheck")?.checked ? "true" : "false");
+  const bookFile = formData.get("bookFile");
+  const coverFile = formData.get("cover");
+  const uploadBytes = fileSize(bookFile) + fileSize(coverFile);
 
   setStatus("保存中...");
   try {
@@ -190,7 +193,7 @@ bookForm?.addEventListener("submit", async (event) => {
     resetForm();
     loadBooks();
   } catch (err) {
-    setStatus(err.message || "保存に失敗しました", "error");
+    setStatus(formatFetchError(err, "保存に失敗しました", uploadBytes), "error");
   }
 });
 
@@ -1593,6 +1596,19 @@ function setStatus(message, type = "") {
   if (!adminStatus) return;
   adminStatus.textContent = message;
   adminStatus.className = `status ${type}`.trim();
+}
+
+function fileSize(file) {
+  return file && typeof file === "object" && Number.isFinite(file.size) ? file.size : 0;
+}
+
+function formatFetchError(err, fallback, uploadBytes = 0) {
+  const message = err?.message || "";
+  if (message === "Failed to fetch" || err?.name === "TypeError") {
+    const sizeText = uploadBytes > 0 ? ` 選択ファイル合計: ${formatBytes(uploadBytes)}。` : "";
+    return `${fallback}: 通信が途中で切断されました。VPN/回線、ファイルサイズ、Cloudflare Pages Functionsログを確認してください。${sizeText}`;
+  }
+  return message || fallback;
 }
 
 function formatDateTime(value) {
