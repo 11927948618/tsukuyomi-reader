@@ -177,14 +177,16 @@ bookForm?.addEventListener("submit", async (event) => {
     return;
   }
 
-  const formData = new FormData(bookForm);
-  formData.set("published", document.getElementById("publishedCheck")?.checked ? "true" : "false");
-  const bookFile = formData.get("bookFile");
-  const coverFile = formData.get("cover");
+  const sourceFormData = new FormData(bookForm);
+  sourceFormData.set("published", document.getElementById("publishedCheck")?.checked ? "true" : "false");
+  const bookFile = sourceFormData.get("bookFile");
+  const coverFile = sourceFormData.get("cover");
   const uploadBytes = fileSize(bookFile) + fileSize(coverFile);
 
-  setStatus("保存中...");
   try {
+    setStatus(uploadBytes > 0 ? "ファイルを準備中..." : "保存中...");
+    const formData = await prepareUploadFormData(sourceFormData);
+    setStatus("保存中...");
     const res = await fetch("./api/admin/books", {
       method: "POST",
       headers: authHeaders(token),
@@ -1605,8 +1607,32 @@ function fileSize(file) {
   return file && typeof file === "object" && Number.isFinite(file.size) ? file.size : 0;
 }
 
+async function prepareUploadFormData(sourceFormData) {
+  const formData = new FormData();
+  for (const [key, value] of sourceFormData.entries()) {
+    if (!isUploadFile(value) || value.size <= 0) {
+      formData.append(key, value);
+      continue;
+    }
+
+    const buffer = await value.arrayBuffer();
+    formData.append(key, new File([buffer], value.name || "upload.bin", {
+      type: value.type || "application/octet-stream",
+      lastModified: value.lastModified || Date.now()
+    }));
+  }
+  return formData;
+}
+
+function isUploadFile(value) {
+  return typeof File !== "undefined" && value instanceof File;
+}
+
 function formatFetchError(err, fallback, uploadBytes = 0) {
   const message = err?.message || "";
+  if (err?.name === "NotReadableError") {
+    return `${fallback}: 選択ファイルを読み取れませんでした。ファイルを選び直すか、別の保存場所から選択してください。`;
+  }
   if (message === "Failed to fetch" || err?.name === "TypeError") {
     const sizeText = uploadBytes > 0 ? ` 選択ファイル合計: ${formatBytes(uploadBytes)}。` : "";
     const timestamp = new Date().toISOString();
