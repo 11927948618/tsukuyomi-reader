@@ -119,10 +119,15 @@ export function initReader({
       blockBase: Math.max(1, Math.floor((safeWrapped - safeGap) / 2))
     };
   };
-  const resolvePagedWrapWidth = (width, mode, rawWrapped = null) => {
+  const resolvePagedWrapWidth = (width, mode, rawWrapped = null, columnGap = 0) => {
     const safeWidth = Math.max(1, Math.round(Number(width) || 1));
     const wrapped = Math.max(1, Math.round(Number(rawWrapped) || safeWidth * (wrapWidthPercent / 100)));
-    if (isSpreadViewActive() && mode !== "horizontal") return Math.min(wrapped, safeWidth);
+    if (isSpreadViewActive()) {
+      const safeGap = Math.max(0, Math.round(Number(columnGap) || 0));
+      const faceLimit = Math.max(1, Math.floor((safeWidth - safeGap) / 2));
+      const faceWidth = Math.min(wrapped, faceLimit);
+      return Math.max(1, faceWidth * 2 + safeGap);
+    }
     return wrapped;
   };
   const shouldUseMobileTextPager = () => {
@@ -241,16 +246,16 @@ export function initReader({
     const rawWrapped = Math.round(width * (wrapWidthPercent / 100));
     const metrics = getReaderTextMetrics();
     const mode = normalizeWritingModePreference(writingModePreference);
+    const baseLineAdvance = Math.max(10, metrics.lineHeightPx);
+    const columnGap = getPageColumnGapPx(baseLineAdvance);
     const wrapped = displayMode === "paged"
-      ? resolvePagedWrapWidth(width, mode, rawWrapped)
+      ? resolvePagedWrapWidth(width, mode, rawWrapped, columnGap)
       : rawWrapped;
 
     if (displayMode === "paged") {
       const baseCharAdvance = Math.max(6, metrics.fontPx * 0.95 + metrics.letterSpacingPx);
-      const baseLineAdvance = Math.max(10, metrics.lineHeightPx);
       const pageFrameWidth = Math.max(1, width);
       const pageFrameHeight = Math.max(1, height);
-      const columnGap = getPageColumnGapPx(baseLineAdvance);
       const frame = resolvePageColumnFrame({
         mode,
         width: pageFrameWidth,
@@ -853,8 +858,8 @@ export function initReader({
     const viewportWidth = getViewportInnerSize("x");
     const viewportHeight = getViewportInnerSize("y");
     const wrapped = mode === "horizontal"
-      ? viewportWidth
-      : resolvePagedWrapWidth(viewportWidth, mode);
+      ? resolvePagedWrapWidth(viewportWidth, mode, viewportWidth, columnGap)
+      : resolvePagedWrapWidth(viewportWidth, mode, null, columnGap);
     const frame = resolvePageColumnFrame({
       mode,
       width: viewportWidth,
@@ -1342,10 +1347,10 @@ export function initReader({
     const viewportHeight = getViewportInnerSize("y");
     const mode = normalizeWritingModePreference(writingModeSelect?.value || writingModePreference);
     const wrapPx = Math.round(viewportWidth * (wrapPercent / 100));
-    const effectiveWrapPx = mode === "horizontal"
-      ? viewportWidth
-      : resolvePagedWrapWidth(viewportWidth, mode, wrapPx);
     const columnGap = getPageColumnGapPx(lineHeightPx);
+    const effectiveWrapPx = displayMode === "paged"
+      ? resolvePagedWrapWidth(viewportWidth, mode, wrapPx, columnGap)
+      : wrapPx;
     const frame = resolvePageColumnFrame({
       mode,
       width: viewportWidth,
@@ -1374,14 +1379,17 @@ export function initReader({
       letterSpacingValue.textContent = `${sign}${letterSpacingPx.toFixed(1)}px`;
     }
     if (wrapWidthValue) {
-      const spreadPart = isSpreadViewActive() ? ` / 約${Math.round(textBlockPx)}px片面` : "";
-      const wrapPart = isSpreadViewActive() && mode !== "horizontal" && effectiveWrapPx < wrapPx
-        ? `${wrapPercent}% / 約${wrapPx}px→約${effectiveWrapPx}px上限`
-        : `${wrapPercent}% / 約${wrapPx}px`;
+      const spreadActive = isSpreadViewActive() && displayMode === "paged";
+      const requestedPart = `${wrapPercent}% / 約${wrapPx}px`;
+      const actualPart = spreadActive
+        ? wrapPx > textBlockPx + 1
+          ? `${requestedPart}→約${Math.round(textBlockPx)}px片面 / 見開き約${Math.round(effectiveWrapPx)}px`
+          : `${requestedPart}片面 / 見開き約${Math.round(effectiveWrapPx)}px`
+        : requestedPart;
       wrapWidthValue.textContent =
         mode === "horizontal"
-          ? `${wrapPart}${spreadPart} / 約${approxCharsPerLine}字×${approxLinesPerPage}行`
-          : `${wrapPart}${spreadPart} / 約${approxCharsPerLine}字×${approxLinesPerPage}列`;
+          ? `${actualPart} / 約${approxCharsPerLine}字×${approxLinesPerPage}行`
+          : `${actualPart} / 約${approxCharsPerLine}字×${approxLinesPerPage}列`;
     }
   }
 
