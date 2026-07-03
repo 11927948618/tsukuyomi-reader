@@ -231,7 +231,7 @@ export function initReader({
   const applyPageWidth = () => {
     document.body.classList.toggle("page-columns-enabled", isSpreadViewActive());
     const width = getHorizontalPageSize();
-    const height = getVerticalPageSize();
+    const height = getViewportInnerSize("y");
     const wrapped = Math.round(width * (wrapWidthPercent / 100));
     const metrics = getReaderTextMetrics();
     const mode = normalizeWritingModePreference(writingModePreference);
@@ -683,6 +683,7 @@ export function initReader({
 
   function shouldUseMeasuredPagerV2() {
     if (bookFormat !== "txt") return false;
+    if (isSpreadViewActive()) return true;
     if (siteConfig?.measuredPagerV2 === true) return true;
     return new URLSearchParams(window.location.search).get("measuredPagerV2") === "1";
   }
@@ -876,8 +877,10 @@ export function initReader({
       lines,
       capacity: Math.max(40, chars * lines),
       fontScale: plan.fontScale || 1,
+      inlineSize: plan.inlineSize,
+      blockSize: plan.blockSize,
       writingMode: mode,
-      lineAdvancePx: baseLineAdvance,
+      lineAdvancePx: plan.lineAdvance || baseLineAdvance,
       charSafetyReserve: 1,
       lineSafetyReserve: 1
     };
@@ -911,7 +914,7 @@ export function initReader({
   function isMobileTextPagerOverflowing() {
     const pages = Array.from(bookContent.querySelectorAll(".mobile-text-page"));
     if (!pages.length) return false;
-    const epsilon = 2;
+    const epsilon = Math.max(4, Math.ceil(getReaderTextMetrics().fontPx * 0.35));
     return pages.some((page) => {
       const body = page.querySelector(".mobile-text-page-body") || page;
       return body.scrollWidth > body.clientWidth + epsilon
@@ -1317,16 +1320,26 @@ export function initReader({
     const letterSpacingPx = metrics.letterSpacingPx;
     const wrapPercent = normalizeWrapWidthPercent(wrapWidthRange?.value);
     const viewportWidth = getHorizontalPageSize();
-    const viewportHeight = getVerticalPageSize();
-    const wrapPx = Math.round(viewportWidth * (wrapPercent / 100));
+    const viewportHeight = getViewportInnerSize("y");
     const mode = normalizeWritingModePreference(writingModeSelect?.value || writingModePreference);
+    const wrapPx = Math.round(viewportWidth * (wrapPercent / 100));
+    const columnGap = getPageColumnGapPx(lineHeightPx);
+    const frame = resolvePageColumnFrame({
+      mode,
+      width: viewportWidth,
+      height: viewportHeight,
+      wrapped: mode === "horizontal" ? viewportWidth : wrapPx,
+      columnGap
+    });
+    const textBlockPx = mode === "horizontal" ? frame.inlineBase : frame.blockBase;
+    const textInlinePx = mode === "horizontal" ? frame.blockBase : frame.inlineBase;
     const inlineAdvance = Math.max(6, fontPx * 0.95 + letterSpacingPx);
     const approxCharsPerLine = mode === "horizontal"
-      ? Math.max(1, Math.round(wrapPx / inlineAdvance))
-      : Math.max(1, Math.round(viewportHeight / inlineAdvance));
+      ? Math.max(1, Math.round(textBlockPx / inlineAdvance))
+      : Math.max(1, Math.round(textInlinePx / inlineAdvance));
     const approxLinesPerPage = mode === "horizontal"
-      ? Math.max(1, Math.round(viewportHeight / lineHeightPx))
-      : Math.max(1, Math.round(wrapPx / lineHeightPx));
+      ? Math.max(1, Math.round(textInlinePx / lineHeightPx))
+      : Math.max(1, Math.round(textBlockPx / lineHeightPx));
 
     if (fontSizeValue) {
       fontSizeValue.textContent = `${fontPercent}% / ${fontPx.toFixed(1)}px / ${fontPt.toFixed(1)}pt`;
@@ -1339,10 +1352,11 @@ export function initReader({
       letterSpacingValue.textContent = `${sign}${letterSpacingPx.toFixed(1)}px`;
     }
     if (wrapWidthValue) {
+      const spreadPart = isSpreadViewActive() ? ` / 約${Math.round(textBlockPx)}px片面` : "";
       wrapWidthValue.textContent =
         mode === "horizontal"
-          ? `${wrapPercent}% / 約${wrapPx}px / 約${approxCharsPerLine}字×${approxLinesPerPage}行`
-          : `${wrapPercent}% / 約${wrapPx}px / 約${approxCharsPerLine}字×${approxLinesPerPage}列`;
+          ? `${wrapPercent}% / 約${wrapPx}px${spreadPart} / 約${approxCharsPerLine}字×${approxLinesPerPage}行`
+          : `${wrapPercent}% / 約${wrapPx}px${spreadPart} / 約${approxCharsPerLine}字×${approxLinesPerPage}列`;
     }
   }
 
