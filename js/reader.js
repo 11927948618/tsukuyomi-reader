@@ -941,18 +941,20 @@ export function initReader({
     const pages = [];
     for (let offset = 0; offset < pageCount; offset += 1) {
       const index = startPageIndex + offset;
-      if (index > maxPage) break;
       const page = mobileTextPager.pages[index];
-      if (!page) continue;
-      pages.push(buildMobileTextPageMarkup(page, index, mobileTextPager.plan, { inSpread: true }));
-    }
-    if (pages.length <= 1) {
-      const page = mobileTextPager.pages[startPageIndex] || mobileTextPager.pages[0] || { chapterId: "chapter-001", text: "" };
-      return buildMobileTextPageMarkup(page, startPageIndex, mobileTextPager.plan);
+      pages.push(page
+        ? buildMobileTextPageMarkup(page, index, mobileTextPager.plan, { inSpread: true })
+        : buildMobileTextBlankPageMarkup(index, mobileTextPager.plan));
     }
     const sourceStart = Math.max(0, Number(mobileTextPager.pages[startPageIndex]?.sourceStart) || 0);
     const sourceEnd = Math.max(sourceStart, Number(mobileTextPager.pages[Math.min(maxPage, startPageIndex + pageCount - 1)]?.sourceEnd) || sourceStart);
     return `<div class="mobile-text-spread ${mode}" data-page-index="${Math.max(0, startPageIndex)}" data-source-start="${sourceStart}" data-source-end="${sourceEnd}">${pages.join("")}</div>`;
+  }
+
+  function buildMobileTextBlankPageMarkup(pageIndex, plan = null) {
+    const pageWritingMode = plan?.writingMode === "horizontal" ? "horizontal" : "vertical";
+    const safePageIndex = Math.max(0, Number(pageIndex) || 0);
+    return `<section class="mobile-text-page ${pageWritingMode} in-spread blank-page" data-page-index="${safePageIndex}" aria-hidden="true"></section>`;
   }
 
   function buildMobileTextPageMarkup(page, pageIndex, plan = null, options = {}) {
