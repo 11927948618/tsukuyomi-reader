@@ -146,6 +146,7 @@ body.writing-horizontal .h-scroll {
   height: calc(var(--reader-viewport-height, 100dvh) - var(--reader-topbar-height, 64px));
   padding: 12px 0 max(12px, env(safe-area-inset-bottom));
   box-sizing: border-box;
+  transition: width 0.16s ease, margin 0.16s ease;
 }
 
 body.chrome-hidden .reader-layout {
@@ -957,10 +958,14 @@ body.mode-scrolly .reader-content.force-vertical .chapter {
 
   body.settings-open .reader-main,
   body.settings-open.mode-paged .reader-main {
-    width: auto;
-    max-width: none;
+    width: min(980px, calc(100vw - var(--settings-panel-width) - 36px));
+    max-width: calc(100vw - var(--settings-panel-width) - 36px);
     margin-left: 12px;
-    margin-right: calc(var(--settings-panel-width) + 12px);
+    margin-right: calc(var(--settings-panel-width) + 24px);
+  }
+
+  body.settings-open .ui-overlay {
+    right: var(--settings-panel-width);
   }
 }
 

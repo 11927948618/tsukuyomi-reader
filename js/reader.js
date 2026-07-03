@@ -584,9 +584,14 @@ export function initReader({
       document.body.classList.remove("settings-open");
       if (!tocPanel?.classList.contains("open")) closeOverlay();
     }
-    requestAnimationFrame(() => {
-      reflowReaderLayout({ preservePosition: true, resetPosition: false });
-    });
+    scheduleSettingsPanelReflow();
+  }
+
+  function scheduleSettingsPanelReflow() {
+    const reflow = () => reflowReaderLayout({ preservePosition: true, resetPosition: false });
+    requestAnimationFrame(reflow);
+    window.setTimeout(reflow, 90);
+    window.setTimeout(reflow, 220);
   }
 
   function renderBook(currentBook) {
