@@ -119,6 +119,12 @@ export function initReader({
       blockBase: Math.max(1, Math.floor((safeWrapped - safeGap) / 2))
     };
   };
+  const resolvePagedWrapWidth = (width, mode, rawWrapped = null) => {
+    const safeWidth = Math.max(1, Math.round(Number(width) || 1));
+    const wrapped = Math.max(1, Math.round(Number(rawWrapped) || safeWidth * (wrapWidthPercent / 100)));
+    if (isSpreadViewActive() && mode !== "horizontal") return Math.min(wrapped, safeWidth);
+    return wrapped;
+  };
   const shouldUseMobileTextPager = () => {
     // Explicit pagination is shared by mobile and desktop. Browser CSS columns
     // remain useful for scrolling, but are not stable enough to define pages.
@@ -232,9 +238,12 @@ export function initReader({
     document.body.classList.toggle("page-columns-enabled", isSpreadViewActive());
     const width = getHorizontalPageSize();
     const height = getViewportInnerSize("y");
-    const wrapped = Math.round(width * (wrapWidthPercent / 100));
+    const rawWrapped = Math.round(width * (wrapWidthPercent / 100));
     const metrics = getReaderTextMetrics();
     const mode = normalizeWritingModePreference(writingModePreference);
+    const wrapped = displayMode === "paged"
+      ? resolvePagedWrapWidth(width, mode, rawWrapped)
+      : rawWrapped;
 
     if (displayMode === "paged") {
       const baseCharAdvance = Math.max(6, metrics.fontPx * 0.95 + metrics.letterSpacingPx);
@@ -841,13 +850,16 @@ export function initReader({
     const baseLineAdvance = Math.max(10, metrics.lineHeightPx);
     const columnGap = getPageColumnGapPx(baseLineAdvance);
     const mode = normalizeWritingModePreference(writingModePreference) === "horizontal" ? "horizontal" : "vertical";
+    const viewportWidth = getViewportInnerSize("x");
+    const viewportHeight = getViewportInnerSize("y");
+    const wrapped = mode === "horizontal"
+      ? viewportWidth
+      : resolvePagedWrapWidth(viewportWidth, mode);
     const frame = resolvePageColumnFrame({
       mode,
-      width: getViewportInnerSize("x"),
-      height: getViewportInnerSize("y"),
-      wrapped: mode === "horizontal"
-        ? getViewportInnerSize("x")
-        : Math.round(getViewportInnerSize("x") * (wrapWidthPercent / 100)),
+      width: viewportWidth,
+      height: viewportHeight,
+      wrapped,
       columnGap
     });
     const plan = mode === "vertical"
@@ -1330,12 +1342,15 @@ export function initReader({
     const viewportHeight = getViewportInnerSize("y");
     const mode = normalizeWritingModePreference(writingModeSelect?.value || writingModePreference);
     const wrapPx = Math.round(viewportWidth * (wrapPercent / 100));
+    const effectiveWrapPx = mode === "horizontal"
+      ? viewportWidth
+      : resolvePagedWrapWidth(viewportWidth, mode, wrapPx);
     const columnGap = getPageColumnGapPx(lineHeightPx);
     const frame = resolvePageColumnFrame({
       mode,
       width: viewportWidth,
       height: viewportHeight,
-      wrapped: mode === "horizontal" ? viewportWidth : wrapPx,
+      wrapped: effectiveWrapPx,
       columnGap
     });
     const textBlockPx = mode === "horizontal" ? frame.inlineBase : frame.blockBase;
@@ -1360,10 +1375,13 @@ export function initReader({
     }
     if (wrapWidthValue) {
       const spreadPart = isSpreadViewActive() ? ` / 約${Math.round(textBlockPx)}px片面` : "";
+      const wrapPart = isSpreadViewActive() && mode !== "horizontal" && effectiveWrapPx < wrapPx
+        ? `${wrapPercent}% / 約${wrapPx}px→約${effectiveWrapPx}px上限`
+        : `${wrapPercent}% / 約${wrapPx}px`;
       wrapWidthValue.textContent =
         mode === "horizontal"
-          ? `${wrapPercent}% / 約${wrapPx}px${spreadPart} / 約${approxCharsPerLine}字×${approxLinesPerPage}行`
-          : `${wrapPercent}% / 約${wrapPx}px${spreadPart} / 約${approxCharsPerLine}字×${approxLinesPerPage}列`;
+          ? `${wrapPart}${spreadPart} / 約${approxCharsPerLine}字×${approxLinesPerPage}行`
+          : `${wrapPart}${spreadPart} / 約${approxCharsPerLine}字×${approxLinesPerPage}列`;
     }
   }
 
