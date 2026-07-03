@@ -4,6 +4,7 @@
   min-height: var(--reader-viewport-height, 100dvh);
   padding-top: var(--reader-topbar-height, 64px);
   --settings-panel-width: min(360px, 94vw);
+  transition: padding-top 0.16s ease;
 }
 
 .reader-topbar {
@@ -146,7 +147,7 @@ body.writing-horizontal .h-scroll {
   height: calc(var(--reader-viewport-height, 100dvh) - var(--reader-topbar-height, 64px));
   padding: 12px 0 max(12px, env(safe-area-inset-bottom));
   box-sizing: border-box;
-  transition: width 0.16s ease, margin 0.16s ease;
+  transition: width 0.16s ease, height 0.16s ease, margin 0.16s ease;
 }
 
 body.chrome-hidden .reader-layout {

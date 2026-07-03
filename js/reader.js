@@ -584,10 +584,10 @@ export function initReader({
       document.body.classList.remove("settings-open");
       if (!tocPanel?.classList.contains("open")) closeOverlay();
     }
-    scheduleSettingsPanelReflow();
+    scheduleReaderResizeReflow();
   }
 
-  function scheduleSettingsPanelReflow() {
+  function scheduleReaderResizeReflow() {
     const reflow = () => reflowReaderLayout({ preservePosition: true, resetPosition: false });
     requestAnimationFrame(reflow);
     window.setTimeout(reflow, 90);
@@ -1896,11 +1896,13 @@ export function initReader({
         document.body.classList.add("topbar-reveal-guard");
         window.setTimeout(() => document.body.classList.remove("topbar-reveal-guard"), 350);
         skipNextTap = true;
+        scheduleReaderResizeReflow();
         return;
       }
       topbar.classList.add("hidden");
       document.body.classList.add("chrome-hidden");
       skipNextTap = true;
+      scheduleReaderResizeReflow();
     };
 
     if (window.PointerEvent) {
@@ -1937,6 +1939,7 @@ export function initReader({
       document.body.classList.add("topbar-reveal-guard");
       window.setTimeout(() => document.body.classList.remove("topbar-reveal-guard"), 350);
     }
+    scheduleReaderResizeReflow();
   }
 
   function applyDisplayMode(mode, options = {}) {
