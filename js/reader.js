@@ -55,6 +55,7 @@ export function initReader({
   const pageTurnEffectSelect = qs("#pageTurnEffectSelect");
   const pageColumnsCheck = qs("#pageColumnsCheck");
   const lineNumbersCheck = qs("#lineNumbersCheck");
+  const debugLayoutCheck = qs("#debugLayoutCheck");
   const reloadBtn = qs("#reloadBtn");
   const hardReloadBtn = qs("#hardReloadBtn");
   const displayModeRadios = Array.from(document.querySelectorAll('input[name="displayMode"]'));
@@ -69,6 +70,7 @@ export function initReader({
   let pageTurnEffect = normalizePageTurnEffect(settings?.pageTurnEffect);
   let pageColumns = settings?.pageColumns === true;
   let lineNumbers = settings?.lineNumbers === true;
+  let debugLayout = settings?.debugLayout === true;
   let genkoPreset = false;
   let wrapWidthPercent = normalizeWrapWidthPercent(settings?.wrapWidthPercent);
   let writingModePreference = normalizeWritingModePreference(settings?.writingModePreference);
@@ -290,6 +292,7 @@ export function initReader({
       document.documentElement.style.setProperty("--paged-block-size", `${Math.max(1, pagePlan.blockSize)}px`);
       document.documentElement.style.setProperty("--page-column-gap", `${Math.round(columnGap)}px`);
       document.documentElement.style.setProperty("--mobile-text-spread-gap", `${Math.round(columnGap)}px`);
+      document.documentElement.style.setProperty("--mobile-text-spread-width", `${Math.max(1, Math.round(wrapped))}px`);
       document.documentElement.style.setProperty("--vertical-page-gutter", `${pagePlan.verticalPageGutter}px`);
       return;
     }
@@ -307,6 +310,7 @@ export function initReader({
     document.documentElement.style.removeProperty("--paged-block-size");
     document.documentElement.style.removeProperty("--page-column-gap");
     document.documentElement.style.removeProperty("--mobile-text-spread-gap");
+    document.documentElement.style.removeProperty("--mobile-text-spread-width");
     document.documentElement.style.removeProperty("--vertical-page-gutter");
   };
   const applyViewportMetrics = () => {
@@ -1204,9 +1208,11 @@ export function initReader({
     pageTurnEffect = normalizePageTurnEffect(nextSettings.pageTurnEffect);
     pageColumns = nextSettings.pageColumns === true;
     lineNumbers = nextSettings.lineNumbers === true;
+    debugLayout = nextSettings.debugLayout === true;
     genkoPreset = false;
     document.body.classList.toggle("page-columns-enabled", isSpreadViewActive());
     document.body.classList.toggle("line-numbers-enabled", lineNumbers);
+    document.body.classList.toggle("reader-debug-layout", debugLayout);
     document.body.classList.remove("genko-preset-enabled");
     wrapWidthPercent = normalizeWrapWidthPercent(nextSettings.wrapWidthPercent);
     writingModePreference = normalizeWritingModePreference(nextSettings.writingModePreference);
@@ -1231,6 +1237,7 @@ export function initReader({
     if (pageTurnEffectSelect) pageTurnEffectSelect.value = pageTurnEffect;
     if (pageColumnsCheck) pageColumnsCheck.checked = pageColumns;
     if (lineNumbersCheck) lineNumbersCheck.checked = lineNumbers;
+    if (debugLayoutCheck) debugLayoutCheck.checked = debugLayout;
     displayModeRadios.forEach((radio) => {
       radio.checked = radio.value === nextDisplayMode;
     });
@@ -1271,6 +1278,9 @@ export function initReader({
     });
     lineNumbersCheck?.addEventListener("change", () => {
       updateSettings({ lineNumbers: Boolean(lineNumbersCheck.checked) });
+    });
+    debugLayoutCheck?.addEventListener("change", () => {
+      updateSettings({ debugLayout: Boolean(debugLayoutCheck.checked) });
     });
     saveSettingsBtn?.addEventListener("click", () => {
       const next = getCurrentSettings();
@@ -1417,6 +1427,7 @@ export function initReader({
       pageTurnEffect: normalizePageTurnEffect(pageTurnEffectSelect?.value || pageTurnEffect),
       pageColumns: Boolean(pageColumnsCheck?.checked),
       lineNumbers: Boolean(lineNumbersCheck?.checked),
+      debugLayout: Boolean(debugLayoutCheck?.checked),
       writingModePreference: normalizeWritingModePreference(writingModeSelect?.value || writingModePreference),
       ...patch
     };
@@ -1465,6 +1476,7 @@ export function initReader({
       fontFamilyPreference: normalizeFontFamilyPreference(fontFamilySelect?.value || settings?.fontFamilyPreference),
       pageColumns,
       lineNumbers,
+      debugLayout,
       viewportWidth: readerViewport?.clientWidth || window.innerWidth || 0,
       viewportHeight: readerViewport?.clientHeight || window.innerHeight || 0,
       screenWidth: window.screen?.width || 0,

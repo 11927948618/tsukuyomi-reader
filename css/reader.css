@@ -381,8 +381,9 @@ body.mobile-text-pager.mode-paged .reader-content.mobile-pager-content {
   box-sizing: border-box;
   display: grid;
   gap: var(--mobile-text-spread-gap, 28px);
-  inline-size: 100%;
+  inline-size: min(100%, var(--mobile-text-spread-width, 100%));
   block-size: 100%;
+  margin-inline: auto;
   writing-mode: horizontal-tb;
   overflow: hidden;
 }
@@ -410,6 +411,87 @@ body.mobile-text-pager.mode-paged .reader-content.mobile-pager-content {
 .mobile-text-page.horizontal {
   writing-mode: horizontal-tb;
   text-orientation: mixed;
+}
+
+body.reader-debug-layout .reader-main,
+body.reader-debug-layout .reader-viewport,
+body.reader-debug-layout .reader-content,
+body.reader-debug-layout .mobile-text-spread,
+body.reader-debug-layout .mobile-text-page,
+body.reader-debug-layout .mobile-text-page-body {
+  position: relative;
+  outline-offset: -2px;
+}
+
+body.reader-debug-layout .reader-main {
+  outline: 2px dashed rgba(37, 99, 235, 0.7);
+}
+
+body.reader-debug-layout .reader-viewport {
+  outline: 2px solid rgba(220, 38, 38, 0.75);
+  background-image:
+    linear-gradient(rgba(220, 38, 38, 0.08), rgba(220, 38, 38, 0.08));
+}
+
+body.reader-debug-layout .reader-content {
+  outline: 2px dashed rgba(22, 163, 74, 0.8);
+}
+
+body.reader-debug-layout .mobile-text-spread {
+  outline: 2px solid rgba(147, 51, 234, 0.9);
+  background-image:
+    linear-gradient(rgba(147, 51, 234, 0.08), rgba(147, 51, 234, 0.08));
+}
+
+body.reader-debug-layout .mobile-text-page {
+  outline: 2px dashed rgba(245, 158, 11, 0.9);
+  background-image:
+    linear-gradient(rgba(245, 158, 11, 0.08), rgba(245, 158, 11, 0.08));
+}
+
+body.reader-debug-layout .mobile-text-page-body {
+  outline: 1px solid rgba(8, 145, 178, 0.95);
+}
+
+body.reader-debug-layout .reader-viewport::before,
+body.reader-debug-layout .reader-content::before,
+body.reader-debug-layout .mobile-text-spread::before,
+body.reader-debug-layout .mobile-text-page::before,
+body.reader-debug-layout .mobile-text-page-body::before {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  z-index: 4;
+  padding: 2px 5px;
+  border-radius: 4px;
+  background: rgba(17, 24, 39, 0.82);
+  color: #fff;
+  font-size: 11px;
+  line-height: 1.2;
+  letter-spacing: 0;
+  writing-mode: horizontal-tb;
+  text-orientation: mixed;
+  pointer-events: none;
+}
+
+body.reader-debug-layout .reader-viewport::before {
+  content: "viewport";
+}
+
+body.reader-debug-layout .reader-content::before {
+  content: "content";
+}
+
+body.reader-debug-layout .mobile-text-spread::before {
+  content: "spread";
+}
+
+body.reader-debug-layout .mobile-text-page::before {
+  content: "page";
+}
+
+body.reader-debug-layout .mobile-text-page-body::before {
+  content: "body";
 }
 
 .mobile-text-page h1 {

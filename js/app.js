@@ -43,6 +43,7 @@ const DEFAULT_SETTINGS = {
   structureAutoDetect: true,
   pageColumns: false,
   lineNumbers: false,
+  debugLayout: false,
   pageTurnEffect: "none"
 };
 
@@ -448,6 +449,7 @@ function buildAppViewerProfile() {
     fontFamilyPreference: appState.settings.fontFamilyPreference,
     pageColumns: appState.settings.pageColumns,
     lineNumbers: appState.settings.lineNumbers,
+    debugLayout: appState.settings.debugLayout,
     viewportWidth: window.innerWidth || 0,
     viewportHeight: window.innerHeight || 0,
     screenWidth: window.screen?.width || 0,
@@ -470,6 +472,7 @@ function normalizeStoredViewerProfile(profile) {
     fontFamilyPreference: String(profile.fontFamilyPreference || "system").slice(0, 32),
     pageColumns: profile.pageColumns === true,
     lineNumbers: profile.lineNumbers === true,
+    debugLayout: profile.debugLayout === true,
     viewportWidth: finiteInteger(profile.viewportWidth, 0),
     viewportHeight: finiteInteger(profile.viewportHeight, 0),
     screenWidth: finiteInteger(profile.screenWidth, 0),
@@ -747,6 +750,7 @@ function buildSettingsPayload(settings) {
     structureAutoDetect: settings.structureAutoDetect !== false,
     pageColumns: settings.pageColumns === true,
     lineNumbers: settings.lineNumbers === true,
+    debugLayout: settings.debugLayout === true,
     pageTurnEffect: normalizePageTurnEffect(settings.pageTurnEffect),
     updatedAt: new Date().toISOString()
   };
