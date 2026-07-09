@@ -89,6 +89,12 @@ export function initReader({
     sourceLocator: null,
     engine: "legacy"
   };
+
+  const applyDebugLayout = (enabled) => {
+    debugLayout = enabled === true;
+    document.body.classList.toggle("reader-debug-layout", debugLayout);
+    if (debugLayoutCheck) debugLayoutCheck.checked = debugLayout;
+  };
   const refreshHScroll = setupHScroll(scrollContainer);
   const isMobileReadingDevice = () => {
     const width = Number(window.innerWidth) || 0;
@@ -1208,11 +1214,10 @@ export function initReader({
     pageTurnEffect = normalizePageTurnEffect(nextSettings.pageTurnEffect);
     pageColumns = nextSettings.pageColumns === true;
     lineNumbers = nextSettings.lineNumbers === true;
-    debugLayout = nextSettings.debugLayout === true;
+    applyDebugLayout(nextSettings.debugLayout === true);
     genkoPreset = false;
     document.body.classList.toggle("page-columns-enabled", isSpreadViewActive());
     document.body.classList.toggle("line-numbers-enabled", lineNumbers);
-    document.body.classList.toggle("reader-debug-layout", debugLayout);
     document.body.classList.remove("genko-preset-enabled");
     wrapWidthPercent = normalizeWrapWidthPercent(nextSettings.wrapWidthPercent);
     writingModePreference = normalizeWritingModePreference(nextSettings.writingModePreference);
@@ -1237,7 +1242,7 @@ export function initReader({
     if (pageTurnEffectSelect) pageTurnEffectSelect.value = pageTurnEffect;
     if (pageColumnsCheck) pageColumnsCheck.checked = pageColumns;
     if (lineNumbersCheck) lineNumbersCheck.checked = lineNumbers;
-    if (debugLayoutCheck) debugLayoutCheck.checked = debugLayout;
+    applyDebugLayout(debugLayout);
     displayModeRadios.forEach((radio) => {
       radio.checked = radio.value === nextDisplayMode;
     });
@@ -1279,8 +1284,13 @@ export function initReader({
     lineNumbersCheck?.addEventListener("change", () => {
       updateSettings({ lineNumbers: Boolean(lineNumbersCheck.checked) });
     });
+    debugLayoutCheck?.addEventListener("input", () => {
+      applyDebugLayout(Boolean(debugLayoutCheck.checked));
+      updateSettings({ debugLayout });
+    });
     debugLayoutCheck?.addEventListener("change", () => {
-      updateSettings({ debugLayout: Boolean(debugLayoutCheck.checked) });
+      applyDebugLayout(Boolean(debugLayoutCheck.checked));
+      updateSettings({ debugLayout });
     });
     saveSettingsBtn?.addEventListener("click", () => {
       const next = getCurrentSettings();
