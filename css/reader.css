@@ -1252,9 +1252,11 @@ body.settings-open .tap-zone {
 .range-with-guide {
   position: relative;
   --genko-guide-percent: 88%;
+  --saved-range-percent: -1%;
 }
 
-.range-guide-pin {
+.range-guide-pin,
+.saved-range-pin {
   position: absolute;
   top: 50%;
   left: var(--genko-guide-percent, 100%);
@@ -1267,6 +1269,15 @@ body.settings-open .tap-zone {
   pointer-events: none;
 }
 
+.saved-range-pin {
+  left: var(--saved-range-percent, -1%);
+  width: 1px;
+  height: 12px;
+  background: color-mix(in srgb, var(--text), transparent 24%);
+  opacity: 0.75;
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--panel), transparent 8%);
+}
+
 .range-guide-pin::before {
   content: "";
   position: absolute;
@@ -1277,6 +1288,10 @@ body.settings-open .tap-zone {
   height: 6px;
   border-radius: 999px;
   background: var(--accent);
+}
+
+.saved-range-pin::before {
+  content: none;
 }
 
 .range-guide-hint {
@@ -1327,6 +1342,24 @@ body.theme-dark .settings-panel select option {
 .settings-panel .button.ghost.danger {
   border-color: color-mix(in srgb, var(--danger), var(--border) 25%);
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--danger), transparent 84%);
+}
+
+.option-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  width: 100%;
+  padding: 9px 10px;
+  border: 1px solid color-mix(in srgb, var(--accent), var(--text) 28%);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--panel), var(--accent) 6%);
+  line-height: 1.45;
+}
+
+.option-check:has(input:checked) {
+  border-color: color-mix(in srgb, var(--accent), var(--text) 55%);
+  background: color-mix(in srgb, var(--accent), var(--panel) 78%);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent), transparent 72%);
 }
 
 .settings-panel .button:hover,

@@ -60,7 +60,9 @@ export function initReader({
   const debugLayoutCheck = qs("#debugLayoutCheck");
   const reloadBtn = qs("#reloadBtn");
   const hardReloadBtn = qs("#hardReloadBtn");
+  const resetSettingsBtn = qs("#resetSettingsBtn");
   const displayModeRadios = Array.from(document.querySelectorAll('input[name="displayMode"]'));
+  const savedRangePins = Array.from(document.querySelectorAll("[data-saved-pin]"));
   const scrollContainer = readerViewport || bookContent;
   const bookFormat = getBookFormat(book);
   const supportsStructureAutoDetect = bookFormat === "txt";
@@ -76,6 +78,7 @@ export function initReader({
   let debugLayout = settings?.debugLayout === true;
   let genkoPreset = false;
   let pageMarginPercent = normalizePageMarginPercent(settings?.pageMarginPercent, settings?.wrapWidthPercent);
+  let savedSettingsSnapshot = null;
   let writingModePreference = normalizeWritingModePreference(settings?.writingModePreference);
   let pageDirection = writingModePreference === "vertical" ? "rtl" : "ltr";
   let isInitialLayout = true;
@@ -130,6 +133,72 @@ export function initReader({
     return Math.round(Math.max(18, Math.min(56, Number(lineAdvance) * 1.8 || 28)));
   };
   const getContentWidthPercent = () => Math.max(40, Math.min(100, 100 - normalizePageMarginPercent(pageMarginPercent) * 2));
+  const READER_DEFAULT_SETTINGS = {
+    fontSize: 100,
+    fontFamilyPreference: "system",
+    lineHeight: 1.8,
+    letterSpacing: 0,
+    pageMarginPercent: 6,
+    wrapWidthPercent: 88,
+    theme: "light",
+    displayMode: "paged",
+    wheelPaging: false,
+    structureAutoDetect: true,
+    pageTurnEffect: "none",
+    spreadView: false,
+    pageColumns: false,
+    stackedView: false,
+    twoTierView: false,
+    lineNumbers: false,
+    debugLayout: false,
+    writingModePreference: "vertical"
+  };
+  const rangePinConfig = {
+    fontSize: { min: 80, max: 140 },
+    lineHeight: { min: 1.4, max: 2.4 },
+    letterSpacing: { min: -0.5, max: 1.5 },
+    pageMarginPercent: { min: 0, max: 30 }
+  };
+  const normalizeSavedSettingsSnapshot = (source = {}) => {
+    const spread = isSpreadViewSettingEnabled(source);
+    const margin = normalizePageMarginPercent(source?.pageMarginPercent, source?.wrapWidthPercent);
+    return {
+      fontSize: Number(source?.fontSize) || READER_DEFAULT_SETTINGS.fontSize,
+      lineHeight: Number(source?.lineHeight) || READER_DEFAULT_SETTINGS.lineHeight,
+      letterSpacing: Number.isFinite(Number(source?.letterSpacing)) ? Number(source.letterSpacing) : READER_DEFAULT_SETTINGS.letterSpacing,
+      pageMarginPercent: margin,
+      wrapWidthPercent: pageMarginToWrapWidthPercent(margin),
+      fontFamilyPreference: normalizeFontFamilyPreference(source?.fontFamilyPreference || READER_DEFAULT_SETTINGS.fontFamilyPreference),
+      theme: source?.theme || READER_DEFAULT_SETTINGS.theme,
+      displayMode: normalizeDisplayMode(source?.displayMode || READER_DEFAULT_SETTINGS.displayMode),
+      wheelPaging: Boolean(source?.wheelPaging),
+      structureAutoDetect: source?.structureAutoDetect !== false,
+      pageTurnEffect: normalizePageTurnEffect(source?.pageTurnEffect || READER_DEFAULT_SETTINGS.pageTurnEffect),
+      spreadView: spread,
+      pageColumns: spread,
+      stackedView: !spread && isStackedViewSettingEnabled(source),
+      twoTierView: !spread && isStackedViewSettingEnabled(source),
+      lineNumbers: source?.lineNumbers === true,
+      debugLayout: source?.debugLayout === true,
+      writingModePreference: normalizeWritingModePreference(source?.writingModePreference || READER_DEFAULT_SETTINGS.writingModePreference)
+    };
+  };
+  const rangePercent = (value, config) => {
+    const min = Number(config?.min) || 0;
+    const max = Number(config?.max) || min + 1;
+    const raw = Number(value);
+    const clamped = Math.max(min, Math.min(max, Number.isFinite(raw) ? raw : min));
+    return ((clamped - min) / Math.max(1, max - min)) * 100;
+  };
+  const updateSavedRangePins = () => {
+    savedRangePins.forEach((pin) => {
+      const key = pin.dataset.savedPin;
+      const config = rangePinConfig[key];
+      if (!key || !config) return;
+      pin.style.setProperty("--saved-range-percent", `${rangePercent(savedSettingsSnapshot[key], config).toFixed(2)}%`);
+    });
+  };
+  savedSettingsSnapshot = normalizeSavedSettingsSnapshot(settings);
   const resolvePageColumnFrame = ({ mode, width, height, wrapped }) => {
     const safeWidth = Math.max(1, Number(width) || 1);
     const safeHeight = Math.max(1, Number(height) || 1);
@@ -869,6 +938,8 @@ export function initReader({
   }
 
   function captureMobileTextPagerLocator() {
+    const visibleLocator = captureVisibleMobileTextPagerLocator();
+    if (visibleLocator) return visibleLocator;
     const stored = mobileTextPager.sourceLocator;
     if (stored && Number.isFinite(Number(stored.sourceOffset))) {
       return {
@@ -877,6 +948,17 @@ export function initReader({
       };
     }
     return createMobileTextPagerLocator(mobileTextPager.pages[mobileTextPager.pageIndex]);
+  }
+
+  function captureVisibleMobileTextPagerLocator() {
+    const visiblePage = bookContent?.querySelector(".mobile-text-page:not(.blank-page)");
+    if (!visiblePage) return null;
+    const sourceOffset = Number(visiblePage.dataset.sourceStart);
+    if (!Number.isFinite(sourceOffset)) return null;
+    return {
+      chapterId: String(visiblePage.dataset.chapterId || "chapter-001"),
+      sourceOffset: Math.max(0, sourceOffset)
+    };
   }
 
   function createMobileTextPagerLocator(page) {
@@ -1092,7 +1174,7 @@ export function initReader({
   }
 
   function getMobileTextPagerVisiblePageCount() {
-    return isSpreadViewActive() ? 2 : 1;
+    return getPageGroupArrangement() === "single" ? 1 : 2;
   }
 
   function normalizeMobileTextPagerPageIndex(pageIndex) {
@@ -1295,6 +1377,7 @@ export function initReader({
     });
     renderToc(book);
     updateSettingValueLabels();
+    updateSavedRangePins();
   }
 
   function applyTheme(theme) {
@@ -1347,9 +1430,14 @@ export function initReader({
       applyDebugLayout(Boolean(debugLayoutCheck.checked));
       updateSettings({ debugLayout });
     });
+    resetSettingsBtn?.addEventListener("click", () => {
+      updateSettings({ ...READER_DEFAULT_SETTINGS });
+    });
     saveSettingsBtn?.addEventListener("click", () => {
       const next = getCurrentSettings();
       onSaveSettings?.(next);
+      savedSettingsSnapshot = normalizeSavedSettingsSnapshot(next);
+      updateSavedRangePins();
       saveSettingsBtn.textContent = "保存しました";
       window.setTimeout(() => {
         if (saveSettingsBtn) saveSettingsBtn.textContent = "設定を保存";
