@@ -41,6 +41,7 @@ const DEFAULT_SETTINGS = {
   wheelPaging: false,
   writingModePreference: "vertical",
   structureAutoDetect: true,
+  spreadView: false,
   pageColumns: false,
   lineNumbers: false,
   debugLayout: false,
@@ -447,7 +448,8 @@ function buildAppViewerProfile() {
     letterSpacing: appState.settings.letterSpacing,
     wrapWidthPercent: appState.settings.wrapWidthPercent,
     fontFamilyPreference: appState.settings.fontFamilyPreference,
-    pageColumns: appState.settings.pageColumns,
+    spreadView: isSpreadViewSettingEnabled(appState.settings),
+    pageColumns: isSpreadViewSettingEnabled(appState.settings),
     lineNumbers: appState.settings.lineNumbers,
     debugLayout: appState.settings.debugLayout,
     viewportWidth: window.innerWidth || 0,
@@ -470,7 +472,8 @@ function normalizeStoredViewerProfile(profile) {
     letterSpacing: finiteNumber(profile.letterSpacing, 0),
     wrapWidthPercent: finiteNumber(profile.wrapWidthPercent, 100),
     fontFamilyPreference: String(profile.fontFamilyPreference || "system").slice(0, 32),
-    pageColumns: profile.pageColumns === true,
+    spreadView: isSpreadViewSettingEnabled(profile),
+    pageColumns: isSpreadViewSettingEnabled(profile),
     lineNumbers: profile.lineNumbers === true,
     debugLayout: profile.debugLayout === true,
     viewportWidth: finiteInteger(profile.viewportWidth, 0),
@@ -736,6 +739,7 @@ function saveSettings(bookId, settings) {
 }
 
 function buildSettingsPayload(settings) {
+  const spreadView = isSpreadViewSettingEnabled(settings);
   return {
     fontSize: Number(settings.fontSize) || 100,
     fontFamilyPreference: settings.fontFamilyPreference || "system",
@@ -748,7 +752,8 @@ function buildSettingsPayload(settings) {
     wheelPaging: Boolean(settings.wheelPaging),
     writingModePreference: settings.writingModePreference || "vertical",
     structureAutoDetect: settings.structureAutoDetect !== false,
-    pageColumns: settings.pageColumns === true,
+    spreadView,
+    pageColumns: spreadView,
     lineNumbers: settings.lineNumbers === true,
     debugLayout: settings.debugLayout === true,
     pageTurnEffect: normalizePageTurnEffect(settings.pageTurnEffect),
@@ -762,6 +767,10 @@ function normalizeStoredDisplayMode(mode) {
     return "scroll";
   }
   return "paged";
+}
+
+function isSpreadViewSettingEnabled(settings) {
+  return settings?.spreadView === true || settings?.pageColumns === true;
 }
 
 function saveGlobalSettings(settings) {

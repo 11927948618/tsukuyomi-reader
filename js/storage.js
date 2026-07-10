@@ -84,6 +84,7 @@ export async function exportZipFromBook(book, options = {}) {
     pageIndex: Number.isFinite(bookmark.pageIndex) ? bookmark.pageIndex : 0,
     progressPercent: Number.isFinite(bookmark.progressPercent) ? bookmark.progressPercent : 0
   };
+  const spreadView = settings.spreadView === true || settings.pageColumns === true;
 
   const meta = {
     formatVersion: 1,
@@ -102,7 +103,8 @@ export async function exportZipFromBook(book, options = {}) {
       tapInScroll: Boolean(settings.tapInScroll),
       wheelPaging: Boolean(settings.wheelPaging),
       writingModePreference: settings.writingModePreference || "vertical",
-      pageColumns: settings.pageColumns === true,
+      spreadView,
+      pageColumns: spreadView,
       lineNumbers: settings.lineNumbers === true,
       debugLayout: settings.debugLayout === true,
     },
