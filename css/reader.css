@@ -395,13 +395,20 @@ body.mobile-text-pager.mode-paged .reader-content.mobile-pager-content {
   overflow: hidden;
 }
 
-.mobile-text-spread.vertical {
+.mobile-text-spread.spread.vertical,
+.mobile-text-spread.vertical:not(.stacked) {
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   direction: rtl;
 }
 
-.mobile-text-spread.horizontal {
+.mobile-text-spread.spread.horizontal,
+.mobile-text-spread.horizontal:not(.stacked) {
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  direction: ltr;
+}
+
+.mobile-text-spread.stacked {
+  grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
   direction: ltr;
 }
 

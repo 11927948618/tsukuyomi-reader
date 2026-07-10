@@ -43,18 +43,19 @@ export function initReader({
   const fontFamilySelect = qs("#fontFamilySelect");
   const lineHeightRange = qs("#lineHeightRange");
   const letterSpacingRange = qs("#letterSpacingRange");
-  const wrapWidthRange = qs("#wrapWidthRange");
-  const wrapWidthLabel = qs("#wrapWidthLabel");
+  const pageMarginRange = qs("#pageMarginRange") || qs("#wrapWidthRange");
+  const pageMarginLabel = qs("#pageMarginLabel") || qs("#wrapWidthLabel");
   const fontSizeValue = qs("#fontSizeValue");
   const lineHeightValue = qs("#lineHeightValue");
   const letterSpacingValue = qs("#letterSpacingValue");
-  const wrapWidthValue = qs("#wrapWidthValue");
+  const pageMarginValue = qs("#pageMarginValue") || qs("#wrapWidthValue");
   const themeSelect = qs("#themeSelect");
   const writingModeSelect = qs("#writingModeSelect");
   const wheelPagingCheck = qs("#wheelPagingCheck");
   const structureAutoDetectCheck = qs("#structureAutoDetectCheck");
   const pageTurnEffectSelect = qs("#pageTurnEffectSelect");
   const spreadViewCheck = qs("#spreadViewCheck") || qs("#pageColumnsCheck");
+  const stackedViewCheck = qs("#stackedViewCheck") || qs("#twoTierViewCheck");
   const lineNumbersCheck = qs("#lineNumbersCheck");
   const debugLayoutCheck = qs("#debugLayoutCheck");
   const reloadBtn = qs("#reloadBtn");
@@ -70,10 +71,11 @@ export function initReader({
   let structureAutoDetect = settings?.structureAutoDetect !== false;
   let pageTurnEffect = normalizePageTurnEffect(settings?.pageTurnEffect);
   let spreadViewEnabled = isSpreadViewSettingEnabled(settings);
+  let stackedViewEnabled = !spreadViewEnabled && isStackedViewSettingEnabled(settings);
   let lineNumbers = settings?.lineNumbers === true;
   let debugLayout = settings?.debugLayout === true;
   let genkoPreset = false;
-  let wrapWidthPercent = normalizeWrapWidthPercent(settings?.wrapWidthPercent);
+  let pageMarginPercent = normalizePageMarginPercent(settings?.pageMarginPercent, settings?.wrapWidthPercent);
   let writingModePreference = normalizeWritingModePreference(settings?.writingModePreference);
   let pageDirection = writingModePreference === "vertical" ? "rtl" : "ltr";
   let isInitialLayout = true;
@@ -104,16 +106,30 @@ export function initReader({
     const coarsePointer = window.matchMedia?.("(pointer: coarse)")?.matches || false;
     return coarsePointer || shortSide <= 640;
   };
+  const isSmallReadingViewport = () => {
+    const width = Number(window.innerWidth) || 0;
+    const height = Number(window.innerHeight) || 0;
+    return Math.min(width || Infinity, height || Infinity) <= 640;
+  };
   const isSpreadViewActive = () => spreadViewEnabled && !isMobileReadingDevice();
+  const isStackedViewActive = () => stackedViewEnabled && !isSmallReadingViewport();
+  const getPageGroupArrangement = () => {
+    if (isSpreadViewActive()) return "spread";
+    if (isStackedViewActive()) return "stacked";
+    return "single";
+  };
   const applySpreadViewBodyClass = () => {
-    const active = isSpreadViewActive();
-    document.body.classList.toggle("spread-view-enabled", active);
-    document.body.classList.toggle("page-columns-enabled", active);
+    const spreadActive = isSpreadViewActive();
+    const stackedActive = isStackedViewActive();
+    document.body.classList.toggle("spread-view-enabled", spreadActive);
+    document.body.classList.toggle("page-columns-enabled", spreadActive);
+    document.body.classList.toggle("stacked-view-enabled", stackedActive);
   };
   const getPageColumnGapPx = (lineAdvance = 24) => {
-    if (!isSpreadViewActive()) return 0;
+    if (getPageGroupArrangement() === "single") return 0;
     return Math.round(Math.max(18, Math.min(56, Number(lineAdvance) * 1.8 || 28)));
   };
+  const getContentWidthPercent = () => Math.max(40, Math.min(100, 100 - normalizePageMarginPercent(pageMarginPercent) * 2));
   const resolvePageColumnFrame = ({ mode, width, height, wrapped }) => {
     const safeWidth = Math.max(1, Number(width) || 1);
     const safeHeight = Math.max(1, Number(height) || 1);
@@ -125,10 +141,14 @@ export function initReader({
   };
   const resolveSinglePagePhysicalWidth = (width, rawWrapped = null, columnGap = 0) => {
     const safeWidth = Math.max(1, Math.round(Number(width) || 1));
-    const requestedWidth = Math.max(1, Math.round(Number(rawWrapped) || safeWidth * (wrapWidthPercent / 100)));
+    const requestedWidth = Math.max(1, Math.round(Number(rawWrapped) || safeWidth * (getContentWidthPercent() / 100)));
     if (isSpreadViewActive()) {
       const safeGap = Math.max(0, Math.round(Number(columnGap) || 0));
-      return Math.min(requestedWidth, Math.max(1, Math.floor((safeWidth - safeGap) / 2)));
+      const requestedSpreadWidth = Math.min(requestedWidth, safeWidth);
+      return Math.min(
+        Math.max(1, Math.floor((requestedSpreadWidth - safeGap) / 2)),
+        Math.max(1, Math.floor((safeWidth - safeGap) / 2))
+      );
     }
     return Math.min(requestedWidth, safeWidth);
   };
@@ -139,21 +159,31 @@ export function initReader({
       ? { width: blockSize, height: inlineSize }
       : { width: inlineSize, height: blockSize };
   };
-  const resolveSpreadPhysicalSize = ({ pageSize, visibleCount, columnGap }) => {
+  const resolveSpreadPhysicalSize = ({ pageSize, visibleCount, columnGap, arrangement = "spread" }) => {
     const count = Math.max(1, Math.floor(Number(visibleCount) || 1));
     const gap = count > 1 ? Math.max(0, Math.round(Number(columnGap) || 0)) : 0;
+    if (arrangement === "stacked") {
+      return {
+        width: Math.max(1, Math.round(pageSize.width)),
+        height: Math.max(1, Math.round(pageSize.height * count + gap * (count - 1)))
+      };
+    }
     return {
       width: Math.max(1, Math.round(pageSize.width * count + gap * (count - 1))),
       height: Math.max(1, Math.round(pageSize.height))
     };
   };
   const resolveSinglePageLayout = ({ viewportWidth, viewportHeight, mode, charAdvance, lineAdvance, rawWrapped = null }) => {
+    const arrangement = getPageGroupArrangement();
     const columnGap = getPageColumnGapPx(lineAdvance);
+    const pageViewportHeight = arrangement === "stacked"
+      ? Math.max(1, Math.floor((Math.max(1, viewportHeight) - columnGap) / 2))
+      : viewportHeight;
     const pagePhysicalWidth = resolveSinglePagePhysicalWidth(viewportWidth, rawWrapped, columnGap);
     const frame = resolvePageColumnFrame({
       mode,
       width: viewportWidth,
-      height: viewportHeight,
+      height: pageViewportHeight,
       wrapped: pagePhysicalWidth
     });
     const inlineBase = frame.inlineBase;
@@ -173,10 +203,10 @@ export function initReader({
           lineAdvance,
           genkoPreset: false
         });
-    const visibleCount = isSpreadViewActive() ? 2 : 1;
+    const visibleCount = arrangement === "single" ? 1 : 2;
     const pageSize = resolvePagePhysicalSize(plan, mode);
-    const spreadSize = resolveSpreadPhysicalSize({ pageSize, visibleCount, columnGap });
-    return { columnGap, pagePhysicalWidth, frame, plan, visibleCount, pageSize, spreadSize };
+    const spreadSize = resolveSpreadPhysicalSize({ pageSize, visibleCount, columnGap, arrangement });
+    return { arrangement, columnGap, pagePhysicalWidth, frame, plan, visibleCount, pageSize, spreadSize };
   };
   const shouldUseMobileTextPager = () => {
     // Explicit pagination is shared by mobile and desktop. Browser CSS columns
@@ -291,7 +321,7 @@ export function initReader({
     applySpreadViewBodyClass();
     const width = getHorizontalPageSize();
     const height = getViewportInnerSize("y");
-    const rawWrapped = Math.round(width * (wrapWidthPercent / 100));
+    const rawWrapped = Math.round(width * (getContentWidthPercent() / 100));
     const metrics = getReaderTextMetrics();
     const mode = normalizeWritingModePreference(writingModePreference);
     const baseLineAdvance = Math.max(10, metrics.lineHeightPx);
@@ -888,8 +918,8 @@ export function initReader({
     const viewportWidth = getViewportInnerSize("x");
     const viewportHeight = getViewportInnerSize("y");
     const rawWrapped = mode === "horizontal"
-      ? viewportWidth
-      : Math.round(viewportWidth * (wrapWidthPercent / 100));
+      ? Math.round(viewportWidth * (getContentWidthPercent() / 100))
+      : Math.round(viewportWidth * (getContentWidthPercent() / 100));
     const layout = resolveSinglePageLayout({
       viewportWidth,
       viewportHeight,
@@ -923,6 +953,7 @@ export function initReader({
       spreadWidth: layout.spreadSize.width,
       spreadHeight: layout.spreadSize.height,
       visiblePageCount: layout.visibleCount,
+      pageArrangement: layout.arrangement,
       writingMode: mode,
       lineAdvancePx: plan.lineAdvance || baseLineAdvance,
       charSafetyReserve: 1,
@@ -987,7 +1018,8 @@ export function initReader({
     }
     const sourceStart = Math.max(0, Number(mobileTextPager.pages[startPageIndex]?.sourceStart) || 0);
     const sourceEnd = Math.max(sourceStart, Number(mobileTextPager.pages[Math.min(maxPage, startPageIndex + pageCount - 1)]?.sourceEnd) || sourceStart);
-    return `<div class="mobile-text-spread ${mode}" data-page-index="${Math.max(0, startPageIndex)}" data-source-start="${sourceStart}" data-source-end="${sourceEnd}">${pages.join("")}</div>`;
+    const arrangement = mobileTextPager.plan?.pageArrangement === "stacked" ? "stacked" : "spread";
+    return `<div class="mobile-text-spread ${mode} ${arrangement}" data-page-index="${Math.max(0, startPageIndex)}" data-source-start="${sourceStart}" data-source-end="${sourceEnd}">${pages.join("")}</div>`;
   }
 
   function buildMobileTextBlankPageMarkup(pageIndex, plan = null) {
@@ -1226,13 +1258,14 @@ export function initReader({
     structureAutoDetect = nextSettings.structureAutoDetect !== false;
     pageTurnEffect = normalizePageTurnEffect(nextSettings.pageTurnEffect);
     spreadViewEnabled = isSpreadViewSettingEnabled(nextSettings);
+    stackedViewEnabled = !spreadViewEnabled && isStackedViewSettingEnabled(nextSettings);
     lineNumbers = nextSettings.lineNumbers === true;
     applyDebugLayout(nextSettings.debugLayout === true);
     genkoPreset = false;
     applySpreadViewBodyClass();
     document.body.classList.toggle("line-numbers-enabled", lineNumbers);
     document.body.classList.remove("genko-preset-enabled");
-    wrapWidthPercent = normalizeWrapWidthPercent(nextSettings.wrapWidthPercent);
+    pageMarginPercent = normalizePageMarginPercent(nextSettings.pageMarginPercent, nextSettings.wrapWidthPercent);
     writingModePreference = normalizeWritingModePreference(nextSettings.writingModePreference);
     applyWritingModePreference(writingModePreference);
     updatePageDirection({ preservePosition: true });
@@ -1246,7 +1279,7 @@ export function initReader({
     }
     lineHeightRange.value = String(nextSettings.lineHeight ?? 1.8);
     letterSpacingRange.value = String(nextSettings.letterSpacing ?? 0);
-    if (wrapWidthRange) wrapWidthRange.value = String(wrapWidthPercent);
+    if (pageMarginRange) pageMarginRange.value = String(pageMarginPercent);
     themeSelect.value = nextSettings.theme || "light";
     if (writingModeSelect) writingModeSelect.value = writingModePreference;
     if (wheelPagingCheck) wheelPagingCheck.checked = wheelPaging;
@@ -1254,6 +1287,7 @@ export function initReader({
     syncStructureAutoDetectControl();
     if (pageTurnEffectSelect) pageTurnEffectSelect.value = pageTurnEffect;
     if (spreadViewCheck) spreadViewCheck.checked = spreadViewEnabled;
+    if (stackedViewCheck) stackedViewCheck.checked = stackedViewEnabled;
     if (lineNumbersCheck) lineNumbersCheck.checked = lineNumbers;
     applyDebugLayout(debugLayout);
     displayModeRadios.forEach((radio) => {
@@ -1275,8 +1309,9 @@ export function initReader({
     });
     lineHeightRange.addEventListener("input", () => updateSettings({ lineHeight: Number(lineHeightRange.value) }));
     letterSpacingRange.addEventListener("input", () => updateSettings({ letterSpacing: Number(letterSpacingRange.value) }));
-    wrapWidthRange?.addEventListener("input", () => {
-      updateSettings({ wrapWidthPercent: normalizeWrapWidthPercent(wrapWidthRange.value) });
+    pageMarginRange?.addEventListener("input", () => {
+      const margin = normalizePageMarginPercent(pageMarginRange.value);
+      updateSettings({ pageMarginPercent: margin, wrapWidthPercent: pageMarginToWrapWidthPercent(margin) });
     });
     themeSelect.addEventListener("change", () => updateSettings({ theme: themeSelect.value }));
     writingModeSelect?.addEventListener("change", () => {
@@ -1293,7 +1328,13 @@ export function initReader({
     });
     spreadViewCheck?.addEventListener("change", () => {
       const enabled = Boolean(spreadViewCheck.checked);
-      updateSettings({ spreadView: enabled, pageColumns: enabled });
+      if (enabled && stackedViewCheck) stackedViewCheck.checked = false;
+      updateSettings({ spreadView: enabled, pageColumns: enabled, stackedView: false, twoTierView: false });
+    });
+    stackedViewCheck?.addEventListener("change", () => {
+      const enabled = Boolean(stackedViewCheck.checked);
+      if (enabled && spreadViewCheck) spreadViewCheck.checked = false;
+      updateSettings({ stackedView: enabled, twoTierView: enabled, spreadView: false, pageColumns: false });
     });
     lineNumbersCheck?.addEventListener("change", () => {
       updateSettings({ lineNumbers: Boolean(lineNumbersCheck.checked) });
@@ -1376,11 +1417,12 @@ export function initReader({
     const lineHeight = Number(lineHeightRange?.value) || 1.8;
     const lineHeightPx = metrics.lineHeightPx;
     const letterSpacingPx = metrics.letterSpacingPx;
-    const wrapPercent = normalizeWrapWidthPercent(wrapWidthRange?.value);
+    const marginPercent = normalizePageMarginPercent(pageMarginRange?.value ?? pageMarginPercent);
+    const contentPercent = Math.max(40, 100 - marginPercent * 2);
     const viewportWidth = getHorizontalPageSize();
     const viewportHeight = getViewportInnerSize("y");
     const mode = normalizeWritingModePreference(writingModeSelect?.value || writingModePreference);
-    const wrapPx = Math.round(viewportWidth * (wrapPercent / 100));
+    const wrapPx = Math.round(viewportWidth * (contentPercent / 100));
     const inlineAdvance = Math.max(6, fontPx * 0.95 + letterSpacingPx);
     const layout = displayMode === "paged"
       ? resolveSinglePageLayout({
@@ -1426,19 +1468,22 @@ export function initReader({
       const sign = letterSpacingPx > 0 ? "+" : "";
       letterSpacingValue.textContent = `${sign}${letterSpacingPx.toFixed(1)}px`;
     }
-    if (wrapWidthValue) {
+    if (pageMarginValue) {
       const spreadActive = isSpreadViewActive() && displayMode === "paged";
+      const stackedActive = isStackedViewActive() && displayMode === "paged";
       const singlePageActive = displayMode === "paged";
-      if (wrapWidthLabel) {
-        wrapWidthLabel.textContent = spreadActive ? "本文幅（片面の希望値）" : "本文幅";
+      if (pageMarginLabel) {
+        pageMarginLabel.textContent = "余白";
       }
-      const requestedPart = `希望${wrapPercent}% / 約${wrapPx}px`;
+      const requestedPart = `余白${marginPercent}% / 本文約${contentPercent}% / 約${wrapPx}px`;
       const actualPart = singlePageActive
         ? spreadActive
           ? `${requestedPart} / 片面約${Math.round(pageSize.width)}px / 見開き約${Math.round(spreadSize.width)}px`
+          : stackedActive
+            ? `${requestedPart} / 実効約${Math.round(pageSize.width)}px / 上下2段約${Math.round(spreadSize.height)}px高`
           : `${requestedPart} / 実効約${Math.round(pageSize.width)}px`
         : requestedPart;
-      wrapWidthValue.textContent =
+      pageMarginValue.textContent =
         mode === "horizontal"
           ? `${actualPart} / 約${approxCharsPerLine}字×${approxLinesPerPage}行`
           : `${actualPart} / 約${approxCharsPerLine}字×${approxLinesPerPage}列`;
@@ -1461,7 +1506,8 @@ export function initReader({
       fontFamilyPreference: normalizeFontFamilyPreference(fontFamilySelect?.value),
       lineHeight: Number(lineHeightRange.value) || 1.8,
       letterSpacing: Number(letterSpacingRange.value) || 0,
-      wrapWidthPercent: normalizeWrapWidthPercent(wrapWidthRange?.value),
+      pageMarginPercent: normalizePageMarginPercent(pageMarginRange?.value ?? pageMarginPercent),
+      wrapWidthPercent: pageMarginToWrapWidthPercent(pageMarginRange?.value ?? pageMarginPercent),
       theme: themeSelect.value || "light",
       displayMode: normalizeDisplayMode(displayModeRadios.find((radio) => radio.checked)?.value || displayMode),
       wheelPaging: Boolean(wheelPagingCheck?.checked),
@@ -1469,6 +1515,8 @@ export function initReader({
       pageTurnEffect: normalizePageTurnEffect(pageTurnEffectSelect?.value || pageTurnEffect),
       spreadView: Boolean(spreadViewCheck?.checked),
       pageColumns: Boolean(spreadViewCheck?.checked),
+      stackedView: Boolean(stackedViewCheck?.checked) && !Boolean(spreadViewCheck?.checked),
+      twoTierView: Boolean(stackedViewCheck?.checked) && !Boolean(spreadViewCheck?.checked),
       lineNumbers: Boolean(lineNumbersCheck?.checked),
       debugLayout: Boolean(debugLayoutCheck?.checked),
       writingModePreference: normalizeWritingModePreference(writingModeSelect?.value || writingModePreference),
@@ -1515,10 +1563,13 @@ export function initReader({
       lineHeight: Number(lineHeightRange?.value) || Number(settings?.lineHeight) || 1.8,
       lineHeightPx: metrics.lineHeightPx,
       letterSpacing: Number(letterSpacingRange?.value) || Number(settings?.letterSpacing) || 0,
-      wrapWidthPercent,
+      pageMarginPercent,
+      wrapWidthPercent: pageMarginToWrapWidthPercent(pageMarginPercent),
       fontFamilyPreference: normalizeFontFamilyPreference(fontFamilySelect?.value || settings?.fontFamilyPreference),
       spreadView: spreadViewEnabled,
       pageColumns: spreadViewEnabled,
+      stackedView: stackedViewEnabled,
+      twoTierView: stackedViewEnabled,
       lineNumbers,
       debugLayout,
       viewportWidth: readerViewport?.clientWidth || window.innerWidth || 0,
@@ -2198,6 +2249,10 @@ function isSpreadViewSettingEnabled(settings) {
   return settings?.spreadView === true || settings?.pageColumns === true;
 }
 
+function isStackedViewSettingEnabled(settings) {
+  return settings?.stackedView === true || settings?.twoTierView === true;
+}
+
 function withPdfViewerParams(url) {
   const raw = String(url || "").trim();
   if (!raw) return "";
@@ -2398,6 +2453,19 @@ function normalizeWrapWidthPercent(value) {
   const raw = Number(value);
   if (!Number.isFinite(raw)) return 100;
   return Math.max(60, Math.min(130, Math.round(raw)));
+}
+
+function normalizePageMarginPercent(value, legacyWrapWidth = null) {
+  const raw = Number(value);
+  if (Number.isFinite(raw)) return Math.max(0, Math.min(30, Math.round(raw)));
+  const legacy = Number(legacyWrapWidth);
+  if (!Number.isFinite(legacy)) return 6;
+  return Math.max(0, Math.min(30, Math.round((100 - Math.min(100, legacy)) / 2)));
+}
+
+function pageMarginToWrapWidthPercent(value) {
+  const margin = normalizePageMarginPercent(value);
+  return Math.max(40, Math.min(100, 100 - margin * 2));
 }
 
 function normalizeDisplayMode(mode) {

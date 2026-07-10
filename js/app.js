@@ -34,7 +34,8 @@ const DEFAULT_SETTINGS = {
   fontFamilyPreference: "system",
   lineHeight: 1.8,
   letterSpacing: 0,
-  wrapWidthPercent: 100,
+  pageMarginPercent: 6,
+  wrapWidthPercent: 88,
   theme: "light",
   displayMode: "paged",
   tapInScroll: false,
@@ -43,6 +44,8 @@ const DEFAULT_SETTINGS = {
   structureAutoDetect: true,
   spreadView: false,
   pageColumns: false,
+  stackedView: false,
+  twoTierView: false,
   lineNumbers: false,
   debugLayout: false,
   pageTurnEffect: "none"
@@ -446,10 +449,13 @@ function buildAppViewerProfile() {
     fontSize: appState.settings.fontSize,
     lineHeight: appState.settings.lineHeight,
     letterSpacing: appState.settings.letterSpacing,
-    wrapWidthPercent: appState.settings.wrapWidthPercent,
+    pageMarginPercent: finiteNumber(appState.settings.pageMarginPercent, legacyWrapWidthToPageMargin(appState.settings.wrapWidthPercent)),
+    wrapWidthPercent: pageMarginToWrapWidthPercent(appState.settings.pageMarginPercent ?? legacyWrapWidthToPageMargin(appState.settings.wrapWidthPercent)),
     fontFamilyPreference: appState.settings.fontFamilyPreference,
     spreadView: isSpreadViewSettingEnabled(appState.settings),
     pageColumns: isSpreadViewSettingEnabled(appState.settings),
+    stackedView: isStackedViewSettingEnabled(appState.settings),
+    twoTierView: isStackedViewSettingEnabled(appState.settings),
     lineNumbers: appState.settings.lineNumbers,
     debugLayout: appState.settings.debugLayout,
     viewportWidth: window.innerWidth || 0,
@@ -470,10 +476,13 @@ function normalizeStoredViewerProfile(profile) {
     lineHeight: finiteNumber(profile.lineHeight, 1.8),
     lineHeightPx: finiteNumber(profile.lineHeightPx, null),
     letterSpacing: finiteNumber(profile.letterSpacing, 0),
-    wrapWidthPercent: finiteNumber(profile.wrapWidthPercent, 100),
+    pageMarginPercent: finiteNumber(profile.pageMarginPercent, legacyWrapWidthToPageMargin(profile.wrapWidthPercent)),
+    wrapWidthPercent: pageMarginToWrapWidthPercent(profile.pageMarginPercent ?? legacyWrapWidthToPageMargin(profile.wrapWidthPercent)),
     fontFamilyPreference: String(profile.fontFamilyPreference || "system").slice(0, 32),
     spreadView: isSpreadViewSettingEnabled(profile),
     pageColumns: isSpreadViewSettingEnabled(profile),
+    stackedView: isStackedViewSettingEnabled(profile),
+    twoTierView: isStackedViewSettingEnabled(profile),
     lineNumbers: profile.lineNumbers === true,
     debugLayout: profile.debugLayout === true,
     viewportWidth: finiteInteger(profile.viewportWidth, 0),
@@ -740,12 +749,15 @@ function saveSettings(bookId, settings) {
 
 function buildSettingsPayload(settings) {
   const spreadView = isSpreadViewSettingEnabled(settings);
+  const stackedView = !spreadView && isStackedViewSettingEnabled(settings);
+  const pageMarginPercent = normalizeStoredPageMargin(settings.pageMarginPercent, settings.wrapWidthPercent);
   return {
     fontSize: Number(settings.fontSize) || 100,
     fontFamilyPreference: settings.fontFamilyPreference || "system",
     lineHeight: Number(settings.lineHeight) || 1.8,
     letterSpacing: Number(settings.letterSpacing) || 0,
-    wrapWidthPercent: Number(settings.wrapWidthPercent) || 100,
+    pageMarginPercent,
+    wrapWidthPercent: pageMarginToWrapWidthPercent(pageMarginPercent),
     theme: settings.theme || "light",
     displayMode: normalizeStoredDisplayMode(settings.displayMode),
     tapInScroll: Boolean(settings.tapInScroll),
@@ -754,6 +766,8 @@ function buildSettingsPayload(settings) {
     structureAutoDetect: settings.structureAutoDetect !== false,
     spreadView,
     pageColumns: spreadView,
+    stackedView,
+    twoTierView: stackedView,
     lineNumbers: settings.lineNumbers === true,
     debugLayout: settings.debugLayout === true,
     pageTurnEffect: normalizePageTurnEffect(settings.pageTurnEffect),
@@ -771,6 +785,27 @@ function normalizeStoredDisplayMode(mode) {
 
 function isSpreadViewSettingEnabled(settings) {
   return settings?.spreadView === true || settings?.pageColumns === true;
+}
+
+function isStackedViewSettingEnabled(settings) {
+  return settings?.stackedView === true || settings?.twoTierView === true;
+}
+
+function normalizeStoredPageMargin(value, legacyWrapWidth = null) {
+  const raw = Number(value);
+  if (Number.isFinite(raw)) return Math.max(0, Math.min(30, Math.round(raw)));
+  return legacyWrapWidthToPageMargin(legacyWrapWidth);
+}
+
+function legacyWrapWidthToPageMargin(value) {
+  const raw = Number(value);
+  if (!Number.isFinite(raw)) return 6;
+  return Math.max(0, Math.min(30, Math.round((100 - Math.min(100, raw)) / 2)));
+}
+
+function pageMarginToWrapWidthPercent(value) {
+  const margin = normalizeStoredPageMargin(value);
+  return Math.max(40, Math.min(100, 100 - margin * 2));
 }
 
 function saveGlobalSettings(settings) {

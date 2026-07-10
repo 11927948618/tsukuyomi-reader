@@ -94,13 +94,13 @@
 
           <div class="field">
             <div class="field-head">
-              <label class="label" id="wrapWidthLabel" for="wrapWidthRange">本文幅</label>
+              <label class="label" id="pageMarginLabel" for="pageMarginRange">余白</label>
               <div class="field-meta">
-                <output class="field-value" id="wrapWidthValue" for="wrapWidthRange" aria-live="polite">-</output>
+                <output class="field-value" id="pageMarginValue" for="pageMarginRange" aria-live="polite">-</output>
               </div>
             </div>
             <div class="range-with-guide">
-              <input id="wrapWidthRange" type="range" min="60" max="130" step="1" />
+              <input id="pageMarginRange" type="range" min="0" max="30" step="1" />
             </div>
           </div>
         </div>
@@ -143,6 +143,10 @@
 
           <div class="field">
             <label><input id="spreadViewCheck" type="checkbox" /> 見開き表示（2ページ横並び・PC向け・試験中）</label>
+          </div>
+
+          <div class="field">
+            <label><input id="stackedViewCheck" type="checkbox" /> 上下2段表示（2ページ縦並び・タブレット向け・試験中）</label>
           </div>
 
           <div class="field">

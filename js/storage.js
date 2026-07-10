@@ -85,6 +85,7 @@ export async function exportZipFromBook(book, options = {}) {
     progressPercent: Number.isFinite(bookmark.progressPercent) ? bookmark.progressPercent : 0
   };
   const spreadView = settings.spreadView === true || settings.pageColumns === true;
+  const stackedView = !spreadView && (settings.stackedView === true || settings.twoTierView === true);
 
   const meta = {
     formatVersion: 1,
@@ -97,7 +98,8 @@ export async function exportZipFromBook(book, options = {}) {
       fontFamilyPreference: settings.fontFamilyPreference || "system",
       lineHeight: Number(settings.lineHeight) || 1.8,
       letterSpacing: Number(settings.letterSpacing) || 0,
-      wrapWidthPercent: Number(settings.wrapWidthPercent) || 100,
+      pageMarginPercent: normalizeExportPageMargin(settings.pageMarginPercent, settings.wrapWidthPercent),
+      wrapWidthPercent: pageMarginToWrapWidthPercent(settings.pageMarginPercent, settings.wrapWidthPercent),
       theme: settings.theme || "light",
       displayMode: settings.displayMode || "paged",
       tapInScroll: Boolean(settings.tapInScroll),
@@ -105,6 +107,8 @@ export async function exportZipFromBook(book, options = {}) {
       writingModePreference: settings.writingModePreference || "vertical",
       spreadView,
       pageColumns: spreadView,
+      stackedView,
+      twoTierView: stackedView,
       lineNumbers: settings.lineNumbers === true,
       debugLayout: settings.debugLayout === true,
     },
@@ -128,6 +132,19 @@ export async function exportZipFromBook(book, options = {}) {
   a.remove();
 
   setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function normalizeExportPageMargin(value, legacyWrapWidth = null) {
+  const raw = Number(value);
+  if (Number.isFinite(raw)) return Math.max(0, Math.min(30, Math.round(raw)));
+  const wrap = Number(legacyWrapWidth);
+  if (!Number.isFinite(wrap)) return 6;
+  return Math.max(0, Math.min(30, Math.round((100 - Math.min(100, wrap)) / 2)));
+}
+
+function pageMarginToWrapWidthPercent(value, legacyWrapWidth = null) {
+  const margin = normalizeExportPageMargin(value, legacyWrapWidth);
+  return Math.max(40, Math.min(100, 100 - margin * 2));
 }
 
 function generateTocFromHtml(htmlText) {
