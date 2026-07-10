@@ -380,6 +380,10 @@ body.mobile-text-pager.mode-paged .reader-content.mobile-pager-content {
   padding: 0;
 }
 
+.mobile-text-page.vertical.has-title {
+  padding-block-start: 2.2em;
+}
+
 .mobile-text-spread {
   box-sizing: border-box;
   display: grid;
@@ -508,6 +512,16 @@ body.reader-debug-layout .mobile-text-page-body::before {
   overflow: hidden;
 }
 
+.mobile-text-page.vertical h1 {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-start: 0;
+  inline-size: 100%;
+  block-size: 1.8em;
+  margin: 0;
+  text-align: start;
+}
+
 .mobile-text-page.horizontal h1 {
   margin: 0 0 0.9em;
   max-block-size: 4.2em;
@@ -583,7 +597,7 @@ body.reader-debug-layout .mobile-text-page-body::before {
   transform: translateX(-50%);
 }
 
-.mobile-text-page.has-title .mobile-text-page-body {
+.mobile-text-page.horizontal.has-title .mobile-text-page-body {
   block-size: calc(100% - 5.4em);
 }
 

@@ -44,6 +44,7 @@ export function initReader({
   const lineHeightRange = qs("#lineHeightRange");
   const letterSpacingRange = qs("#letterSpacingRange");
   const wrapWidthRange = qs("#wrapWidthRange");
+  const wrapWidthLabel = qs("#wrapWidthLabel");
   const fontSizeValue = qs("#fontSizeValue");
   const lineHeightValue = qs("#lineHeightValue");
   const letterSpacingValue = qs("#letterSpacingValue");
@@ -1428,6 +1429,9 @@ export function initReader({
     if (wrapWidthValue) {
       const spreadActive = isSpreadViewActive() && displayMode === "paged";
       const singlePageActive = displayMode === "paged";
+      if (wrapWidthLabel) {
+        wrapWidthLabel.textContent = spreadActive ? "本文幅（片面の希望値）" : "本文幅";
+      }
       const requestedPart = `希望${wrapPercent}% / 約${wrapPx}px`;
       const actualPart = singlePageActive
         ? spreadActive
