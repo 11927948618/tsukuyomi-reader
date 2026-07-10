@@ -1024,6 +1024,7 @@ export function initReader({
 
   function buildMobileTextPageBodyStyle(page, plan, pageWritingMode) {
     if (pageWritingMode !== "vertical") return "";
+    if (Number(plan?.visiblePageCount) > 1) return "";
     const lineCount = Math.max(1, Math.floor(Number(page?.lineCount) || 1));
     const lineCapacity = resolveMobileTextPageLineCapacity(page, plan);
     const spareLines = Math.max(0, lineCapacity - lineCount);
@@ -1426,11 +1427,12 @@ export function initReader({
     }
     if (wrapWidthValue) {
       const spreadActive = isSpreadViewActive() && displayMode === "paged";
-      const requestedPart = `${wrapPercent}% / 約${wrapPx}px`;
-      const actualPart = spreadActive
-        ? wrapPx > pageSize.width + 1
-          ? `${requestedPart}→約${Math.round(pageSize.width)}px片面 / 見開き約${Math.round(spreadSize.width)}px`
-          : `${requestedPart}片面 / 見開き約${Math.round(spreadSize.width)}px`
+      const singlePageActive = displayMode === "paged";
+      const requestedPart = `希望${wrapPercent}% / 約${wrapPx}px`;
+      const actualPart = singlePageActive
+        ? spreadActive
+          ? `${requestedPart} / 片面約${Math.round(pageSize.width)}px / 見開き約${Math.round(spreadSize.width)}px`
+          : `${requestedPart} / 実効約${Math.round(pageSize.width)}px`
         : requestedPart;
       wrapWidthValue.textContent =
         mode === "horizontal"
