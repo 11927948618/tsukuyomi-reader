@@ -34,8 +34,8 @@ const DEFAULT_SETTINGS = {
   fontFamilyPreference: "system",
   lineHeight: 1.8,
   letterSpacing: 0,
-  pageMarginPercent: 3,
-  wrapWidthPercent: 94,
+  pageMarginPercent: 6,
+  wrapWidthPercent: 88,
   theme: "light",
   displayMode: "paged",
   tapInScroll: false,
@@ -793,19 +793,19 @@ function isStackedViewSettingEnabled(settings) {
 
 function normalizeStoredPageMargin(value, legacyWrapWidth = null) {
   const raw = Number(value);
-  if (Number.isFinite(raw)) return Math.max(0, Math.min(30, Math.round(raw)));
+  if (Number.isFinite(raw)) return Math.max(0, Math.min(20, Math.round(raw * 10) / 10));
   return legacyWrapWidthToPageMargin(legacyWrapWidth);
 }
 
 function legacyWrapWidthToPageMargin(value) {
   const raw = Number(value);
-  if (!Number.isFinite(raw)) return 3;
-  return Math.max(0, Math.min(30, Math.round((100 - Math.min(100, raw)) / 2)));
+  if (!Number.isFinite(raw)) return 6;
+  return Math.max(0, Math.min(20, Math.round(((100 - Math.min(100, raw)) / 2) * 10) / 10));
 }
 
 function pageMarginToWrapWidthPercent(value) {
   const margin = normalizeStoredPageMargin(value);
-  return Math.max(40, Math.min(100, 100 - margin * 2));
+  return Math.max(60, Math.min(100, Math.round((100 - margin * 2) * 10) / 10));
 }
 
 function saveGlobalSettings(settings) {

@@ -5,6 +5,10 @@ import { APP_VERSION } from "./version.js";
 
 const HORIZONTAL_LINE_NUMBER_GUTTER_EM = 2.8;
 const VERTICAL_LINE_NUMBER_GUTTER_EM = 1.9;
+const PAGE_MARGIN_STANDARD_PERCENT = 6;
+const PAGE_MARGIN_MAX_PERCENT = 20;
+const PAGE_MARGIN_SLIDER_CENTER = 50;
+const PAGE_MARGIN_SLIDER_MAX = 100;
 
 export function initReader({
   book,
@@ -130,16 +134,24 @@ export function initReader({
   };
   const getPageColumnGapPx = (lineAdvance = 24) => {
     if (getPageGroupArrangement() === "single") return 0;
-    return Math.round(Math.max(18, Math.min(56, Number(lineAdvance) * 1.8 || 28)));
+    const advance = Math.max(10, Number(lineAdvance) || 24);
+    const minimum = Math.max(14, Math.min(24, advance * 0.7));
+    const standard = Math.max(24, Math.min(40, advance * 1.2));
+    const maximum = Math.max(40, Math.min(56, advance * 1.8));
+    const position = pageMarginPercentToSliderPosition(pageMarginPercent);
+    const gap = position <= PAGE_MARGIN_SLIDER_CENTER
+      ? minimum + (standard - minimum) * (position / PAGE_MARGIN_SLIDER_CENTER)
+      : standard + (maximum - standard) * ((position - PAGE_MARGIN_SLIDER_CENTER) / (PAGE_MARGIN_SLIDER_MAX - PAGE_MARGIN_SLIDER_CENTER));
+    return Math.round(gap);
   };
-  const getContentWidthPercent = () => Math.max(40, Math.min(100, 100 - normalizePageMarginPercent(pageMarginPercent) * 2));
+  const getContentWidthPercent = () => Math.max(60, Math.min(100, 100 - normalizePageMarginPercent(pageMarginPercent) * 2));
   const READER_DEFAULT_SETTINGS = {
     fontSize: 100,
     fontFamilyPreference: "system",
     lineHeight: 1.8,
     letterSpacing: 0,
-    pageMarginPercent: 3,
-    wrapWidthPercent: 94,
+    pageMarginPercent: PAGE_MARGIN_STANDARD_PERCENT,
+    wrapWidthPercent: 88,
     theme: "light",
     displayMode: "paged",
     wheelPaging: false,
@@ -157,7 +169,7 @@ export function initReader({
     fontSize: { min: 80, max: 140 },
     lineHeight: { min: 1.4, max: 2.4 },
     letterSpacing: { min: -0.5, max: 1.5 },
-    pageMarginPercent: { min: 0, max: 30 }
+    pageMarginPercent: { min: 0, max: PAGE_MARGIN_SLIDER_MAX, map: pageMarginPercentToSliderPosition }
   };
   const normalizeSavedSettingsSnapshot = (source = {}) => {
     const spread = isSpreadViewSettingEnabled(source);
@@ -195,7 +207,10 @@ export function initReader({
       const key = pin.dataset.savedPin;
       const config = rangePinConfig[key];
       if (!key || !config) return;
-      pin.style.setProperty("--saved-range-percent", `${rangePercent(savedSettingsSnapshot[key], config).toFixed(2)}%`);
+      const value = typeof config.map === "function"
+        ? config.map(savedSettingsSnapshot[key])
+        : savedSettingsSnapshot[key];
+      pin.style.setProperty("--saved-range-percent", `${rangePercent(value, config).toFixed(2)}%`);
     });
   };
   savedSettingsSnapshot = normalizeSavedSettingsSnapshot(settings);
@@ -1371,7 +1386,7 @@ export function initReader({
     }
     lineHeightRange.value = String(nextSettings.lineHeight ?? 1.8);
     letterSpacingRange.value = String(nextSettings.letterSpacing ?? 0);
-    if (pageMarginRange) pageMarginRange.value = String(pageMarginPercent);
+    if (pageMarginRange) pageMarginRange.value = String(pageMarginPercentToSliderPosition(pageMarginPercent));
     themeSelect.value = nextSettings.theme || "light";
     if (writingModeSelect) writingModeSelect.value = writingModePreference;
     if (wheelPagingCheck) wheelPagingCheck.checked = wheelPaging;
@@ -1403,7 +1418,7 @@ export function initReader({
     lineHeightRange.addEventListener("input", () => updateSettings({ lineHeight: Number(lineHeightRange.value) }));
     letterSpacingRange.addEventListener("input", () => updateSettings({ letterSpacing: Number(letterSpacingRange.value) }));
     pageMarginRange?.addEventListener("input", () => {
-      const margin = normalizePageMarginPercent(pageMarginRange.value);
+      const margin = pageMarginSliderPositionToPercent(pageMarginRange.value);
       updateSettings({ pageMarginPercent: margin, wrapWidthPercent: pageMarginToWrapWidthPercent(margin) });
     });
     themeSelect.addEventListener("change", () => updateSettings({ theme: themeSelect.value }));
@@ -1515,8 +1530,10 @@ export function initReader({
     const lineHeight = Number(lineHeightRange?.value) || 1.8;
     const lineHeightPx = metrics.lineHeightPx;
     const letterSpacingPx = metrics.letterSpacingPx;
-    const marginPercent = normalizePageMarginPercent(pageMarginRange?.value ?? pageMarginPercent);
-    const contentPercent = Math.max(40, 100 - marginPercent * 2);
+    const marginPercent = pageMarginRange
+      ? pageMarginSliderPositionToPercent(pageMarginRange.value)
+      : normalizePageMarginPercent(pageMarginPercent);
+    const contentPercent = Math.max(60, 100 - marginPercent * 2);
     const viewportWidth = getHorizontalPageSize();
     const viewportHeight = getViewportInnerSize("y");
     const mode = normalizeWritingModePreference(writingModeSelect?.value || writingModePreference);
@@ -1573,13 +1590,13 @@ export function initReader({
       if (pageMarginLabel) {
         pageMarginLabel.textContent = "余白";
       }
-      const requestedPart = `余白${marginPercent}% / 本文約${contentPercent}% / 約${wrapPx}px`;
+      const requestedPart = `余白${formatLayoutPercent(marginPercent)}% / 本文約${formatLayoutPercent(contentPercent)}% / 約${wrapPx}px`;
       const actualPart = singlePageActive
         ? spreadActive
-          ? `${requestedPart} / 片面約${Math.round(pageSize.width)}px / 見開き約${Math.round(spreadSize.width)}px`
+          ? `${requestedPart} / 片面約${Math.round(pageSize.width)}px / 見開き約${Math.round(spreadSize.width)}px / 中央約${Math.round(layout?.columnGap || 0)}px`
           : stackedActive
-            ? `${requestedPart} / 実効約${Math.round(pageSize.width)}px / 上下2段約${Math.round(spreadSize.height)}px高`
-          : `${requestedPart} / 実効約${Math.round(pageSize.width)}px`
+            ? `${requestedPart} / 実効約${Math.round(pageSize.width)}px / 上下2段約${Math.round(spreadSize.height)}px高 / 段間約${Math.round(layout?.columnGap || 0)}px`
+            : `${requestedPart} / 実効約${Math.round(pageSize.width)}px`
         : requestedPart;
       pageMarginValue.textContent =
         mode === "horizontal"
@@ -1599,13 +1616,16 @@ export function initReader({
       : "EPUBはファイル内の目次を使います。目次がないEPUBは本文1章として扱います。";
   }
   function getCurrentSettings(patch = {}) {
+    const currentPageMargin = pageMarginRange
+      ? pageMarginSliderPositionToPercent(pageMarginRange.value)
+      : normalizePageMarginPercent(pageMarginPercent);
     return {
       fontSize: Number(fontSizeRange.value) || 100,
       fontFamilyPreference: normalizeFontFamilyPreference(fontFamilySelect?.value),
       lineHeight: Number(lineHeightRange.value) || 1.8,
       letterSpacing: Number(letterSpacingRange.value) || 0,
-      pageMarginPercent: normalizePageMarginPercent(pageMarginRange?.value ?? pageMarginPercent),
-      wrapWidthPercent: pageMarginToWrapWidthPercent(pageMarginRange?.value ?? pageMarginPercent),
+      pageMarginPercent: currentPageMargin,
+      wrapWidthPercent: pageMarginToWrapWidthPercent(currentPageMargin),
       theme: themeSelect.value || "light",
       displayMode: normalizeDisplayMode(displayModeRadios.find((radio) => radio.checked)?.value || displayMode),
       wheelPaging: Boolean(wheelPagingCheck?.checked),
@@ -2589,15 +2609,40 @@ function normalizeWrapWidthPercent(value) {
 
 function normalizePageMarginPercent(value, legacyWrapWidth = null) {
   const raw = Number(value);
-  if (Number.isFinite(raw)) return Math.max(0, Math.min(30, Math.round(raw)));
+  if (Number.isFinite(raw)) return Math.max(0, Math.min(PAGE_MARGIN_MAX_PERCENT, Math.round(raw * 10) / 10));
   const legacy = Number(legacyWrapWidth);
-  if (!Number.isFinite(legacy)) return 3;
-  return Math.max(0, Math.min(30, Math.round((100 - Math.min(100, legacy)) / 2)));
+  if (!Number.isFinite(legacy)) return PAGE_MARGIN_STANDARD_PERCENT;
+  return Math.max(0, Math.min(PAGE_MARGIN_MAX_PERCENT, Math.round(((100 - Math.min(100, legacy)) / 2) * 10) / 10));
 }
 
 function pageMarginToWrapWidthPercent(value) {
   const margin = normalizePageMarginPercent(value);
-  return Math.max(40, Math.min(100, 100 - margin * 2));
+  return Math.max(60, Math.min(100, Math.round((100 - margin * 2) * 10) / 10));
+}
+
+function pageMarginSliderPositionToPercent(value) {
+  const position = Math.max(0, Math.min(PAGE_MARGIN_SLIDER_MAX, Number(value) || 0));
+  const margin = position <= PAGE_MARGIN_SLIDER_CENTER
+    ? PAGE_MARGIN_STANDARD_PERCENT * (position / PAGE_MARGIN_SLIDER_CENTER)
+    : PAGE_MARGIN_STANDARD_PERCENT
+      + (PAGE_MARGIN_MAX_PERCENT - PAGE_MARGIN_STANDARD_PERCENT)
+        * ((position - PAGE_MARGIN_SLIDER_CENTER) / (PAGE_MARGIN_SLIDER_MAX - PAGE_MARGIN_SLIDER_CENTER));
+  return normalizePageMarginPercent(margin);
+}
+
+function pageMarginPercentToSliderPosition(value) {
+  const margin = normalizePageMarginPercent(value);
+  const position = margin <= PAGE_MARGIN_STANDARD_PERCENT
+    ? PAGE_MARGIN_SLIDER_CENTER * (margin / PAGE_MARGIN_STANDARD_PERCENT)
+    : PAGE_MARGIN_SLIDER_CENTER
+      + (PAGE_MARGIN_SLIDER_MAX - PAGE_MARGIN_SLIDER_CENTER)
+        * ((margin - PAGE_MARGIN_STANDARD_PERCENT) / (PAGE_MARGIN_MAX_PERCENT - PAGE_MARGIN_STANDARD_PERCENT));
+  return Math.max(0, Math.min(PAGE_MARGIN_SLIDER_MAX, Math.round(position)));
+}
+
+function formatLayoutPercent(value) {
+  const normalized = Math.round((Number(value) || 0) * 10) / 10;
+  return Number.isInteger(normalized) ? String(normalized) : normalized.toFixed(1);
 }
 
 function normalizeDisplayMode(mode) {

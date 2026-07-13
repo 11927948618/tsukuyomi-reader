@@ -1273,6 +1273,7 @@ body.settings-open .tap-zone {
 }
 
 .range-guide-pin,
+.standard-range-pin,
 .saved-range-pin {
   position: absolute;
   top: 50%;
@@ -1284,6 +1285,14 @@ body.settings-open .tap-zone {
   background: var(--accent);
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--bg), transparent 20%);
   pointer-events: none;
+}
+
+.standard-range-pin {
+  left: 50%;
+  width: 2px;
+  height: 14px;
+  background: color-mix(in srgb, var(--accent), transparent 28%);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--panel), transparent 8%);
 }
 
 .saved-range-pin {
@@ -1307,6 +1316,7 @@ body.settings-open .tap-zone {
   background: var(--accent);
 }
 
+.standard-range-pin::before,
 .saved-range-pin::before {
   content: none;
 }

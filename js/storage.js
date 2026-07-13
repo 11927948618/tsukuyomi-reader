@@ -136,15 +136,15 @@ export async function exportZipFromBook(book, options = {}) {
 
 function normalizeExportPageMargin(value, legacyWrapWidth = null) {
   const raw = Number(value);
-  if (Number.isFinite(raw)) return Math.max(0, Math.min(30, Math.round(raw)));
+  if (Number.isFinite(raw)) return Math.max(0, Math.min(20, Math.round(raw * 10) / 10));
   const wrap = Number(legacyWrapWidth);
-  if (!Number.isFinite(wrap)) return 3;
-  return Math.max(0, Math.min(30, Math.round((100 - Math.min(100, wrap)) / 2)));
+  if (!Number.isFinite(wrap)) return 6;
+  return Math.max(0, Math.min(20, Math.round(((100 - Math.min(100, wrap)) / 2) * 10) / 10));
 }
 
 function pageMarginToWrapWidthPercent(value, legacyWrapWidth = null) {
   const margin = normalizeExportPageMargin(value, legacyWrapWidth);
-  return Math.max(40, Math.min(100, 100 - margin * 2));
+  return Math.max(60, Math.min(100, Math.round((100 - margin * 2) * 10) / 10));
 }
 
 function generateTocFromHtml(htmlText) {
