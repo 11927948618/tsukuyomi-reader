@@ -1026,9 +1026,12 @@ export function initReader({
       ? Math.ceil(metrics.fontPx * lineNumberGutterEm)
       : 0;
     const availableInlineSize = plan.inlineSize || fallbackInlineSize;
-    const plannedInlineSize = Math.max(baseCharAdvance * 8, availableInlineSize - lineNumberInlineReserve);
     const rawChars = Number(plan.chars) || Math.floor(availableInlineSize / baseCharAdvance) || 20;
-    const chars = Math.max(8, Math.min(rawChars, Math.floor(plannedInlineSize / baseCharAdvance) || rawChars));
+    const inlineCharAdvance = Math.max(6, metrics.fontPx + metrics.letterSpacingPx);
+    const lineNumberCharReserve = lineNumbers
+      ? Math.max(1, Math.ceil(lineNumberInlineReserve / inlineCharAdvance))
+      : 0;
+    const chars = Math.max(8, rawChars - lineNumberCharReserve);
     const lines = Math.max(4, Number(plan.lines) || Math.floor((plan.blockSize || getViewportInnerSize("y")) / baseLineAdvance) || 10);
     return {
       chars,
