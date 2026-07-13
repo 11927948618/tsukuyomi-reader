@@ -1065,10 +1065,10 @@ body.mode-scrolly .reader-content.force-vertical .chapter {
 
   body.settings-open .reader-main,
   body.settings-open.mode-paged .reader-main {
-    width: min(980px, calc(100vw - var(--settings-panel-width) - 36px));
+    width: calc(100vw - var(--settings-panel-width) - 36px);
     max-width: calc(100vw - var(--settings-panel-width) - 36px);
     margin-left: 12px;
-    margin-right: calc(var(--settings-panel-width) + 24px);
+    margin-right: calc(var(--settings-panel-width) + 12px);
   }
 
   body.settings-open .ui-overlay {

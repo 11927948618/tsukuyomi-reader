@@ -34,8 +34,8 @@ const DEFAULT_SETTINGS = {
   fontFamilyPreference: "system",
   lineHeight: 1.8,
   letterSpacing: 0,
-  pageMarginPercent: 6,
-  wrapWidthPercent: 88,
+  pageMarginPercent: 3,
+  wrapWidthPercent: 94,
   theme: "light",
   displayMode: "paged",
   tapInScroll: false,
@@ -799,7 +799,7 @@ function normalizeStoredPageMargin(value, legacyWrapWidth = null) {
 
 function legacyWrapWidthToPageMargin(value) {
   const raw = Number(value);
-  if (!Number.isFinite(raw)) return 6;
+  if (!Number.isFinite(raw)) return 3;
   return Math.max(0, Math.min(30, Math.round((100 - Math.min(100, raw)) / 2)));
 }
 

@@ -138,7 +138,7 @@ function normalizeExportPageMargin(value, legacyWrapWidth = null) {
   const raw = Number(value);
   if (Number.isFinite(raw)) return Math.max(0, Math.min(30, Math.round(raw)));
   const wrap = Number(legacyWrapWidth);
-  if (!Number.isFinite(wrap)) return 6;
+  if (!Number.isFinite(wrap)) return 3;
   return Math.max(0, Math.min(30, Math.round((100 - Math.min(100, wrap)) / 2)));
 }
 

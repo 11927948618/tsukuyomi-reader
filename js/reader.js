@@ -138,8 +138,8 @@ export function initReader({
     fontFamilyPreference: "system",
     lineHeight: 1.8,
     letterSpacing: 0,
-    pageMarginPercent: 6,
-    wrapWidthPercent: 88,
+    pageMarginPercent: 3,
+    wrapWidthPercent: 94,
     theme: "light",
     displayMode: "paged",
     wheelPaging: false,
@@ -732,7 +732,14 @@ export function initReader({
   }
 
   function scheduleReaderResizeReflow() {
-    const reflow = () => reflowReaderLayout({ preservePosition: true, resetPosition: false });
+    const locator = mobileTextPager.active ? captureMobileTextPagerLocator() : null;
+    const reflow = () => {
+      reflowReaderLayout({ preservePosition: true, resetPosition: false });
+      if (locator && mobileTextPager.active) {
+        const locatedPage = findMobileTextPagerPage(mobileTextPager.pages, locator);
+        if (locatedPage != null) renderMobileTextPage(locatedPage);
+      }
+    };
     requestAnimationFrame(reflow);
     window.setTimeout(reflow, 90);
     window.setTimeout(reflow, 220);
@@ -1869,6 +1876,25 @@ export function initReader({
     const swipeThreshold = 42;
     let down = null;
     let lastPointerTapAt = 0;
+    let longPressTimer = 0;
+
+    const clearLongPressTimer = () => {
+      if (!longPressTimer) return;
+      window.clearTimeout(longPressTimer);
+      longPressTimer = 0;
+    };
+
+    const openSettingsFromLongPress = () => {
+      clearLongPressTimer();
+      if (settingsPanel?.classList.contains("open")) return;
+      closeToc();
+      if (topbar?.classList.contains("hidden")) {
+        topbar.classList.remove("hidden");
+        document.body.classList.remove("chrome-hidden");
+      }
+      toggleSettings(true);
+      skipNextTap = true;
+    };
 
     const shouldHandlePagingTap = () => {
       if (settingsPanel?.classList.contains("open") || tocPanel?.classList.contains("open")) return false;
@@ -1961,6 +1987,7 @@ export function initReader({
     if (window.PointerEvent) {
       tapEl.addEventListener("pointerdown", (event) => {
         if (event.pointerType === "mouse" && event.button !== 0) return;
+        clearLongPressTimer();
         down = {
           x: event.clientX,
           y: event.clientY,
@@ -1974,17 +2001,23 @@ export function initReader({
             // Synthetic or interrupted pointer streams may not be capturable.
           }
         }
+        if (event.pointerType !== "mouse") {
+          longPressTimer = window.setTimeout(openSettingsFromLongPress, 620);
+        }
       });
       tapEl.addEventListener("pointermove", (event) => {
-        if (!down || displayMode !== "scrollx") return;
+        if (!down) return;
         const dx = event.clientX - down.x;
         const dy = event.clientY - down.y;
+        if (Math.abs(dx) > threshold || Math.abs(dy) > threshold) clearLongPressTimer();
+        if (displayMode !== "scrollx") return;
         if (Math.abs(dx) <= threshold || Math.abs(dx) <= Math.abs(dy)) return;
         down.dragged = true;
         scrollToLogicalLeft(down.startLogicalLeft - dx, "auto");
         event.preventDefault();
       });
       tapEl.addEventListener("pointerup", (event) => {
+        clearLongPressTimer();
         if (skipNextTap) {
           skipNextTap = false;
           down = null;
@@ -2012,6 +2045,10 @@ export function initReader({
         if (dx > threshold || dy > threshold) return;
         onTap(event);
         lastPointerTapAt = Date.now();
+      });
+      tapEl.addEventListener("pointercancel", () => {
+        clearLongPressTimer();
+        down = null;
       });
     }
 
@@ -2431,7 +2468,11 @@ function buildNaturalVerticalCandidates(maxInline, maxBlock, charAdvance, lineAd
 
 function scoreVerticalPageCandidate(candidate, genkoPreset, maxInline = 1, maxBlock = 1) {
   const total = candidate.chars * candidate.lines;
-  if (!genkoPreset) return total;
+  if (!genkoPreset) {
+    const blockUse = Number(candidate.blockSize) / Math.max(1, maxBlock);
+    const inlineUse = Number(candidate.inlineSize) / Math.max(1, maxInline);
+    return total + blockUse * 36 + inlineUse * 8;
+  }
   const target = 400;
   const viewportRatio = maxInline / Math.max(1, maxBlock);
   const targetRatio = viewportRatio >= 1.25 ? 2.75 : 1;
@@ -2547,7 +2588,7 @@ function normalizePageMarginPercent(value, legacyWrapWidth = null) {
   const raw = Number(value);
   if (Number.isFinite(raw)) return Math.max(0, Math.min(30, Math.round(raw)));
   const legacy = Number(legacyWrapWidth);
-  if (!Number.isFinite(legacy)) return 6;
+  if (!Number.isFinite(legacy)) return 3;
   return Math.max(0, Math.min(30, Math.round((100 - Math.min(100, legacy)) / 2)));
 }
 
