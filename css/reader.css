@@ -565,6 +565,9 @@ body.reader-debug-layout .mobile-text-page-body::before {
 
 .mobile-text-page.line-numbered .mobile-text-line {
   position: relative;
+  block-size: calc(1em * var(--line-height, 1.8));
+  max-block-size: calc(1em * var(--line-height, 1.8));
+  white-space: nowrap;
 }
 
 .mobile-text-page.line-numbered .mobile-text-page-body {
