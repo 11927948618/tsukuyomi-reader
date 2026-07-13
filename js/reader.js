@@ -411,7 +411,7 @@ export function initReader({
     const baseLineAdvance = Math.max(10, metrics.lineHeightPx);
 
     if (displayMode === "paged") {
-      const baseCharAdvance = Math.max(6, metrics.fontPx * 0.95 + metrics.letterSpacingPx);
+      const baseCharAdvance = resolveReaderCharAdvance(metrics.fontPx, metrics.letterSpacingPx, mode);
       const layout = resolveSinglePageLayout({
         viewportWidth: Math.max(1, width),
         viewportHeight: Math.max(1, height),
@@ -1016,9 +1016,9 @@ export function initReader({
 
   function resolveMobileTextPagerPlan() {
     const metrics = getReaderTextMetrics();
-    const baseCharAdvance = Math.max(6, metrics.fontPx * 0.95 + metrics.letterSpacingPx);
-    const baseLineAdvance = Math.max(10, metrics.lineHeightPx);
     const mode = normalizeWritingModePreference(writingModePreference) === "horizontal" ? "horizontal" : "vertical";
+    const baseCharAdvance = resolveReaderCharAdvance(metrics.fontPx, metrics.letterSpacingPx, mode);
+    const baseLineAdvance = Math.max(10, metrics.lineHeightPx);
     const viewportWidth = getViewportInnerSize("x");
     const viewportHeight = getViewportInnerSize("y");
     const rawWrapped = mode === "horizontal"
@@ -1538,7 +1538,7 @@ export function initReader({
     const viewportHeight = getViewportInnerSize("y");
     const mode = normalizeWritingModePreference(writingModeSelect?.value || writingModePreference);
     const wrapPx = Math.round(viewportWidth * (contentPercent / 100));
-    const inlineAdvance = Math.max(6, fontPx * 0.95 + letterSpacingPx);
+    const inlineAdvance = resolveReaderCharAdvance(fontPx, letterSpacingPx, mode);
     const layout = displayMode === "paged"
       ? resolveSinglePageLayout({
           viewportWidth,
@@ -2599,6 +2599,13 @@ function normalizeWritingModePreference(mode) {
   if (raw === "vertical") return "vertical";
   if (raw === "horizontal") return "horizontal";
   return "auto";
+}
+
+function resolveReaderCharAdvance(fontPx, letterSpacingPx, mode) {
+  const font = Math.max(1, Number(fontPx) || 16);
+  const spacing = Number(letterSpacingPx) || 0;
+  const glyphAdvance = mode === "vertical" ? font : font * 0.95;
+  return Math.max(6, glyphAdvance + spacing);
 }
 
 function normalizeWrapWidthPercent(value) {

@@ -4,6 +4,7 @@
   --text: #f2f2f4;
   --muted: #b7b7c2;
   --accent: #2aa6a1;
+  --accent-contrast: #061010;
   --danger: #e26d6d;
   --border: #2b2b3a;
   --font-size: 100;
@@ -24,6 +25,7 @@ body.theme-light {
   --text: #14141a;
   --muted: #5d5d6d;
   --accent: #2a6aa6;
+  --accent-contrast: #ffffff;
   --danger: #c74c4c;
   --border: #d7d7e2;
 }
@@ -34,6 +36,7 @@ body.theme-dark {
   --text: #f2f2f4;
   --muted: #b7b7c2;
   --accent: #2aa6a1;
+  --accent-contrast: #061010;
   --danger: #e26d6d;
   --border: #2b2b3a;
 }
@@ -70,7 +73,7 @@ h1, h2, h3 {
 
 .button {
   background: var(--accent);
-  color: #061010;
+  color: var(--accent-contrast);
   border: none;
   border-radius: 999px;
   padding: 10px 16px;
