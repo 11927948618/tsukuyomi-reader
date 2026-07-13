@@ -408,18 +408,32 @@ body.mobile-text-pager.mode-paged .reader-content.mobile-pager-content {
 }
 
 .mobile-text-spread.stacked {
-  grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+  grid-auto-flow: row;
+  justify-items: stretch;
+  align-items: stretch;
   direction: ltr;
 }
 
 .mobile-text-spread .mobile-text-page {
   width: 100%;
   height: 100%;
-  inline-size: auto;
-  block-size: auto;
+  inline-size: 100%;
+  block-size: 100%;
   min-inline-size: 0;
   min-block-size: 0;
+  margin: 0;
   direction: ltr;
+}
+
+.mobile-text-spread.stacked .mobile-text-page {
+  min-width: 0;
+  max-width: 100%;
+  min-height: 0;
+  max-height: 100%;
+  justify-self: stretch;
+  align-self: stretch;
 }
 
 .mobile-text-page.horizontal {
