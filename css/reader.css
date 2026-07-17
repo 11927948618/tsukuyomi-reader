@@ -1371,6 +1371,15 @@ body.theme-dark .settings-panel select option {
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--danger), transparent 84%);
 }
 
+.settings-reset-action {
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+
+.settings-reset-action .button {
+  width: 100%;
+}
+
 .option-check {
   display: flex;
   align-items: flex-start;

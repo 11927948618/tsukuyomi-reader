@@ -27,7 +27,7 @@ export function initReader({
   const exportBtn = qs("#exportBtn");
   const exportControls = Array.from(document.querySelectorAll("[data-export-control]"));
   const settingsBtn = qs("#settingsBtn");
-  const closeSettingsBtn = qs("#closeSettingsBtn");
+  const mainMenuBtn = qs("#mainMenuBtn");
   const saveSettingsBtn = qs("#saveSettingsBtn");
   const settingsPanel = qs("#settingsPanel");
   const settingsBody = settingsPanel?.querySelector(".settings-body") || null;
@@ -647,7 +647,14 @@ export function initReader({
       toggleSettings(true);
     }
   });
-  closeSettingsBtn.addEventListener("click", () => toggleSettings(false));
+  mainMenuBtn?.addEventListener("click", () => {
+    closeToc();
+    topbar?.classList.remove("hidden");
+    document.body.classList.remove("chrome-hidden");
+    document.body.classList.add("topbar-reveal-guard");
+    window.setTimeout(() => document.body.classList.remove("topbar-reveal-guard"), 350);
+    toggleSettings(false);
+  });
 
   tocBtn?.addEventListener("click", () => {
     const isOpen = tocPanel?.classList.contains("open");
