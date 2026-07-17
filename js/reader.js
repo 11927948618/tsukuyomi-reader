@@ -1903,6 +1903,7 @@ export function initReader({
   function bindPageTap(tapEl, scrollEl) {
     if (!tapEl || !scrollEl) return;
     const threshold = 10;
+    const touchTapTolerance = 24;
     const swipeThreshold = 42;
     let down = null;
     let lastPointerTapAt = 0;
@@ -2030,9 +2031,12 @@ export function initReader({
           x: event.clientX,
           y: event.clientY,
           startLogicalLeft: toLogicalLeft(scrollEl, scrollEl.scrollLeft, pageDirection),
-          dragged: false
+          dragged: false,
+          tapTolerance: event.pointerType === "touch" || event.pointerType === "pen"
+            ? touchTapTolerance
+            : threshold
         };
-        if (displayMode === "scrollx") {
+        if (displayMode === "scrollx" || displayMode === "paged") {
           try {
             tapEl.setPointerCapture?.(event.pointerId);
           } catch {
@@ -2066,8 +2070,9 @@ export function initReader({
         const dy = Math.abs(event.clientY - down.y);
         const deltaX = event.clientX - down.x;
         const dragged = down.dragged;
+        const tapTolerance = down.tapTolerance || threshold;
         down = null;
-        if (displayMode === "scrollx") {
+        if (displayMode === "scrollx" || displayMode === "paged") {
           try {
             tapEl.releasePointerCapture?.(event.pointerId);
           } catch {
@@ -2080,7 +2085,7 @@ export function initReader({
           lastPointerTapAt = Date.now();
           return;
         }
-        if (dx > threshold || dy > threshold) return;
+        if (dx > tapTolerance || dy > tapTolerance) return;
         onTap(event);
         lastPointerTapAt = Date.now();
       });
@@ -2159,7 +2164,7 @@ export function initReader({
           handleSwipe(deltaX);
           return;
         }
-        if (dx > threshold || dy > threshold) return;
+        if (dx > touchTapTolerance || dy > touchTapTolerance) return;
         onTap(touch);
       },
       { passive: true }

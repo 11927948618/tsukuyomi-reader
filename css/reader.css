@@ -884,7 +884,7 @@ body.pdf-reader-mode .reader-content > * {
   z-index: 5;
   background: transparent;
   pointer-events: auto;
-  touch-action: pan-x;
+  touch-action: none;
 }
 
 body.mode-scrolly .tap-zone {
