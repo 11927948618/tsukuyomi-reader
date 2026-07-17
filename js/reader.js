@@ -1939,6 +1939,9 @@ export function initReader({
       const writingMode = normalizeWritingModePreference(writingModePreference);
       const horizontalPaged = displayMode === "paged" && writingMode === "horizontal";
       const verticalPaged = displayMode === "paged" && writingMode === "vertical";
+      const mobilePaged = (horizontalPaged || verticalPaged) && isMobileReadingDevice();
+      const leftEdge = mobilePaged ? 0.25 : 0.33;
+      const rightEdge = mobilePaged ? 0.75 : 0.66;
 
       if (!horizontalPaged && !verticalPaged && x >= w * 0.33 && x <= w * 0.66) {
         toggleChrome();
@@ -1965,12 +1968,17 @@ export function initReader({
 
       const advanceOnRight = pageDirection !== "rtl";
 
-      if (horizontalPaged && y < h * 0.33) {
+      if (mobilePaged && x >= w * leftEdge && x <= w * rightEdge) {
+        toggleChrome();
+        return;
+      }
+
+      if (!mobilePaged && horizontalPaged && y < h * 0.33) {
         goBack();
         return;
       }
 
-      if (horizontalPaged && y > h * 0.66) {
+      if (!mobilePaged && horizontalPaged && y > h * 0.66) {
         advance();
         return;
       }
@@ -1980,12 +1988,12 @@ export function initReader({
         return;
       }
 
-      if (verticalPaged && y < h * 0.33) {
+      if (!mobilePaged && verticalPaged && y < h * 0.33) {
         goBack();
         return;
       }
 
-      if (verticalPaged && y > h * 0.66) {
+      if (!mobilePaged && verticalPaged && y > h * 0.66) {
         advance();
         return;
       }
@@ -1995,13 +2003,13 @@ export function initReader({
         return;
       }
 
-      if (x > w * 0.66) {
+      if (x > w * rightEdge) {
         if (advanceOnRight) advance();
         else goBack();
         return;
       }
 
-      if (x < w * 0.33) {
+      if (x < w * leftEdge) {
         if (advanceOnRight) goBack();
         else advance();
       }
