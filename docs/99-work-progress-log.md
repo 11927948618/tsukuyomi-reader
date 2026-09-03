@@ -1708,3 +1708,77 @@ TSUKUYOMI_REVIEW_PASSWORD_DAYS=7
   - TXTの上位互換として正規化し、本文・見出し・空行・引用・区切り線を扱う想定。
   - 初期対応範囲は `#` / `##` / `###` 見出し、通常段落、空行、引用、区切り線程度に絞る。
   - 表、脚注、HTML混在、複雑なリンクカードは初期対応外でよい。
+
+## 2026-09-03 リポジトリ3コピーの整理（開始）
+
+### 背景
+
+- 作業用クローンが3か所に分裂していた。
+  - `C:\Users\karak\VSCode\TsukuyomiReader\tsukuyomi-reader` … v0.1.168 で放置（23コミット遅れ）
+  - `C:\Users\karak\Documents\TsukuyomiReader\tsukuyomi-reader` … 実際の作業・デプロイ元。HEAD=v0.1.220、未コミットWIP（v0.1.221 "reader-gesture-flow-cleanup"）あり
+  - `H:\マイドライブ\900.Tsukuyomi\D.TsukuyomiReader\tsukuyomi-reader` … v0.1.168、git管理外。旧「Driveから反映してデプロイ」方式。Drive同期が切れて更新停止したとみられる
+- `docs/90-handoff-20260701.md` の「編集マスター=H:ドライブ / Gitミラー=C:」という前提は既に実態と食い違っている。
+
+### 対応
+
+- 正規（カノニカル）を `C:\Users\karak\VSCode\TsukuyomiReader\tsukuyomi-reader` に統一。
+- Documents クローンの未コミットWIP 4ファイル（`js/reader.js` `css/reader.css` `js/version.js` `sw.js`）を
+  正規リポジトリへコピー移設。`git hash-object` で全ファイル一致を確認。
+- Documents フォルダごと `過去・凍結\×Documents_TsukuyomiReader_旧クローン_20260903\` へ隔離（× = 破棄相当）。
+- H: ドライブ側は今回は未処置。「クラウドベース運用へ移行するか」の検討とあわせて後日整理する。
+
+### 検証
+
+- 移設後の正規リポジトリで `node --check js/reader.js` / `js/app.js`: OK
+- `node --test tests/*.test.mjs`: 11 pass / 0 fail
+
+### 次
+
+- モバイル端末での表示領域の使い方（画面が「全然足りない」問題）を調査。
+
+## 2026-09-03 PCスクロール不能 ＋ モバイル縦書き横幅（v0.1.222）
+
+計画: `docs/plan-20260903-reader-scroll-and-mobile-width.md`
+
+### 問題1: PC（既定 scroll + vertical）でスクロール不能
+
+- 原因: `applyDisplayMode()` はスクロール表示で常に `body.mode-scrolly`（`overflow-x:hidden / overflow-y:auto`）を付けていた。
+  これは横書き用。縦書きは本文が横方向に伸びるため（実測: viewport 1126px / 本文 7340px、横あふれ6214px）
+  `overflow-x:hidden` に切り取られ、横スクロールバーも出ず、縦あふれも無いのでホイールも効かない。
+  `bindWheelScroll()` もスクロールモードで即 return していた。
+- 修正:
+  - `css/reader.css`: `body.mode-scrolly .reader-viewport` を `writing-vertical` / `writing-horizontal` で出し分け。
+    縦書き → `overflow-x:auto / overflow-y:hidden / touch-action:pan-x`。
+  - `js/reader.js` `bindWheelScroll()`: スクロール＋縦書きのとき `deltaY` を `scrollLeft`（rtl考慮）へ変換。
+- 検証（ローカルサーバ + 長文TXT、幅1280）: `overflow-x:auto` になり横スクロールバー可、ホイールで
+  scrollLeft が減少方向（＝読み進め方向）に移動することを確認。
+
+### 問題2: モバイル縦書き（ページ切替）の本文横幅
+
+- 実測 画面375px: 本文実効 224px（60%）。積み重ね: `.reader-viewport` 左右38px（`mobile-paged-immersive` の
+  `clamp(30px,8vw,38px)`）/ `getContentWidthPercent()` 88%の二重余白 / ページ中央寄せ / `.mobile-text-page` の
+  タイトルガター2.2em / 装飾 `::before/::after`。
+- 修正:
+  - `css/reader.css` `@media (max-width:900px)`: `body.mode-paged .reader-viewport` padding-inline を縮小、
+    装飾 `::before/::after` を（紙影・フラッシュ以外で）透明化。
+  - `body.mobile-paged-immersive.mode-paged .reader-viewport`: padding-inline `clamp(3px,1.2vw,10px)`、`border-inline-width:0`。
+  - `body.mobile-paged-immersive .reader-main`: `width: min(100vw, 720px)` ＋ `margin-inline:0`。
+  - `js/reader.js` `getContentWidthPercent()`: モバイル非見開き時は `100 - 余白%*0.5`（下限84%）。
+  - `.mobile-text-page.vertical.has-title` のガター 2.2em → 1.9em。
+- 検証（ローカル、画面375px）: 本文なしページ（8/24）で本文実効 346px ＝ **92%**（旧60%）。
+  タイトルページは約84%（ガター分）。文字あふれ・`pager-fit-warning` 無し。
+  ※エミュレータのスクロールバー分16pxを差し引くと実機はさらに広い見込み。
+- 残課題: 行送りの量子化で「内容幅 − 1行未満」の端数が残る。タイトルページのガターは
+  絶対配置タイトルの構造上のもの（インライン化は別タスク）。
+
+### 検証（共通）
+
+- `node --check js/reader.js` / `js/app.js`: OK
+- `node --test tests/*.test.mjs`: 11 pass / 0 fail
+- WIP `reader-gesture-flow-cleanup` はそのまま同居。バージョンは 0.1.221 → 0.1.222（ref: reader-scroll-mobile-width）。
+
+### 次
+
+- 実機（Android Chrome / iOS Safari）で両方を確認。
+- コミット/デプロイはユーザー確認後（`git push origin main` で Cloudflare Pages 自動デプロイ）。
+- H: ドライブ後始末＋クラウドベース運用の検討。

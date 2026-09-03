@@ -381,7 +381,7 @@ body.mobile-text-pager.mode-paged .reader-content.mobile-pager-content {
 }
 
 .mobile-text-page.vertical.has-title {
-  padding-block-start: 2.2em;
+  padding-block-start: 1.9em;
 }
 
 .mobile-text-spread {
@@ -884,6 +884,7 @@ body.pdf-reader-mode .reader-content > * {
   z-index: 5;
   background: transparent;
   pointer-events: auto;
+  /* Browser panning can cancel pointerup before the reader resolves a tap. */
   touch-action: none;
 }
 
@@ -1001,9 +1002,21 @@ body.mode-scrollx .reader-viewport {
 }
 
 body.mode-scrolly .reader-viewport {
+  scroll-snap-type: none;
+}
+
+/* Vertical writing flows the body horizontally, so scroll mode has to pan on
+   the x axis. Horizontal writing keeps native vertical scrolling. */
+body.mode-scrolly.writing-vertical .reader-viewport {
+  overflow-x: auto;
+  overflow-y: hidden;
+  touch-action: pan-x;
+}
+
+body.mode-scrolly.writing-horizontal .reader-viewport,
+body.mode-scrolly:not(.writing-vertical):not(.writing-horizontal) .reader-viewport {
   overflow-x: hidden;
   overflow-y: auto;
-  scroll-snap-type: none;
   touch-action: pan-y;
 }
 
@@ -1502,7 +1515,16 @@ body {
   }
 
   body.mode-paged .reader-viewport {
-    padding-inline: 38px;
+    padding-inline: clamp(6px, 2vw, 24px);
+  }
+
+  /* The persistent page-edge gradients are desktop framing; on a phone they
+     just darken the margins next to near-full-width text. Keep them for the
+     紙影 page-turn effect, which redefines ::after while it plays. */
+  body.mode-paged:not(.page-turn-shadow):not(.page-turn-flash) .reader-viewport::before,
+  body.mode-paged:not(.page-turn-shadow):not(.page-turn-flash) .reader-viewport::after {
+    background: none;
+    border-color: transparent;
   }
 
   .settings-panel {
@@ -1600,7 +1622,8 @@ body {
 
   body.mobile-paged-immersive .reader-main,
   body.mobile-paged-immersive.mode-paged .reader-main {
-    width: min(100vw - 12px, 720px);
+    width: min(100vw, 720px);
+    margin-inline: 0;
     height: calc(var(--reader-viewport-height, 100dvh) - var(--mobile-reader-bottom-reserve, 0px));
     padding: max(6px, env(safe-area-inset-top)) 0 max(8px, env(safe-area-inset-bottom));
     gap: 0;
@@ -1614,7 +1637,8 @@ body {
   body.mobile-paged-immersive.mode-paged .reader-viewport {
     height: 100%;
     max-height: 100%;
-    padding-inline: clamp(30px, 8vw, 38px);
+    padding-inline: clamp(3px, 1.2vw, 10px);
+    border-inline-width: 0;
     transition: transform 140ms ease;
     transform-origin: top center;
   }

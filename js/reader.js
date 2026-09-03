@@ -86,8 +86,8 @@ export function initReader({
   let writingModePreference = normalizeWritingModePreference(settings?.writingModePreference);
   let pageDirection = writingModePreference === "vertical" ? "rtl" : "ltr";
   let isInitialLayout = true;
-  let skipNextTap = false;
   let viewportResizeTimer = 0;
+  let topbarRevealGuardTimer = 0;
   let measuredPagerGeneration = 0;
   let measuredPagerProbe = null;
   let mobileTextPager = {
@@ -144,7 +144,16 @@ export function initReader({
       : standard + (maximum - standard) * ((position - PAGE_MARGIN_SLIDER_CENTER) / (PAGE_MARGIN_SLIDER_MAX - PAGE_MARGIN_SLIDER_CENTER));
     return Math.round(gap);
   };
-  const getContentWidthPercent = () => Math.max(60, Math.min(100, 100 - normalizePageMarginPercent(pageMarginPercent) * 2));
+  const getContentWidthPercent = () => {
+    const margin = normalizePageMarginPercent(pageMarginPercent);
+    // Mobile single-page reading uses nearly the whole viewport. The margin
+    // slider still widens the gutter, but from a near-zero base instead of the
+    // desktop "book on a desk" framing.
+    if (isMobileReadingDevice() && !isSpreadViewActive()) {
+      return Math.max(84, Math.min(100, 100 - margin * 0.5));
+    }
+    return Math.max(60, Math.min(100, 100 - margin * 2));
+  };
   const READER_DEFAULT_SETTINGS = {
     fontSize: 100,
     fontFamilyPreference: "system",
@@ -469,16 +478,18 @@ export function initReader({
 
   const applyImmersivePagedChrome = () => {
     const immersive = shouldUseImmersivePagedChrome();
+    const wasImmersive = document.body.classList.contains("mobile-paged-immersive");
     document.body.classList.toggle("mobile-paged-immersive", immersive);
     document.body.classList.toggle("rotation-locked", immersive);
     requestPortraitOrientationLock(immersive);
     if (!topbar) return;
-    if (immersive) {
-      topbar.classList.add("hidden");
-      document.body.classList.add("chrome-hidden");
-    } else if (displayMode !== "paged") {
-      topbar.classList.remove("hidden");
-      document.body.classList.remove("chrome-hidden");
+
+    // Reflow runs after a menu toggle. Only entering immersive mode should
+    // auto-hide chrome; otherwise a successful center tap is immediately undone.
+    if (immersive && !wasImmersive) {
+      setReaderChromeVisible(false, { guard: false, reflow: false });
+    } else if (!immersive && (wasImmersive || displayMode !== "paged")) {
+      setReaderChromeVisible(true, { guard: false, reflow: false });
     }
   };
   const requestPortraitOrientationLock = (enabled) => {
@@ -649,10 +660,7 @@ export function initReader({
   });
   mainMenuBtn?.addEventListener("click", () => {
     closeToc();
-    topbar?.classList.remove("hidden");
-    document.body.classList.remove("chrome-hidden");
-    document.body.classList.add("topbar-reveal-guard");
-    window.setTimeout(() => document.body.classList.remove("topbar-reveal-guard"), 350);
+    setReaderChromeVisible(true, { reflow: false });
     toggleSettings(false);
   });
 
@@ -678,7 +686,6 @@ export function initReader({
   bindPanelWheelScroll(tocPanel, tocList || tocPanel);
   applyProgress(progress, refreshHScroll);
   bindProgressTracking();
-  bindTopEdgeRevealTap(tapZone);
   bindPageTap(tapZone, scrollContainer);
   bindPageTap(readerViewport, scrollContainer);
   bindWheelScroll(readerViewport, scrollContainer, tapZone);
@@ -1902,11 +1909,12 @@ export function initReader({
 
   function bindPageTap(tapEl, scrollEl) {
     if (!tapEl || !scrollEl) return;
-    const threshold = 10;
+    const moveThreshold = 10;
     const touchTapTolerance = 24;
     const swipeThreshold = 42;
-    let down = null;
-    let lastPointerTapAt = 0;
+    const topEdgeHeight = 72;
+    let gesture = null;
+    let lastDirectGestureAt = 0;
     let longPressTimer = 0;
 
     const clearLongPressTimer = () => {
@@ -1917,14 +1925,12 @@ export function initReader({
 
     const openSettingsFromLongPress = () => {
       clearLongPressTimer();
+      if (!gesture) return;
+      gesture.consumed = true;
       if (settingsPanel?.classList.contains("open")) return;
       closeToc();
-      if (topbar?.classList.contains("hidden")) {
-        topbar.classList.remove("hidden");
-        document.body.classList.remove("chrome-hidden");
-      }
+      setReaderChromeVisible(true, { reflow: false });
       toggleSettings(true);
-      skipNextTap = true;
     };
 
     const shouldHandlePagingTap = () => {
@@ -1934,29 +1940,39 @@ export function initReader({
       return tapInScroll === true;
     };
 
-    const onTap = (event) => {
-      const target = event.target;
+    const handleTap = (point) => {
+      const target = point.target;
       if (target && typeof target.closest === "function") {
         if (target.closest("button, input, select, textarea, a")) return;
       }
       const rect = tapEl.getBoundingClientRect();
-      const x = event.clientX - rect.left;
-      const y = event.clientY - rect.top;
+      const x = point.clientX - rect.left;
+      const y = point.clientY - rect.top;
       const w = rect.width || 1;
       const h = rect.height || 1;
-      const writingMode = normalizeWritingModePreference(writingModePreference);
-      const horizontalPaged = displayMode === "paged" && writingMode === "horizontal";
-      const verticalPaged = displayMode === "paged" && writingMode === "vertical";
-      const mobilePaged = (horizontalPaged || verticalPaged) && isMobileReadingDevice();
-      const leftEdge = mobilePaged ? 0.25 : 0.33;
-      const rightEdge = mobilePaged ? 0.75 : 0.66;
+      const paged = displayMode === "paged";
+      const mobilePaged = paged && isMobileReadingDevice();
+      const edgeRatio = mobilePaged ? 0.25 : 1 / 3;
+      const leftEdge = edgeRatio;
+      const rightEdge = 1 - edgeRatio;
+      const inCenterZone = x >= w * leftEdge && x <= w * rightEdge;
 
-      if (!horizontalPaged && !verticalPaged && x >= w * 0.33 && x <= w * 0.66) {
+      if (tapEl === tapZone && y < topEdgeHeight) {
         toggleChrome();
         return;
       }
 
-      if (!shouldHandlePagingTap()) return;
+      // On mobile paged reading, the center half always belongs to the menu.
+      // Only the outer quarters are allowed to turn pages.
+      if (mobilePaged && inCenterZone) {
+        toggleChrome();
+        return;
+      }
+
+      if (!paged && inCenterZone) {
+        toggleChrome();
+        return;
+      }
 
       const advance = () => {
         if (displayMode === "scroll") {
@@ -1974,39 +1990,21 @@ export function initReader({
         }
       };
 
+      if (!shouldHandlePagingTap()) return;
+
       const advanceOnRight = pageDirection !== "rtl";
 
-      if (mobilePaged && x >= w * leftEdge && x <= w * rightEdge) {
-        toggleChrome();
-        return;
-      }
-
-      if (!mobilePaged && horizontalPaged && y < h * 0.33) {
+      if (paged && !mobilePaged && y < h * 0.33) {
         goBack();
         return;
       }
 
-      if (!mobilePaged && horizontalPaged && y > h * 0.66) {
+      if (paged && !mobilePaged && y > h * 0.66) {
         advance();
         return;
       }
 
-      if (horizontalPaged && x >= w * 0.33 && x <= w * 0.66) {
-        toggleChrome();
-        return;
-      }
-
-      if (!mobilePaged && verticalPaged && y < h * 0.33) {
-        goBack();
-        return;
-      }
-
-      if (!mobilePaged && verticalPaged && y > h * 0.66) {
-        advance();
-        return;
-      }
-
-      if (verticalPaged && x >= w * 0.33 && x <= w * 0.66) {
+      if (paged && inCenterZone) {
         toggleChrome();
         return;
       }
@@ -2023,18 +2021,48 @@ export function initReader({
       }
     };
 
+    const handleSwipe = (deltaX) => {
+      if (!shouldHandlePagingTap()) return;
+      const swipeLeft = deltaX < 0;
+      const advanceOnSwipeLeft = pageDirection !== "rtl";
+      const step = swipeLeft === advanceOnSwipeLeft ? 1 : -1;
+      if (displayMode === "scroll") {
+        pageBy(scrollEl, step * getVerticalPageSize(), displayMode);
+      } else {
+        stepHorizontalPage(step, displayMode === "paged" ? "auto" : "smooth");
+      }
+    };
+
+    const finishGesture = (point, currentGesture) => {
+      if (!currentGesture || currentGesture.consumed) return;
+      const deltaX = point.clientX - currentGesture.x;
+      const dx = Math.abs(deltaX);
+      const dy = Math.abs(point.clientY - currentGesture.y);
+      if (currentGesture.dragged) return;
+      if (dx >= swipeThreshold && dx > dy * 1.25) {
+        handleSwipe(deltaX);
+        return;
+      }
+      if (dx > currentGesture.tapTolerance || dy > currentGesture.tapTolerance) return;
+      handleTap(point);
+    };
+
+    // Pointer Events are the primary path on current Android Chrome. Capturing
+    // the pointer keeps a small finger drift from losing the final pointerup.
     if (window.PointerEvent) {
       tapEl.addEventListener("pointerdown", (event) => {
         if (event.pointerType === "mouse" && event.button !== 0) return;
         clearLongPressTimer();
-        down = {
+        gesture = {
           x: event.clientX,
           y: event.clientY,
+          pointerId: event.pointerId,
           startLogicalLeft: toLogicalLeft(scrollEl, scrollEl.scrollLeft, pageDirection),
           dragged: false,
+          consumed: false,
           tapTolerance: event.pointerType === "touch" || event.pointerType === "pen"
             ? touchTapTolerance
-            : threshold
+            : moveThreshold
         };
         if (displayMode === "scrollx" || displayMode === "paged") {
           try {
@@ -2048,30 +2076,22 @@ export function initReader({
         }
       });
       tapEl.addEventListener("pointermove", (event) => {
-        if (!down) return;
-        const dx = event.clientX - down.x;
-        const dy = event.clientY - down.y;
-        if (Math.abs(dx) > threshold || Math.abs(dy) > threshold) clearLongPressTimer();
+        if (!gesture || event.pointerId !== gesture.pointerId) return;
+        const dx = event.clientX - gesture.x;
+        const dy = event.clientY - gesture.y;
+        if (Math.abs(dx) > moveThreshold || Math.abs(dy) > moveThreshold) clearLongPressTimer();
         if (displayMode !== "scrollx") return;
-        if (Math.abs(dx) <= threshold || Math.abs(dx) <= Math.abs(dy)) return;
-        down.dragged = true;
-        scrollToLogicalLeft(down.startLogicalLeft - dx, "auto");
+        if (Math.abs(dx) <= moveThreshold || Math.abs(dx) <= Math.abs(dy)) return;
+        gesture.dragged = true;
+        scrollToLogicalLeft(gesture.startLogicalLeft - dx, "auto");
         event.preventDefault();
       });
       tapEl.addEventListener("pointerup", (event) => {
         clearLongPressTimer();
-        if (skipNextTap) {
-          skipNextTap = false;
-          down = null;
-          return;
-        }
-        if (!down) return;
-        const dx = Math.abs(event.clientX - down.x);
-        const dy = Math.abs(event.clientY - down.y);
-        const deltaX = event.clientX - down.x;
-        const dragged = down.dragged;
-        const tapTolerance = down.tapTolerance || threshold;
-        down = null;
+        if (!gesture || event.pointerId !== gesture.pointerId) return;
+        const currentGesture = gesture;
+        gesture = null;
+        lastDirectGestureAt = Date.now();
         if (displayMode === "scrollx" || displayMode === "paged") {
           try {
             tapEl.releasePointerCapture?.(event.pointerId);
@@ -2079,59 +2099,47 @@ export function initReader({
             // Ignore capture release failures for compatibility.
           }
         }
-        if (dragged) return;
-        if (dx >= swipeThreshold && dx > dy * 1.25) {
-          handleSwipe(deltaX);
-          lastPointerTapAt = Date.now();
-          return;
-        }
-        if (dx > tapTolerance || dy > tapTolerance) return;
-        onTap(event);
-        lastPointerTapAt = Date.now();
+        finishGesture(event, currentGesture);
       });
-      tapEl.addEventListener("pointercancel", () => {
+      tapEl.addEventListener("pointercancel", (event) => {
+        if (gesture && event.pointerId !== gesture.pointerId) return;
         clearLongPressTimer();
-        down = null;
+        gesture = null;
       });
     }
 
     tapEl.addEventListener("click", (event) => {
-      if (Date.now() - lastPointerTapAt < 450) return;
-      onTap(event);
+      if (Date.now() - lastDirectGestureAt < 450) return;
+      handleTap(event);
     });
 
+    // Legacy mouse/touch handlers remain for browsers without Pointer Events.
     tapEl.addEventListener("mousedown", (event) => {
       if (window.PointerEvent || event.button !== 0) return;
-      down = {
+      gesture = {
         x: event.clientX,
         y: event.clientY,
         startLogicalLeft: toLogicalLeft(scrollEl, scrollEl.scrollLeft, pageDirection),
-        dragged: false
+        dragged: false,
+        consumed: false,
+        tapTolerance: moveThreshold
       };
     });
     window.addEventListener("mousemove", (event) => {
-      if (window.PointerEvent || !down || displayMode !== "scrollx") return;
-      const dx = event.clientX - down.x;
-      const dy = event.clientY - down.y;
-      if (Math.abs(dx) <= threshold || Math.abs(dx) <= Math.abs(dy)) return;
-      down.dragged = true;
-      scrollToLogicalLeft(down.startLogicalLeft - dx, "auto");
+      if (window.PointerEvent || !gesture || displayMode !== "scrollx") return;
+      const dx = event.clientX - gesture.x;
+      const dy = event.clientY - gesture.y;
+      if (Math.abs(dx) <= moveThreshold || Math.abs(dx) <= Math.abs(dy)) return;
+      gesture.dragged = true;
+      scrollToLogicalLeft(gesture.startLogicalLeft - dx, "auto");
       event.preventDefault();
     });
     window.addEventListener("mouseup", (event) => {
-      if (window.PointerEvent || !down) return;
-      const dx = Math.abs(event.clientX - down.x);
-      const dy = Math.abs(event.clientY - down.y);
-      const deltaX = event.clientX - down.x;
-      const dragged = down.dragged;
-      down = null;
-      if (dragged) return;
-      if (dx >= swipeThreshold && dx > dy * 1.25) {
-        handleSwipe(deltaX);
-        return;
-      }
-      if (dx > threshold || dy > threshold) return;
-      onTap(event);
+      if (window.PointerEvent || !gesture) return;
+      const currentGesture = gesture;
+      gesture = null;
+      lastDirectGestureAt = Date.now();
+      finishGesture(event, currentGesture);
     });
 
     tapEl.addEventListener(
@@ -2140,7 +2148,28 @@ export function initReader({
         if (window.PointerEvent) return;
         const touch = event.touches[0];
         if (!touch) return;
-        down = { x: touch.clientX, y: touch.clientY };
+        clearLongPressTimer();
+        gesture = {
+          x: touch.clientX,
+          y: touch.clientY,
+          dragged: false,
+          consumed: false,
+          tapTolerance: touchTapTolerance
+        };
+        longPressTimer = window.setTimeout(openSettingsFromLongPress, 620);
+      },
+      { passive: true }
+    );
+
+    tapEl.addEventListener(
+      "touchmove",
+      (event) => {
+        if (window.PointerEvent || !gesture) return;
+        const touch = event.touches[0];
+        if (!touch) return;
+        const dx = Math.abs(touch.clientX - gesture.x);
+        const dy = Math.abs(touch.clientY - gesture.y);
+        if (dx > moveThreshold || dy > moveThreshold) clearLongPressTimer();
       },
       { passive: true }
     );
@@ -2149,83 +2178,46 @@ export function initReader({
       "touchend",
       (event) => {
         if (window.PointerEvent) return;
-        if (skipNextTap) {
-          skipNextTap = false;
-          down = null;
-          return;
-        }
+        clearLongPressTimer();
         const touch = event.changedTouches[0];
-        if (!touch || !down) return;
-        const dx = Math.abs(touch.clientX - down.x);
-        const dy = Math.abs(touch.clientY - down.y);
-        const deltaX = touch.clientX - down.x;
-        down = null;
-        if (dx >= swipeThreshold && dx > dy * 1.25) {
-          handleSwipe(deltaX);
-          return;
-        }
-        if (dx > touchTapTolerance || dy > touchTapTolerance) return;
-        onTap(touch);
+        if (!touch || !gesture) return;
+        const currentGesture = gesture;
+        gesture = null;
+        lastDirectGestureAt = Date.now();
+        finishGesture(touch, currentGesture);
       },
       { passive: true }
     );
-
-    function handleSwipe(deltaX) {
-      if (!shouldHandlePagingTap()) return;
-      const swipeLeft = deltaX < 0;
-      const advanceOnSwipeLeft = pageDirection !== "rtl";
-      const step = swipeLeft === advanceOnSwipeLeft ? 1 : -1;
-      if (displayMode === "scroll") {
-        pageBy(scrollEl, step * getVerticalPageSize(), displayMode);
-      } else {
-        stepHorizontalPage(step, displayMode === "paged" ? "auto" : "smooth");
-      }
-    }
-  }
-
-  function bindTopEdgeRevealTap(tapEl) {
-    if (!tapEl || !topbar) return;
-
-    const shouldIgnore = (target) => {
-      if (!target || typeof target.closest !== "function") return false;
-      return Boolean(target.closest("button, input, select, textarea, a"));
-    };
-
-    const toggleTopbarAtTopEdge = (y) => {
-      if (y >= 72) return;
-      if (topbar.classList.contains("hidden")) {
-        topbar.classList.remove("hidden");
-        document.body.classList.remove("chrome-hidden");
-        document.body.classList.add("topbar-reveal-guard");
-        window.setTimeout(() => document.body.classList.remove("topbar-reveal-guard"), 350);
-        skipNextTap = true;
-        scheduleReaderResizeReflow();
-        return;
-      }
-      topbar.classList.add("hidden");
-      document.body.classList.add("chrome-hidden");
-      skipNextTap = true;
-      scheduleReaderResizeReflow();
-    };
-
-    if (window.PointerEvent) {
-      tapEl.addEventListener("pointerup", (event) => {
-        if (shouldIgnore(event.target)) return;
-        toggleTopbarAtTopEdge(event.clientY);
-      });
-      return;
-    }
 
     tapEl.addEventListener(
-      "touchend",
-      (event) => {
-        if (shouldIgnore(event.target)) return;
-        const touch = event.changedTouches[0];
-        if (!touch) return;
-        toggleTopbarAtTopEdge(touch.clientY);
+      "touchcancel",
+      () => {
+        if (window.PointerEvent) return;
+        clearLongPressTimer();
+        gesture = null;
       },
       { passive: true }
     );
+  }
+
+  function setReaderChromeVisible(visible, options = {}) {
+    if (!topbar) return;
+    const wasVisible = !topbar.classList.contains("hidden");
+    const guard = options.guard ?? visible;
+    const reflow = options.reflow !== false;
+
+    topbar.classList.toggle("hidden", !visible);
+    document.body.classList.toggle("chrome-hidden", !visible);
+    window.clearTimeout(topbarRevealGuardTimer);
+    document.body.classList.remove("topbar-reveal-guard");
+    if (visible && guard) {
+      document.body.classList.add("topbar-reveal-guard");
+      topbarRevealGuardTimer = window.setTimeout(() => {
+        document.body.classList.remove("topbar-reveal-guard");
+        topbarRevealGuardTimer = 0;
+      }, 350);
+    }
+    if (reflow && wasVisible !== visible) scheduleReaderResizeReflow();
   }
 
   function toggleChrome() {
@@ -2235,14 +2227,7 @@ export function initReader({
       closeAllPanels();
       return;
     }
-    topbar.classList.toggle("hidden");
-    const hidden = topbar.classList.contains("hidden");
-    document.body.classList.toggle("chrome-hidden", hidden);
-    if (!hidden) {
-      document.body.classList.add("topbar-reveal-guard");
-      window.setTimeout(() => document.body.classList.remove("topbar-reveal-guard"), 350);
-    }
-    scheduleReaderResizeReflow();
+    setReaderChromeVisible(topbar.classList.contains("hidden"));
   }
 
   function applyDisplayMode(mode, options = {}) {
@@ -2315,7 +2300,19 @@ export function initReader({
         if (target && typeof target.closest === "function") {
           if (target.closest("#settingsPanel, #tocPanel")) return;
         }
-        if (displayMode === "scroll") return;
+        if (displayMode === "scroll") {
+          // Vertical writing scrolls on the x axis. Translate wheel/trackpad
+          // input to scrollLeft so a mouse can advance the text; horizontal
+          // writing keeps native vertical scrolling.
+          if (normalizeWritingModePreference(writingModePreference) !== "vertical") return;
+          const wheelDelta = Math.abs(event.deltaY) >= Math.abs(event.deltaX)
+            ? event.deltaY
+            : event.deltaX;
+          if (Math.abs(wheelDelta) < 1) return;
+          scrollEl.scrollLeft += pageDirection === "rtl" ? -wheelDelta : wheelDelta;
+          event.preventDefault();
+          return;
+        }
         const axisDelta = Math.abs(event.deltaY) >= Math.abs(event.deltaX) ? event.deltaY : event.deltaX;
         if (Math.abs(axisDelta) < 1) return;
         if (displayMode === "paged") {
