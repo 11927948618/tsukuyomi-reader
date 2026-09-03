@@ -9,5 +9,16 @@
     "cover": "",
     "published": true,
     "updatedAt": "2026-05-15"
+  },
+  {
+    "id": "ginga-tetsudou-no-yoru",
+    "title": "銀河鉄道の夜",
+    "author": "宮沢賢治",
+    "description": "青空文庫収録のパブリックドメイン作品。プレビュー環境での縦書き・ページ送り・スクロール検証用。",
+    "format": "epub",
+    "path": "./books/works/ginga-tetsudou-no-yoru.epub",
+    "cover": "",
+    "published": true,
+    "updatedAt": "2026-09-03"
   }
 ]
