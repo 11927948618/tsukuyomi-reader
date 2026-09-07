@@ -814,7 +814,9 @@ export function initReader({
     }
 
     mobileTextPager.sourceHtml = currentBook.html || "";
-    bookContent.innerHTML = mobileTextPager.sourceHtml;
+    // In paged mode the pager immediately replaces this with a single page, so
+    // skip injecting the whole book (a 30万字 parse + layout) just to discard it.
+    bookContent.innerHTML = shouldUseMobileTextPager() ? "" : mobileTextPager.sourceHtml;
 
     renderToc(currentBook);
 
