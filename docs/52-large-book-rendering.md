@@ -105,11 +105,13 @@
 
 ---
 
-## 3. 実装ステップ（別セッション）
+## 3. 実装ステップ
 
-1. **initReader のライフサイクル**: cleanup 関数を返す / app.js が保持して画面遷移で呼ぶ。
-   window/document リスナーを登録解除。
-2. **EPUB blob URL 解放**: `normalize-epub` が URL 一覧を返す → book に保持 → cleanup で revoke。
+1. ~~**initReader のライフサイクル**~~ → **済 (v0.1.229)**。`bindWindowEvent` で登録追跡、
+   `initReader` が `destroy()` を返し、app.js `render()` が画面遷移前に呼ぶ。
+   sample 3回開閉で window リスナー純増 0。
+2. ~~**EPUB blob URL 解放**~~ → **済 (v0.1.229)**。`normalize-epub` が `meta.assetObjectUrls`、
+   app.js `releaseBookResources()` が本切替時・ログアウト時に revoke（PDF の `meta.pdfUrl` も）。
 3. **トークン化を async 化**: `buildMobileTextPagerPages` を章ループで yield。
    `syncMobileTextPager` / `upgradeToMeasuredPager`（削除済）呼び出し側の await 対応。
 4. **プログレッシブ初期表示**: 先頭数章を組んで即表示 → 残りを後追い。ページ番号は
