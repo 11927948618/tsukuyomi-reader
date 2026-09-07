@@ -890,20 +890,7 @@ body.pdf-reader-mode .reader-content > * {
 
 body.mode-scrolly .tap-zone {
   touch-action: pan-y;
-}
-
-body.mode-scrolly .tap-zone {
   pointer-events: none;
-}
-
-body.mode-scrollx .tap-zone {
-  pointer-events: auto;
-  touch-action: pan-x;
-  cursor: grab;
-}
-
-body.mode-scrollx .tap-zone:active {
-  cursor: grabbing;
 }
 
 body.page-turn-flash .reader-viewport::after {
@@ -992,13 +979,6 @@ body.page-turn-shadow.page-turn-back .reader-viewport::after {
   body.page-turn-shadow .reader-viewport::after {
     animation-duration: 1ms;
   }
-}
-
-body.mode-scrollx .reader-viewport {
-  overflow-x: auto;
-  overflow-y: hidden;
-  scroll-snap-type: x mandatory;
-  touch-action: pan-x;
 }
 
 body.mode-scrolly .reader-viewport {

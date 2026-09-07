@@ -80,7 +80,6 @@ export function initReader({
   let stackedViewEnabled = !spreadViewEnabled && isStackedViewSettingEnabled(settings);
   let lineNumbers = settings?.lineNumbers === true;
   let debugLayout = settings?.debugLayout === true;
-  let genkoPreset = false;
   let pageMarginPercent = normalizePageMarginPercent(settings?.pageMarginPercent, settings?.wrapWidthPercent);
   let savedSettingsSnapshot = null;
   let writingModePreference = normalizeWritingModePreference(settings?.writingModePreference);
@@ -286,15 +285,13 @@ export function initReader({
           inlineBase,
           blockBase,
           charAdvance,
-          lineAdvance,
-          genkoPreset: false
+          lineAdvance
         })
       : resolveHorizontalPagePlan({
           inlineBase,
           blockBase,
           charAdvance,
-          lineAdvance,
-          genkoPreset: false
+          lineAdvance
         });
     const visibleCount = arrangement === "single" ? 1 : 2;
     const pageSize = resolvePagePhysicalSize(plan, mode);
@@ -1382,10 +1379,8 @@ export function initReader({
     stackedViewEnabled = !spreadViewEnabled && isStackedViewSettingEnabled(nextSettings);
     lineNumbers = nextSettings.lineNumbers === true;
     applyDebugLayout(nextSettings.debugLayout === true);
-    genkoPreset = false;
     applySpreadViewBodyClass();
     document.body.classList.toggle("line-numbers-enabled", lineNumbers);
-    document.body.classList.remove("genko-preset-enabled");
     pageMarginPercent = normalizePageMarginPercent(nextSettings.pageMarginPercent, nextSettings.wrapWidthPercent);
     writingModePreference = normalizeWritingModePreference(nextSettings.writingModePreference);
     applyWritingModePreference(writingModePreference);
@@ -1568,15 +1563,13 @@ export function initReader({
           inlineBase: viewportHeight,
           blockBase: wrapPx,
           charAdvance: inlineAdvance,
-          lineAdvance: lineHeightPx,
-          genkoPreset: false
+          lineAdvance: lineHeightPx
         })
       : resolveHorizontalPagePlan({
           inlineBase: wrapPx,
           blockBase: viewportHeight,
           charAdvance: inlineAdvance,
-          lineAdvance: lineHeightPx,
-          genkoPreset: false
+          lineAdvance: lineHeightPx
     }));
     const pageSize = layout?.pageSize || resolvePagePhysicalSize(pagePlan, mode);
     const spreadSize = layout?.spreadSize || pageSize;
@@ -1936,7 +1929,6 @@ export function initReader({
     const shouldHandlePagingTap = () => {
       if (settingsPanel?.classList.contains("open") || tocPanel?.classList.contains("open")) return false;
       if (displayMode === "paged") return true;
-      if (displayMode === "scrollx") return true;
       return tapInScroll === true;
     };
 
@@ -2057,14 +2049,13 @@ export function initReader({
           x: event.clientX,
           y: event.clientY,
           pointerId: event.pointerId,
-          startLogicalLeft: toLogicalLeft(scrollEl, scrollEl.scrollLeft, pageDirection),
           dragged: false,
           consumed: false,
           tapTolerance: event.pointerType === "touch" || event.pointerType === "pen"
             ? touchTapTolerance
             : moveThreshold
         };
-        if (displayMode === "scrollx" || displayMode === "paged") {
+        if (displayMode === "paged") {
           try {
             tapEl.setPointerCapture?.(event.pointerId);
           } catch {
@@ -2080,11 +2071,6 @@ export function initReader({
         const dx = event.clientX - gesture.x;
         const dy = event.clientY - gesture.y;
         if (Math.abs(dx) > moveThreshold || Math.abs(dy) > moveThreshold) clearLongPressTimer();
-        if (displayMode !== "scrollx") return;
-        if (Math.abs(dx) <= moveThreshold || Math.abs(dx) <= Math.abs(dy)) return;
-        gesture.dragged = true;
-        scrollToLogicalLeft(gesture.startLogicalLeft - dx, "auto");
-        event.preventDefault();
       });
       tapEl.addEventListener("pointerup", (event) => {
         clearLongPressTimer();
@@ -2092,7 +2078,7 @@ export function initReader({
         const currentGesture = gesture;
         gesture = null;
         lastDirectGestureAt = Date.now();
-        if (displayMode === "scrollx" || displayMode === "paged") {
+        if (displayMode === "paged") {
           try {
             tapEl.releasePointerCapture?.(event.pointerId);
           } catch {
@@ -2119,20 +2105,10 @@ export function initReader({
       gesture = {
         x: event.clientX,
         y: event.clientY,
-        startLogicalLeft: toLogicalLeft(scrollEl, scrollEl.scrollLeft, pageDirection),
         dragged: false,
         consumed: false,
         tapTolerance: moveThreshold
       };
-    });
-    window.addEventListener("mousemove", (event) => {
-      if (window.PointerEvent || !gesture || displayMode !== "scrollx") return;
-      const dx = event.clientX - gesture.x;
-      const dy = event.clientY - gesture.y;
-      if (Math.abs(dx) <= moveThreshold || Math.abs(dx) <= Math.abs(dy)) return;
-      gesture.dragged = true;
-      scrollToLogicalLeft(gesture.startLogicalLeft - dx, "auto");
-      event.preventDefault();
     });
     window.addEventListener("mouseup", (event) => {
       if (window.PointerEvent || !gesture) return;
@@ -2237,14 +2213,8 @@ export function initReader({
     const normalized = normalizeDisplayMode(mode);
     displayMode = normalized;
     tapZone.classList.remove("disabled");
-    document.body.classList.remove("mode-paged", "mode-scrollx", "mode-scrolly");
-    if (normalized === "paged") {
-      document.body.classList.add("mode-paged");
-    } else if (normalized === "scrollx") {
-      document.body.classList.add("mode-scrollx");
-    } else {
-      document.body.classList.add("mode-scrolly");
-    }
+    document.body.classList.remove("mode-paged", "mode-scrolly");
+    document.body.classList.add(normalized === "paged" ? "mode-paged" : "mode-scrolly");
     applyImmersivePagedChrome();
     requestAnimationFrame(() => reflowReaderLayout({
       preservePosition: false,
@@ -2426,13 +2396,9 @@ function withPdfViewerParams(url) {
   return `${base}#${hash ? `${hash}&${params}` : params}`;
 }
 
-function resolveHorizontalPagePlan({ inlineBase, blockBase, charAdvance, lineAdvance, genkoPreset }) {
-  const inlineSize = genkoPreset
-    ? Math.min(inlineBase, charAdvance * 20)
-    : snapDownToStep(inlineBase, charAdvance, Math.max(120, charAdvance * 8));
-  const blockSize = genkoPreset
-    ? Math.min(blockBase, lineAdvance * 20)
-    : snapDownToStep(blockBase, lineAdvance, Math.max(120, lineAdvance * 4));
+function resolveHorizontalPagePlan({ inlineBase, blockBase, charAdvance, lineAdvance }) {
+  const inlineSize = snapDownToStep(inlineBase, charAdvance, Math.max(120, charAdvance * 8));
+  const blockSize = snapDownToStep(blockBase, lineAdvance, Math.max(120, lineAdvance * 4));
   return {
     inlineSize: Math.max(1, Math.round(inlineSize)),
     blockSize: Math.max(1, Math.round(blockSize)),
@@ -2442,54 +2408,36 @@ function resolveHorizontalPagePlan({ inlineBase, blockBase, charAdvance, lineAdv
   };
 }
 
-function resolveVerticalPagePlan({ inlineBase, blockBase, charAdvance, lineAdvance, genkoPreset }) {
+function resolveVerticalPagePlan({ inlineBase, blockBase, charAdvance, lineAdvance }) {
   const maxInline = Math.max(120, inlineBase);
   const maxBlock = Math.max(120, blockBase);
-  const minFontScale = genkoPreset ? 0.9 : 1;
-  const scaleSteps = genkoPreset ? [1, 0.97, 0.94, 0.9] : [1];
-  const candidates = genkoPreset
-    ? [
-        { chars: 20, lines: 20 },
-        { chars: 34, lines: 12 },
-        { chars: 33, lines: 12 },
-        { chars: 32, lines: 12 },
-        { chars: 30, lines: 13 },
-        { chars: 28, lines: 14 },
-        { chars: 25, lines: 16 },
-        { chars: 24, lines: 16 },
-        { chars: 22, lines: 18 }
-      ]
-    : buildNaturalVerticalCandidates(maxInline, maxBlock, charAdvance, lineAdvance);
+  const candidates = buildNaturalVerticalCandidates(maxInline, maxBlock, charAdvance, lineAdvance);
 
-  for (const scale of scaleSteps) {
-    const scaledCharAdvance = Math.max(6, charAdvance * scale);
-    const scaledLineAdvance = Math.max(10, lineAdvance * scale);
-    const gutter = Math.round(Math.min(48, Math.max(24, scaledLineAdvance * 0.7)));
-    const fit = candidates
-      .map((candidate) => {
-        const inlineSize = Math.round(candidate.chars * scaledCharAdvance + gutter * 2);
-        const blockSize = Math.round(candidate.lines * scaledLineAdvance);
-        return { ...candidate, inlineSize, blockSize, fontScale: scale, lineAdvance: scaledLineAdvance, verticalPageGutter: gutter };
-      })
-      .filter((candidate) => candidate.inlineSize <= maxInline && candidate.blockSize <= maxBlock)
-      .sort((a, b) => scoreVerticalPageCandidate(b, genkoPreset, maxInline, maxBlock) - scoreVerticalPageCandidate(a, genkoPreset, maxInline, maxBlock))[0];
-    if (fit) return fit;
-  }
+  const scaledCharAdvance = Math.max(6, charAdvance);
+  const scaledLineAdvance = Math.max(10, lineAdvance);
+  const gutter = Math.round(Math.min(48, Math.max(24, scaledLineAdvance * 0.7)));
+  const fit = candidates
+    .map((candidate) => {
+      const inlineSize = Math.round(candidate.chars * scaledCharAdvance + gutter * 2);
+      const blockSize = Math.round(candidate.lines * scaledLineAdvance);
+      return { ...candidate, inlineSize, blockSize, fontScale: 1, lineAdvance: scaledLineAdvance, verticalPageGutter: gutter };
+    })
+    .filter((candidate) => candidate.inlineSize <= maxInline && candidate.blockSize <= maxBlock)
+    .sort((a, b) => scoreVerticalPageCandidate(b, maxInline, maxBlock) - scoreVerticalPageCandidate(a, maxInline, maxBlock))[0];
+  if (fit) return fit;
 
-  const fallbackScale = minFontScale;
-  const scaledCharAdvance = Math.max(6, charAdvance * fallbackScale);
-  const scaledLineAdvance = Math.max(10, lineAdvance * fallbackScale);
-  const gutter = Math.round(Math.min(42, Math.max(20, scaledLineAdvance * 0.6)));
-  const chars = Math.max(8, Math.min(48, Math.floor((maxInline - gutter * 2) / scaledCharAdvance)));
+  // No candidate fit the frame; derive a plan directly from the available space.
+  const fbGutter = Math.round(Math.min(42, Math.max(20, scaledLineAdvance * 0.6)));
+  const chars = Math.max(8, Math.min(48, Math.floor((maxInline - fbGutter * 2) / scaledCharAdvance)));
   const lines = Math.max(4, Math.floor(maxBlock / scaledLineAdvance));
   return {
     chars,
     lines,
-    inlineSize: Math.max(1, Math.round(Math.min(maxInline, chars * scaledCharAdvance + gutter * 2))),
+    inlineSize: Math.max(1, Math.round(Math.min(maxInline, chars * scaledCharAdvance + fbGutter * 2))),
     blockSize: Math.max(1, Math.round(Math.min(maxBlock, lines * scaledLineAdvance))),
     lineAdvance: scaledLineAdvance,
-    fontScale: fallbackScale,
-    verticalPageGutter: gutter
+    fontScale: 1,
+    verticalPageGutter: fbGutter
   };
 }
 
@@ -2506,19 +2454,11 @@ function buildNaturalVerticalCandidates(maxInline, maxBlock, charAdvance, lineAd
   return candidates;
 }
 
-function scoreVerticalPageCandidate(candidate, genkoPreset, maxInline = 1, maxBlock = 1) {
+function scoreVerticalPageCandidate(candidate, maxInline = 1, maxBlock = 1) {
   const total = candidate.chars * candidate.lines;
-  if (!genkoPreset) {
-    const blockUse = Number(candidate.blockSize) / Math.max(1, maxBlock);
-    const inlineUse = Number(candidate.inlineSize) / Math.max(1, maxInline);
-    return total + blockUse * 36 + inlineUse * 8;
-  }
-  const target = 400;
-  const viewportRatio = maxInline / Math.max(1, maxBlock);
-  const targetRatio = viewportRatio >= 1.25 ? 2.75 : 1;
-  const balance = Math.abs(candidate.chars / Math.max(1, candidate.lines) - targetRatio) * 10;
-  const squareBonus = viewportRatio < 1.25 && candidate.chars === 20 && candidate.lines === 20 ? 28 : 0;
-  return 1000 - Math.abs(total - target) - balance + squareBonus;
+  const blockUse = Number(candidate.blockSize) / Math.max(1, maxBlock);
+  const inlineUse = Number(candidate.inlineSize) / Math.max(1, maxInline);
+  return total + blockUse * 36 + inlineUse * 8;
 }
 function normalizeFontFamilyPreference(value) {
   const normalized = String(value || "").toLowerCase();

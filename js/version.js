@@ -1,3 +1,3 @@
-export const APP_VERSION = "0.1.222";
-export const BUILD_TIME = "2026-09-03 18:09 JST";
-export const COMMIT = "reader-scroll-mobile-width";
+export const APP_VERSION = "0.1.223";
+export const BUILD_TIME = "2026-09-07 12:27 JST";
+export const COMMIT = "dead-code-scrollx-genko";
