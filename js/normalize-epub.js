@@ -150,13 +150,22 @@ export async function normalizeEpubToBook(file) {
     opfInfo.pageProgressionDirection
   );
 
+  // Object URLs for embedded images / CSS assets. The caller revokes these when
+  // it is done with this book (see app.js releaseBookResources).
+  const assetObjectUrls = Array.from(new Set(blobUrlCache.values())).filter(
+    (value) => typeof value === "string" && value.startsWith("blob:")
+  );
+
+  const meta = { ...(writingModePreference ? { writingModeHint: writingModePreference } : {}) };
+  if (assetObjectUrls.length) meta.assetObjectUrls = assetObjectUrls;
+
   return {
     title,
     html,
     toc,
     documentModel,
     settings: writingModePreference ? { writingModePreference } : null,
-    meta: writingModePreference ? { writingModeHint: writingModePreference } : null
+    meta: Object.keys(meta).length ? meta : null
   };
 }
 

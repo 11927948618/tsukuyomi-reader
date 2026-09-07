@@ -68,7 +68,8 @@ const appState = {
   siteConfig: { ...DEFAULT_SITE_CONFIG },
   reviewAuth: { authRequired: false, authenticated: true },
   openSettingsOnReader: false,
-  helpReturnScreen: "library"
+  helpReturnScreen: "library",
+  readerInstance: null
 };
 
 let distributionGuardsBound = false;
@@ -81,6 +82,17 @@ async function loadTemplate(name) {
 }
 
 async function render(screen) {
+  // Tear down the previous reader instance (window listeners, timers) before any
+  // screen swap, including a reader→reader re-entry.
+  if (appState.readerInstance?.destroy) {
+    try {
+      appState.readerInstance.destroy();
+    } catch {
+      // ignore
+    }
+    appState.readerInstance = null;
+  }
+
   if (screen === "auth") {
     await loadTemplate("auth");
     applyTheme(appState.settings.theme);
@@ -132,7 +144,7 @@ async function render(screen) {
     applyTheme(appState.settings.theme);
     applySiteChrome();
     document.getElementById("helpBtn")?.addEventListener("click", () => openHelp("reader"));
-    initReader({
+    appState.readerInstance = initReader({
       book: appState.currentBook,
       settings: appState.settings,
       progress: appState.progress,
@@ -265,6 +277,7 @@ function bindReviewAuthControls() {
         credentials: "same-origin"
       }).catch(() => {});
     } finally {
+      releaseBookResources(appState.currentBook);
       appState.currentBook = null;
       appState.currentBookId = null;
       clearCachedBookData();
@@ -274,7 +287,27 @@ function bindReviewAuthControls() {
   });
 }
 
+function releaseBookResources(book) {
+  const meta = book?.meta;
+  if (!meta || typeof meta !== "object") return;
+  const urls = [];
+  if (typeof meta.pdfUrl === "string") urls.push(meta.pdfUrl);
+  if (Array.isArray(meta.assetObjectUrls)) urls.push(...meta.assetObjectUrls);
+  for (const url of urls) {
+    if (typeof url === "string" && url.startsWith("blob:")) {
+      try {
+        URL.revokeObjectURL(url);
+      } catch {
+        // ignore
+      }
+    }
+  }
+}
+
 async function applyBook(book) {
+  if (appState.currentBook && appState.currentBook !== book) {
+    releaseBookResources(appState.currentBook);
+  }
   appState.currentBook = book;
   appState.currentBookId = buildBookId(book);
   const savedSettings = loadSettings(appState.currentBookId);

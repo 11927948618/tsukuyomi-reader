@@ -92,6 +92,16 @@ export function initReader({
   let isInitialLayout = true;
   let viewportResizeTimer = 0;
   let topbarRevealGuardTimer = 0;
+
+  // Listeners on window / visualViewport outlive the reader DOM, so track them
+  // and undo them when the reader instance is destroyed (screen change).
+  const readerTeardown = [];
+  const bindWindowEvent = (target, type, handler, options) => {
+    if (!target) return;
+    target.addEventListener(type, handler, options);
+    readerTeardown.push(() => target.removeEventListener(type, handler, options));
+  };
+
   let mobileTextPager = {
     active: false,
     sourceHtml: "",
@@ -710,12 +720,12 @@ export function initReader({
       reflowReaderLayout({ preservePosition: true });
     }, 140);
   };
-  window.addEventListener("resize", handleViewportResize);
-  window.addEventListener("orientationchange", handleViewportResize);
-  if (window.visualViewport) window.visualViewport.addEventListener("resize", handleViewportResize);
-  window.addEventListener("resize", updateSettingValueLabels);
-  window.addEventListener("orientationchange", updateSettingValueLabels);
-  if (window.visualViewport) window.visualViewport.addEventListener("resize", updateSettingValueLabels);
+  bindWindowEvent(window, "resize", handleViewportResize);
+  bindWindowEvent(window, "orientationchange", handleViewportResize);
+  bindWindowEvent(window.visualViewport, "resize", handleViewportResize);
+  bindWindowEvent(window, "resize", updateSettingValueLabels);
+  bindWindowEvent(window, "orientationchange", updateSettingValueLabels);
+  bindWindowEvent(window.visualViewport, "resize", updateSettingValueLabels);
   if (openSettingsOnStart) {
     requestAnimationFrame(() => toggleSettings(true));
   }
@@ -1820,11 +1830,11 @@ export function initReader({
       updatePageInfo(state.logical, state.max, state.pageSize);
     });
 
-    window.addEventListener("resize", () => {
+    bindWindowEvent(window, "resize", () => {
       applyImmersivePagedChrome();
       refresh();
     });
-    window.addEventListener("orientationchange", refresh);
+    bindWindowEvent(window, "orientationchange", refresh);
 
     requestAnimationFrame(() => {
       refresh();
@@ -2044,7 +2054,7 @@ export function initReader({
         tapTolerance: moveThreshold
       };
     });
-    window.addEventListener("mouseup", (event) => {
+    bindWindowEvent(window, "mouseup", (event) => {
       if (window.PointerEvent || !gesture) return;
       const currentGesture = gesture;
       gesture = null;
@@ -2286,6 +2296,20 @@ export function initReader({
     }
     refreshHScroll?.();
   }
+
+  return {
+    destroy() {
+      window.clearTimeout(viewportResizeTimer);
+      window.clearTimeout(topbarRevealGuardTimer);
+      readerTeardown.splice(0).forEach((fn) => {
+        try {
+          fn();
+        } catch {
+          // Ignore teardown failures; the DOM is going away anyway.
+        }
+      });
+    }
+  };
 }
 
 function getPdfUrl(book) {
