@@ -1,3 +1,3 @@
-export const APP_VERSION = "0.1.230";
-export const BUILD_TIME = "2026-09-07 18:55 JST";
-export const COMMIT = "paged-skip-full-inject";
+export const APP_VERSION = "0.1.231";
+export const BUILD_TIME = "2026-09-07 19:32 JST";
+export const COMMIT = "markdown-admin-upload-and-manuals";

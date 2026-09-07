@@ -578,7 +578,7 @@ lane_field_1
 
 誤公開を避けるため、昇格時は確認ダイアログで `PUBLIC` と入力します。賞応募候補や未発表稿は、一般公開してよいと判断した場合だけ昇格します。
 
-本文ファイルは `EPUB`、`TXT`、`PDF` を選択できます。PDFは固定レイアウト作品としてReader内に表示します。初回登録では本文ファイルが必須です。既存作品の説明文や公開状態だけを変える場合、本文ファイルと表紙画像は選ばなくてかまいません。
+本文ファイルは `EPUB`、`TXT`、`Markdown（.md）`、`PDF` を選択できます。Markdown は `#` / `##` / `###` の見出し、段落、`>` 引用、`---` 区切り線、`**強調**`、青空文庫式ルビをTXT同様に表示します（表・脚注・HTML混在は対象外）。PDFは固定レイアウト作品としてReader内に表示します。初回登録では本文ファイルが必須です。既存作品の説明文や公開状態だけを変える場合、本文ファイルと表紙画像は選ばなくてかまいません。
 
 4. 「保存」を押します。
 
@@ -596,13 +596,14 @@ lane_field_1
 
 この方法は、Cloudflare R2管理APIを使わない場合の予備手順です。通常は管理メニューから更新します。
 
-1. EPUB、TXT、PDFのいずれかを `books/works/` に置きます。
+1. EPUB、TXT、Markdown（.md）、PDFのいずれかを `books/works/` に置きます。
 
 例:
 
 ```text
 books/works/namida.epub
 books/works/namida.txt
+books/works/namida.md
 ```
 
 2. 表紙画像を `books/covers/` に置きます。
@@ -646,6 +647,8 @@ TXTを登録する場合は、`format` と `path` を以下のようにします
   "updatedAt": "2026-05-15"
 }
 ```
+
+Markdown（.md）の場合は `"format": "md"` にします。ファイル拡張子が `.md` / `.markdown` なら `format` を省略しても Markdown として扱います。
 
 ## 作品を差し替える
 
