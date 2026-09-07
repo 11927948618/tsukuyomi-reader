@@ -20,5 +20,16 @@
     "cover": "",
     "published": true,
     "updatedAt": "2026-09-03"
+  },
+  {
+    "id": "markdown-sample",
+    "title": "Markdown見本原稿",
+    "author": "hal the juggernaut",
+    "description": ".md 表示の確認用（見出し・引用・区切り線・ルビ）。",
+    "format": "md",
+    "path": "./books/works/markdown-sample.md",
+    "cover": "",
+    "published": true,
+    "updatedAt": "2026-09-07"
   }
 ]
