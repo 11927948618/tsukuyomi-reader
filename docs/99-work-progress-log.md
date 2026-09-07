@@ -1854,6 +1854,16 @@ TSUKUYOMI_REVIEW_PASSWORD_DAYS=7
 - `node --check js/reader.js` / `js/app.js`: OK
 - `node --test tests/*.test.mjs`: 11 pass / 0 fail
 
+### v0.1.225 スクロール+縦書きの進捗軸バグ
+
+- プログレスバー検証中に発覚: v0.1.222 でスクロール+縦書きを横スクロール化したのに、
+  `bindProgressTracking` / `applyProgress` / `captureDisplayModePosition` /
+  `restoreDisplayModePosition` は `displayMode === "scroll"` を一律 y 軸前提で処理していた。
+  → スクロール+縦書きで進捗が常に 0%、モード切替の位置復元も外れる。
+- `usesVerticalScrollAxis(mode)`（縦書きページャ or スクロール+横書きのときだけ y 軸）を新設し統一。
+  `pageBy()` は実スクロール範囲で軸判定。
+- 検証: 物理 scrollLeft=max → 0% / 0 → 100% と正しく追従。
+
 ### 次
 
 - 実機確認（Android Chrome / iOS Safari）: スクロール感、モバイル横幅、プログレスバーの見え方。
