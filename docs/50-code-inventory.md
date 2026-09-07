@@ -54,10 +54,13 @@
 - **存置**: `js/document-model.js`（normalize-txt/epub が使用）。`docs/40` は「保留」に更新。
 - spread 表示は measured 強制だったが、削除後は旧ページャで動作継続（B-2 で確認済み）。
 
-### B-2. 見開き表示（`pageColumns` / spread / stacked）
-- **現状**: 設定ラベルに「PC向け・試験中」。`isSpreadViewActive() = pageColumns && !isMobileReadingDevice()`。縦書き版はページを上下スタックする変則レイアウト（`docs/90` でも「モバイル2カラムは別機能」と整理）。reader.js/css に約70箇所の分岐。
-- **選択肢**: 完成させる / PC専用の実験機能として明示のまま維持 / 削除。
-- **推奨**: 使っていないなら削除候補。使うなら縦書きの見開き方向を通常の書籍（左右）に直す設計から。
+### B-2. 見開き表示（`pageColumns` / spread / stacked）  ← 設計中
+- **判断（2026-09-07）**: 「縦積み・横積みの両見開きをちゃんと設計する」方向。
+  設計メモを `docs/51-spread-view-redesign.md` に起こした。実装は別セッション。
+- 要点: 設定を1つ（見開きON/OFF＋並べ方ラジオ）に集約 / `isMobileReadingDevice()` 依存を
+  実寸判定へ / 書字方向×並べ方の4象限レイアウトを統一 / 各面をセルいっぱいに /
+  栞・進捗を先頭面 Locator 基準に。
+- B-1 で measured を削除しても spread は旧ページャで動作継続を確認済み（2ページ組・警告なし）。
 
 ---
 

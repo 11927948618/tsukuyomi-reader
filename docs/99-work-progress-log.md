@@ -1867,4 +1867,29 @@ TSUKUYOMI_REVIEW_PASSWORD_DAYS=7
 ### 次
 
 - 実機確認（Android Chrome / iOS Safari）: スクロール感、モバイル横幅、プログレスバーの見え方。
-- 台帳 B-1（measured-pager v2 の去就）/ C-3（没入モード設計）は別セッション。
+
+## 2026-09-07 棚卸し B-1 削除 / B-2 設計着手
+
+### B-1: measured-pager v2 削除（v0.1.226）
+
+- 実測比較で measured v2 は保守的すぎて 1 ページが埋まらず（旧 10p/約450字 → 14p/約270字）、
+  本番化には `docs/40` Phase 2-5 が丸ごと残っていた。旧文字数ページャが v0.1.222/223 で実用十分に。
+- 削除: `js/measured-pager.js` / reader.js の measured 配線一式 / `measuredPagerV2` フラグ /
+  `.measured-*` CSS / ブラウザスモークテスト2本 / node テスト3本。約 -580 行、reader.js 2571 行。
+- 存置: `js/document-model.js`（normalize-txt/epub が使用）。`docs/40` は「保留」に更新。
+- spread 表示は measured 強制だったが、削除後も旧ページャで 2 ページ組・警告なしを確認。
+- `node --test`: 8 pass。
+
+### B-2: 見開き表示 再設計メモ着手
+
+- `docs/51-spread-view-redesign.md` を新規作成（Draft）。
+- 方針: 設定を1つ（見開きON/OFF＋並べ方ラジオ）に集約、`isMobileReadingDevice()` 依存を実寸判定へ、
+  書字方向×並べ方の4象限レイアウトを統一、各面をセルいっぱいに、栞/進捗を先頭面 Locator 基準に。
+- §4 に要判断5点（上下2段の用途 / 3面以上 / スマホ横 / めくり効果 / auto の既定）。
+- 実装は別セッション。
+
+### 次
+
+- 実機確認。
+- `docs/51` §4 の判断 → B-2 実装。
+- C-3 没入モード設計。
