@@ -1,6 +1,11 @@
 # TsukuyomiReader 描画・ページャ再設計
 
-- 状態: Draft v0.1
+- 状態: **保留（2026-09-07）**。measured-pager v2 の試作（`js/measured-pager.js`）は
+  v0.1.226 で削除した。理由: 旧文字数ページャが v0.1.222/223 の横幅・組版修正で実用十分になり、
+  measured v2 は実測比較でむしろ 1 ページが埋まらず（同条件で 10p→14p / 450字→270字）、
+  本番化には本書 Phase 2〜5（設定UI整理・受入試験一式）が丸ごと残っていた。
+  DocumentModel / Locator（`js/document-model.js`）は正規化で使うため存置。
+  縦組み精度が再び実務課題になったら、本書を土台に別アプローチで再検討する。
 - 作成日: 2026-06-22
 - 対象: TXT / EPUB / HTML の本文表示
 - 参考資料: `docs/reference/ibunkohd_settings_ui_reference_for_tsukuyomi.docx`

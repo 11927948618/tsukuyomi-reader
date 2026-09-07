@@ -45,15 +45,14 @@
 
 ## B. 塩漬け — 判断が必要（このセッションでは触らない）
 
-### B-1. measured-pager v2（`js/measured-pager.js`）
-- **理想形**: DOM実測でページ境界を確定する方式（`docs/40`）。現行の文字数見積りページャ（`js/mobile-pager.js`）の脆さ（gitログの overflow 警告調整合戦）を根本解決するはずのもの。
-- **現状**: `config`/`app.js:29` `measuredPagerV2: false` で本番無効。`?measuredPagerV2=1` で手動有効化のみ。**txt限定**（EPUB/HTML では使えない）。`docs/40` の移行フェーズ 0-1 の土台のみ存在、フェーズ 2-5 未着手。
-- **選択肢**:
-  - (a) 仕上げてデフォルト化し、旧ページャを削除（`docs/40` 完遂）
-  - (b) 現状維持（塩漬け継続）
-  - (c) 削除して旧ページャに一本化（今回の横幅改善で旧ページャがかなり良くなった点を踏まえる）
-- **注意**: `js/document-model.js` は `normalize-txt.js` / `normalize-epub.js` が正規化時に使用しているので、v2 を捨てても document-model 本体は残す。
-- **推奨**: 実機確認後に判断。旧ページャで実用上困らないなら (c)、縦書き組版の精度を上げたいなら (a)。
+### B-1. measured-pager v2（`js/measured-pager.js`）  ← 済 (v0.1.226、(c) 削除)
+- 実測比較（ルビ・半角・ダッシュ入り TXT、375px）: 旧ページャ 10p / 約450字/p・はみ出しなし、
+  measured v2 14p / 約270字/p（スカスカ・めくり増）。measured は保守的すぎて 1 ページが埋まらない。
+- 旧文字数ページャが v0.1.222/223 の修正で実用十分になり、本番化には `docs/40` の Phase 2-5 が
+  丸ごと残っていた。→ **削除**。`js/measured-pager.js`・reader.js の配線・`measuredPagerV2` フラグ・
+  ブラウザスモークテスト・`.measured-*` CSS を除去。node テストは 11→8 pass。
+- **存置**: `js/document-model.js`（normalize-txt/epub が使用）。`docs/40` は「保留」に更新。
+- spread 表示は measured 強制だったが、削除後は旧ページャで動作継続（B-2 で確認済み）。
 
 ### B-2. 見開き表示（`pageColumns` / spread / stacked）
 - **現状**: 設定ラベルに「PC向け・試験中」。`isSpreadViewActive() = pageColumns && !isMobileReadingDevice()`。縦書き版はページを上下スタックする変則レイアウト（`docs/90` でも「モバイル2カラムは別機能」と整理）。reader.js/css に約70箇所の分岐。

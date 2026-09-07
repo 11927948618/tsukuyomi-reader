@@ -25,8 +25,7 @@ const DEFAULT_SITE_CONFIG = {
   analyticsEnabled: false,
   analyticsEndpoint: "/api/analytics/event",
   analyticsRespectDoNotTrack: true,
-  analyticsNotice: "",
-  measuredPagerV2: false
+  analyticsNotice: ""
 };
 
 const DEFAULT_SETTINGS = {

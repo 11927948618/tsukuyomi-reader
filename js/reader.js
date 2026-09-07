@@ -1,6 +1,5 @@
 import { qs, escapeHtml } from "./utils.js";
 import { buildMobileTextPagerPages } from "./mobile-pager.js";
-import { buildMeasuredTextPagerPages, MeasuredPagerCancelledError } from "./measured-pager.js";
 import { APP_VERSION } from "./version.js";
 
 const HORIZONTAL_LINE_NUMBER_GUTTER_EM = 2.8;
@@ -93,8 +92,6 @@ export function initReader({
   let isInitialLayout = true;
   let viewportResizeTimer = 0;
   let topbarRevealGuardTimer = 0;
-  let measuredPagerGeneration = 0;
-  let measuredPagerProbe = null;
   let mobileTextPager = {
     active: false,
     sourceHtml: "",
@@ -793,8 +790,6 @@ export function initReader({
   function renderBook(currentBook) {
     if (!currentBook) return;
 
-    measuredPagerGeneration += 1;
-    removeMeasuredPagerProbe();
     bookTitle.innerHTML = escapeHtml(currentBook.title || "Untitled");
     const pdfUrl = getPdfUrl(currentBook);
     const isPdf = Boolean(pdfUrl);
@@ -828,12 +823,9 @@ export function initReader({
   function syncMobileTextPager(options = {}) {
     if (!bookContent || getPdfUrl(book)) return;
     const enabled = shouldUseMobileTextPager();
-    const measuredEnabled = enabled && shouldUseMeasuredPagerV2();
-    const measuredGeneration = ++measuredPagerGeneration;
     document.body.classList.toggle("mobile-text-pager", enabled);
 
     if (!enabled) {
-      removeMeasuredPagerProbe();
       if (mobileTextPager.active) {
         const source = mobileTextPager.sourceHtml || book.html || "";
         mobileTextPager.active = false;
@@ -875,118 +867,6 @@ export function initReader({
     renderMobileTextPage(mobileTextPager.pageIndex);
     updateMobileTextPagerProgress();
     refreshHScroll?.();
-    if (measuredEnabled) {
-      void upgradeToMeasuredPager({ generation: measuredGeneration });
-    } else {
-      removeMeasuredPagerProbe();
-    }
-  }
-
-  function shouldUseMeasuredPagerV2() {
-    if (bookFormat !== "txt") return false;
-    if (isSpreadViewActive()) return true;
-    if (siteConfig?.measuredPagerV2 === true) return true;
-    return new URLSearchParams(window.location.search).get("measuredPagerV2") === "1";
-  }
-
-  async function upgradeToMeasuredPager({ generation }) {
-    try {
-      if (document.fonts?.ready) await document.fonts.ready;
-      if (generation !== measuredPagerGeneration || !mobileTextPager.active) return;
-
-      const source = mobileTextPager.sourceHtml || book.html || "";
-      const plan = resolveMobileTextPagerPlan();
-      const probe = ensureMeasuredPagerProbe(plan);
-      if (!probe) return;
-      const built = await buildMeasuredTextPagerPages(source, {
-        plan,
-        shouldCancel: () => generation !== measuredPagerGeneration || !mobileTextPager.active,
-        measurePage: (candidate) => measureMobileTextPageCandidate(probe, candidate, plan)
-      });
-      if (generation !== measuredPagerGeneration || !mobileTextPager.active) return;
-
-      const currentLocator = captureMobileTextPagerLocator();
-      const locatedPage = findMobileTextPagerPage(built.pages, currentLocator);
-      const nextPageIndex = clamp(
-        locatedPage ?? mobileTextPager.pageIndex,
-        0,
-        Math.max(0, built.pages.length - 1)
-      );
-      mobileTextPager = {
-        active: true,
-        sourceHtml: source,
-        pages: built.pages,
-        plan: built.plan,
-        pageIndex: nextPageIndex,
-        chapterPageMap: built.chapterPageMap,
-        sourceLocator: createMobileTextPagerLocator(built.pages[nextPageIndex]),
-        engine: built.engine || "measured-v2"
-      };
-      renderMobileTextPage(nextPageIndex);
-      updateMobileTextPagerProgress();
-      refreshHScroll?.();
-    } catch (err) {
-      if (err instanceof MeasuredPagerCancelledError) return;
-      console.warn("Measured pager fallback:", err);
-    }
-  }
-
-  function ensureMeasuredPagerProbe(plan = null) {
-    const rect = bookContent?.getBoundingClientRect?.();
-    if (!rect || rect.width <= 1 || rect.height <= 1) return null;
-    if (!measuredPagerProbe) {
-      measuredPagerProbe = document.createElement("div");
-      measuredPagerProbe.setAttribute("aria-hidden", "true");
-      document.body.appendChild(measuredPagerProbe);
-    }
-
-    measuredPagerProbe.className = `${bookContent.className} measured-pager-probe`;
-    const mode = plan?.writingMode === "horizontal" ? "horizontal" : "vertical";
-    const probeWidth = mode === "vertical"
-      ? Math.max(1, Number(plan?.blockSize) || rect.width)
-      : Math.max(1, Number(plan?.inlineSize) || rect.width);
-    const probeHeight = mode === "vertical"
-      ? Math.max(1, Number(plan?.inlineSize) || rect.height)
-      : Math.max(1, Number(plan?.blockSize) || rect.height);
-    measuredPagerProbe.style.width = `${probeWidth}px`;
-    measuredPagerProbe.style.height = `${probeHeight}px`;
-    const styles = window.getComputedStyle(bookContent);
-    measuredPagerProbe.style.fontSize = styles.fontSize;
-    measuredPagerProbe.style.fontFamily = styles.fontFamily;
-    measuredPagerProbe.style.lineHeight = styles.lineHeight;
-    measuredPagerProbe.style.letterSpacing = styles.letterSpacing;
-    return measuredPagerProbe;
-  }
-
-  function measureMobileTextPageCandidate(probe, candidate, plan) {
-    probe.innerHTML = buildMobileTextPageMarkup({
-      chapterId: "measured-probe",
-      title: candidate.title,
-      html: candidate.html,
-      lineStart: 1,
-      sourceStart: 0,
-      sourceEnd: 0
-    }, candidate.pageIndex, plan);
-    const pageEl = probe.querySelector(".mobile-text-page");
-    const bodyEl = probe.querySelector(".mobile-text-page-body");
-    if (!pageEl || !bodyEl) return false;
-
-    const endMarker = document.createElement("span");
-    endMarker.className = "measured-page-end";
-    endMarker.setAttribute("aria-hidden", "true");
-    bodyEl.appendChild(endMarker);
-    const epsilon = 1;
-    const bodyRect = bodyEl.getBoundingClientRect();
-    const markerRect = endMarker.getBoundingClientRect();
-    return markerRect.left >= bodyRect.left - epsilon
-      && markerRect.right <= bodyRect.right + epsilon
-      && markerRect.top >= bodyRect.top - epsilon
-      && markerRect.bottom <= bodyRect.bottom + epsilon;
-  }
-
-  function removeMeasuredPagerProbe() {
-    measuredPagerProbe?.remove();
-    measuredPagerProbe = null;
   }
 
   function captureMobileTextPagerLocator() {

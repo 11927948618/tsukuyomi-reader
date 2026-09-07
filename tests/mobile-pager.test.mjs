@@ -2,7 +2,6 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import { splitMobilePagerTokens } from "../js/mobile-pager.js";
-import { MeasuredPagerCancelledError, splitMeasuredPagerTokens } from "../js/measured-pager.js";
 
 const PLAN = {
   chars: 8,
@@ -75,61 +74,6 @@ test("legacy pager hangs closing punctuation instead of starting the next line w
   assert.equal(lines[1], "次");
 });
 
-test("measured pager uses measured capacity without losing tokens", async () => {
-  const tokens = plainTokens(23, 0);
-  const pages = await splitMeasuredPagerTokens(tokens, { ...PLAN, capacity: 4 }, {
-    title: "見出し",
-    measurePage: ({ html, title }) => countTokenIds(html) <= (title ? 3 : 6)
-  });
-  const ids = pages.flatMap((page) => [...page.html.matchAll(/data-token="(\d+)"/g)].map((match) => Number(match[1])));
-
-  assert.deepEqual(ids, Array.from({ length: 23 }, (_, index) => index));
-  assert.deepEqual(pages.map((page) => countTokenIds(page.html)), [3, 6, 6, 6, 2]);
-  assertContiguousRanges(pages, 23);
-});
-
-test("measured pager keeps ruby atomic and cancels stale builds", async () => {
-  const tokens = [
-    ...plainTokens(4, 0),
-    { type: "inline", html: '<ruby data-token="ruby">漢字<rt>かんじ</rt></ruby>', weight: 2 },
-    ...plainTokens(4, 4)
-  ];
-  const pages = await splitMeasuredPagerTokens(tokens, { ...PLAN, capacity: 3 }, {
-    measurePage: ({ html }) => countTokenIds(html) <= 4
-  });
-  const joined = pages.map((page) => page.html).join("");
-
-  assert.equal((joined.match(/data-token="ruby"/g) || []).length, 1);
-  assertContiguousRanges(pages, 10);
-
-  await assert.rejects(
-    () => splitMeasuredPagerTokens(tokens, PLAN, {
-      measurePage: () => true,
-      shouldCancel: () => true
-    }),
-    MeasuredPagerCancelledError
-  );
-});
-
-test("measured pager preserves EPUB decoration and atomic images", async () => {
-  const tokens = [
-    { type: "inline", html: '<ruby data-token="ruby">漢字<rt>かんじ</rt></ruby>', weight: 2 },
-    { type: "inline", html: '<span class="mp-emphasis" data-token="emphasis">強調</span>', weight: 2 },
-    { type: "inline", html: '<span class="mp-strike" data-token="strike">取消</span>', weight: 2 },
-    { type: "inline", html: '<img data-token="image" src="blob:fixture">', weight: 1, char: "\uFFFC", atomic: true },
-    ...plainTokens(8, 0)
-  ];
-  const pages = await splitMeasuredPagerTokens(tokens, { ...PLAN, capacity: 4 }, {
-    measurePage: ({ html }) => countTokenIds(html) <= 4
-  });
-  const joined = pages.map((page) => page.html).join("");
-
-  for (const marker of ["ruby", "emphasis", "strike", "image"]) {
-    assert.equal((joined.match(new RegExp(`data-token="${marker}"`, "g")) || []).length, 1);
-  }
-  assertContiguousRanges(pages, 15);
-});
-
 function plainTokens(count, startIndex) {
   return Array.from({ length: count }, (_, offset) => {
     const index = startIndex + offset;
@@ -153,8 +97,4 @@ function assertContiguousRanges(pages, expectedEnd) {
 
 function stripTags(value) {
   return String(value || "").replace(/<[^>]+>/g, "");
-}
-
-function countTokenIds(html) {
-  return (String(html || "").match(/data-token=/g) || []).length;
 }

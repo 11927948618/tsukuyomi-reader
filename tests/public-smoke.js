@@ -1,6 +1,4 @@
 const TESTS = [
-  { name: "Measured pager vertical", url: "./measured-pager-browser.html?mode=vertical" },
-  { name: "Measured pager horizontal", url: "./measured-pager-browser.html?mode=horizontal" },
   { name: "EPUB DocumentModel", url: "./epub-document-model-browser.html" }
 ];
 
