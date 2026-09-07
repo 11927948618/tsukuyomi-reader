@@ -42,6 +42,8 @@
   - DialogueAssemblerのスマホ向けPDF出力メモ。
 - `40-reader-rendering-pager-redesign.md`
   - Readerの縦書き、ページ送り、DOM計測ページャ再設計メモ。
+- `50-code-inventory.md`
+  - 不要コード・塩漬け実装・未実装機能の分類台帳。削除/判断/実装の進行管理。
 
 ## 履歴・引継ぎ
 
