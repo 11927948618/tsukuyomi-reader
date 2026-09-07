@@ -112,7 +112,12 @@
    sample 3回開閉で window リスナー純増 0。
 2. ~~**EPUB blob URL 解放**~~ → **済 (v0.1.229)**。`normalize-epub` が `meta.assetObjectUrls`、
    app.js `releaseBookResources()` が本切替時・ログアウト時に revoke（PDF の `meta.pdfUrl` も）。
+2.5. ~~**ページ切替時の全文注入を廃止**~~ → **済 (v0.1.230)**。`renderBook` は paged 時に
+   `#bookContent` を空にし、ページャに任せる（従来はモード問わず全文注入していた）。
+   約23万字で「開いて page 1 が見えるまで」約2000ms → 約370ms。
 3. **トークン化を async 化**: `buildMobileTextPagerPages` を章ループで yield。
+   ※ v0.1.230 で一度実装（MessageChannel yield ＋ generation guard ＋ onPartial）したが、
+   大容量での栞復元を検証しきれず戻した。ステップ5と同時に実機検証つきで再実装する。
    `syncMobileTextPager` / `upgradeToMeasuredPager`（削除済）呼び出し側の await 対応。
 4. **プログレッシブ初期表示**: 先頭数章を組んで即表示 → 残りを後追い。ページ番号は
    「+」表示など暫定 UI で。
