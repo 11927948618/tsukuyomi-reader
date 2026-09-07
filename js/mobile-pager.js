@@ -5,9 +5,29 @@ const NO_LINE_START_CHARS = new Set(Array.from(
 ));
 const NO_LINE_END_CHARS = new Set(Array.from("「『（〔［｛〈《【〘〖〝‘“«([{"));
 
+// Tokenizing a whole book is the expensive step (DOM parse + full-tree walk).
+// It only depends on the source HTML and the writing mode, not on font size /
+// margins / line height. Cache the result so a settings change re-runs only the
+// cheap character-count page split. splitMobilePagerTokens never mutates tokens.
+const tokenizeCache = new Map();
+const TOKENIZE_CACHE_LIMIT = 3;
+
+function tokenizeChaptersCached(sourceHtml, writingMode) {
+  const source = String(sourceHtml || "");
+  const key = `${writingMode}::${source.length}::${source.slice(0, 160)}::${source.slice(-160)}`;
+  const cached = tokenizeCache.get(key);
+  if (cached) return cached;
+  const chapters = tokenizeMobilePagerSource(source, writingMode);
+  tokenizeCache.set(key, chapters);
+  if (tokenizeCache.size > TOKENIZE_CACHE_LIMIT) {
+    tokenizeCache.delete(tokenizeCache.keys().next().value);
+  }
+  return chapters;
+}
+
 export function buildMobileTextPagerPages(sourceHtml, options = {}) {
   const plan = normalizePlan(options.plan);
-  const sourceChapters = tokenizeMobilePagerSource(sourceHtml, plan.writingMode);
+  const sourceChapters = tokenizeChaptersCached(sourceHtml, plan.writingMode);
   const pages = [];
   const chapterPageMap = new Map();
   let nextLineNumber = 1;
