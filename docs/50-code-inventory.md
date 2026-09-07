@@ -66,10 +66,16 @@
 
 ## C. 未実装だが欲しかった機能
 
-### C-1. `.md`（Markdown）原稿対応
-- 出典: `docs/99`（2026-06-05「次期候補」）、`docs/90`「未完了・候補」
-- 想定: TXTの上位互換として正規化。`#`/`##`/`###` 見出し、段落、空行、引用、区切り線まで。表・脚注・HTML混在は対象外。
-- 規模: `js/normalize-md.js` 新規（`normalize-txt.js` を土台に）＋ library.js の受け入れ拡張。中規模。
+### C-1. `.md`（Markdown）原稿対応  ← 済 (v0.1.227)
+- `js/normalize-md.js` 新規。`#`/`##`/`###` を見出し（各レベルで章分け、TOC は level 付き）、
+  段落・空行・`>` 引用・`---` 区切り線（＝ ＊＊＊ の場面転換）を変換。行内は青空記法（ルビ等）＋
+  `**強調**` と `` `コード` `` のみ。内部的には TXT（`meta.format = "txt"`、`sourceFormat = "md"`）。
+- `js/library.js`: `.md`/`.markdown` の受け入れ（ファイル取込・`books/manifest.json` の `format:"md"`・
+  換算ページ数見積り）。`templates/library.html` の accept/ラベル。`css/reader.css` に `.md-quote` /
+  `.md-rule`。`sw.js` にプリキャッシュ追加。
+- テスト `tests/normalize-md.test.mjs`（4本）。ローカルで章ジャンプ・ページ送り・ルビ・強調・
+  引用・区切り線の描画を確認。node --test 8→12 pass。
+- 対象外（据え置き）: 表・脚注・HTML混在・リンクカード・`*斜体*` 単独（傍点・箇条書きと衝突するため）。
 
 ### C-2. 大容量書籍の分割 / 仮想描画
 - 出典: `README`「今後の候補」、`docs/99`（2026-05-15）、`help.html:101` にも制約明記

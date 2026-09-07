@@ -1,5 +1,6 @@
 import { qs, readFileAsText, safeText, textWithoutRuby } from "./utils.js";
 import { normalizeTxtToBook } from "./normalize-txt.js";
+import { normalizeMdToBook } from "./normalize-md.js";
 import { normalizeEpub } from "./normalize-epub.js";
 import { importZipToBook } from "./storage.js";
 
@@ -113,6 +114,7 @@ export function initLibrary({ siteConfig = null, onOpenBook, onExport, getCurren
     const name = String(file.name || "").toLowerCase();
     const isEpub = name.endsWith(".epub") || file.type === "application/epub+zip";
     const isPdf = name.endsWith(".pdf") || file.type === "application/pdf";
+    const isMarkdown = name.endsWith(".md") || name.endsWith(".markdown");
 
     if (isEpub) {
       setStatus("EPUB読み込み中...");
@@ -151,19 +153,22 @@ export function initLibrary({ siteConfig = null, onOpenBook, onExport, getCurren
       return;
     }
 
-    setStatus("TXT読み込み中...");
+    setStatus(isMarkdown ? "Markdown読み込み中..." : "TXT読み込み中...");
     try {
       const mode = txtEncoding ? txtEncoding.value : "auto";
       const { text, encoding, debug } = await decodeTxtAuto(file, mode);
       setDebug(debug);
-      const book = attachBookSource(normalizeTxtToBook(text, file.name, {
-        autoDetectStructure: loadTxtStructureAutoDetectPreference()
-      }), "file-import", {
-        kind: "txt",
+      const normalized = isMarkdown
+        ? normalizeMdToBook(text, file.name)
+        : normalizeTxtToBook(text, file.name, {
+            autoDetectStructure: loadTxtStructureAutoDetectPreference()
+          });
+      const book = attachBookSource(normalized, "file-import", {
+        kind: isMarkdown ? "md" : "txt",
         filename: file.name || "",
         encoding
       });
-      setStatus("TXT読み込み完了", "ok");
+      setStatus(isMarkdown ? "Markdown読み込み完了" : "TXT読み込み完了", "ok");
       await onOpenBook(book);
     } catch (err) {
       setStatus(err.message || "読み込みに失敗しました", "error");
@@ -575,15 +580,18 @@ async function openBundledBook(entry, txtMode = "auto", setDebug, manifestPath =
     return attachBookSource(await normalizeEpub(file), "manifest", sourceData);
   }
 
-  if (kind === "txt") {
+  if (kind === "txt" || kind === "md") {
     const res = await fetch(sourceUrl);
-    if (!res.ok) throw new Error(`TXTを読み込めません: ${filename}`);
+    if (!res.ok) throw new Error(`${kind === "md" ? "Markdown" : "TXT"}を読み込めません: ${filename}`);
     const buffer = await res.arrayBuffer();
     const { text, debug } = decodeTxtBuffer(buffer, txtMode);
     setDebug?.(debug);
-    return attachBookSource(normalizeTxtToBook(text, filename, {
-      autoDetectStructure: loadTxtStructureAutoDetectPreference()
-    }), "manifest", sourceData);
+    const normalized = kind === "md"
+      ? normalizeMdToBook(text, filename)
+      : normalizeTxtToBook(text, filename, {
+          autoDetectStructure: loadTxtStructureAutoDetectPreference()
+        });
+    return attachBookSource(normalized, "manifest", sourceData);
   }
 
   if (kind === "html") {
@@ -700,9 +708,9 @@ async function estimateBundledBookManuscriptStats(entry, manifestPath, txtMode =
   const kind = normalizeBundledBookKind(entry?.format || entry?.kind, filename);
   let text = "";
 
-  if (kind === "txt") {
+  if (kind === "txt" || kind === "md") {
     const res = await fetch(sourceUrl);
-    if (!res.ok) throw new Error(`TXTを読み込めません: ${filename}`);
+    if (!res.ok) throw new Error(`${kind === "md" ? "Markdown" : "TXT"}を読み込めません: ${filename}`);
     const buffer = await res.arrayBuffer();
     text = decodeTxtBuffer(buffer, txtMode).text || "";
   } else if (kind === "html") {
@@ -774,10 +782,12 @@ function attachBookSource(book, sourceType, sourceData = null) {
 
 function normalizeBundledBookKind(kind, filename) {
   const hinted = String(kind || "").toLowerCase();
+  if (hinted === "md" || hinted === "markdown") return "md";
   if (hinted === "txt" || hinted === "epub" || hinted === "html" || hinted === "pdf" || hinted === "zip") return hinted;
 
   const lower = String(filename || "").toLowerCase();
   if (lower.endsWith(".epub")) return "epub";
+  if (lower.endsWith(".md") || lower.endsWith(".markdown")) return "md";
   if (lower.endsWith(".html") || lower.endsWith(".htm")) return "html";
   if (lower.endsWith(".pdf")) return "pdf";
   if (lower.endsWith(".zip")) return "zip";
@@ -789,6 +799,7 @@ function defaultDescription(kind) {
   if (kind === "html") return "HTML作品";
   if (kind === "pdf") return "PDF作品";
   if (kind === "zip") return "バックアップZIP";
+  if (kind === "md") return "Markdown原稿";
   return "TXT作品";
 }
 

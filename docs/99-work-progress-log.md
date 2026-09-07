@@ -1888,8 +1888,21 @@ TSUKUYOMI_REVIEW_PASSWORD_DAYS=7
 - §4 に要判断5点（上下2段の用途 / 3面以上 / スマホ横 / めくり効果 / auto の既定）。
 - 実装は別セッション。
 
+## 2026-09-07 C-1: Markdown 原稿対応（v0.1.227）
+
+- `js/normalize-md.js` 新規。`normalize-txt.js` の構造を土台に:
+  - `#`/`##`/`###` → 各レベルで章分け（`<section class="chapter">` ＋ h1/h2/h3）。TOC は `level` 付き。
+  - `>` 引用（連続行）、`---`/`***`/`___` 区切り線（＝ ＊＊＊ の場面転換）、空行→gap。
+  - 行内: 青空記法（ルビ・約物）＋ `**強調**` ＋ `` `コード` `` のみ。`*斜体*` 単独は不対応（傍点・箇条書きと衝突）。
+  - `meta.format = "txt"`（reader はページャ等で TXT 扱い）、`meta.sourceFormat = "md"`、`textStructureAutoDetected = false`。
+- `js/library.js`: `.md`/`.markdown` 取込、`books/manifest.json` の `format:"md"`、換算ページ見積り。
+- `templates/library.html` accept/ラベル、`css/reader.css` `.md-quote`（縦書きは色＋字下げ、横書きは罫）/ `.md-rule` / `code`、`sw.js` プリキャッシュ。
+- テスト `tests/normalize-md.test.mjs`（4本）。node --test 8→12 pass。
+- ローカル実測（375px）: 見出し3レベル・ルビ・**強調**・引用・＊＊＊・章ジャンプ（第3章へ）・
+  ページ送り（18ページ）・オーバーフロー警告なし を確認。
+
 ### 次
 
-- 実機確認。
-- `docs/51` §4 の判断 → B-2 実装。
+- 実機確認（スクロール感・モバイル横幅・プログレスバー・Markdown）。
+- `docs/51` §4 は判断済み → B-2 実装（別セッション）。
 - C-3 没入モード設計。

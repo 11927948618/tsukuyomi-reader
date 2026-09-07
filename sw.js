@@ -1,4 +1,4 @@
-const CACHE_NAME = "tsukuyomi-reader-v0.1.226";
+const CACHE_NAME = "tsukuyomi-reader-v0.1.227";
 const STATIC_ASSETS = [
   "./",
   "./index.html",
@@ -24,6 +24,8 @@ const STATIC_ASSETS = [
   "./js/mobile-pager.js",
   "./js/document-model.js",
   "./js/normalize-txt.js",
+  "./js/normalize-md.js",
+  "./js/normalize-aozora.js",
   "./js/normalize-epub.js",
   "./js/storage.js",
   "./js/utils.js",

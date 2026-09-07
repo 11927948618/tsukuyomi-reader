@@ -777,6 +777,31 @@ body.distribution-mode .reader-content img {
   block-size: calc(1.25em * var(--gap-lines, 1));
 }
 
+/* Markdown 原稿の引用と区切り線 */
+.reader-content .txt-line.md-quote {
+  color: color-mix(in srgb, var(--text), var(--muted) 55%);
+  padding-inline-start: 1em;
+}
+
+/* 横書きだけ、読み始め側に細い罫を出す（縦書きは色と字下げのみ） */
+body.writing-horizontal .reader-content .txt-line.md-quote {
+  border-inline-start: 2px solid color-mix(in srgb, var(--border), var(--text) 20%);
+}
+
+.reader-content .txt-line.md-rule {
+  color: var(--muted);
+  text-align: center;
+  letter-spacing: 0.3em;
+  margin-block: 0.6em;
+}
+
+.reader-content code {
+  font-family: inherit;
+  padding: 0 0.15em;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--panel), var(--text) 8%);
+}
+
 .reader-content .chapter > *:last-child {
   margin-block-end: 0;
 }
