@@ -1901,8 +1901,32 @@ TSUKUYOMI_REVIEW_PASSWORD_DAYS=7
 - ローカル実測（375px）: 見出し3レベル・ルビ・**強調**・引用・＊＊＊・章ジャンプ（第3章へ）・
   ページ送り（18ページ）・オーバーフロー警告なし を確認。
 
+## 2026-09-07 C-2: 大容量書籍対応（着手、v0.1.228）＋ 設計メモ
+
+### 計測（約23万字 / 30章 / 227k トークン / 990ページ）
+
+- `normalizeTxtToBook` 約160ms、`tokenizeMobilePagerSource` 約350〜420ms、
+  `splitMobilePagerTokens`（全章）約105ms。
+- **ページ切替**: DOM は現在ページのみ（〜数百字）。重いのは初回トークン化。
+- **スクロール**: `#bookContent` に全文（約23万字）展開 → 秒単位で重い。ここが本丸。
+
+### v0.1.228 トークン化キャッシュ
+
+- `js/mobile-pager.js`: `tokenizeMobilePagerSource` の結果を Map（最大3件）でキャッシュ。
+  キーは `writingMode::length::先頭160::末尾160`。`splitMobilePagerTokens` はトークンを
+  変更しないので再利用は安全。
+- 効果: 設定変更時の再ページ化 cold 421ms → warm 34ms（約12倍）。書字方向変更はミス（正）。
+- 注: Edit で区切りに `\x00` が混入する現象があり、`::` に変更して回避。
+- `node --test` 12 pass。
+
+### 設計メモ `docs/52-large-book-rendering.md`（Draft）
+
+- スクロールモードの全文DOM展開を廃止（案A: ページャ経由 / 案B: 章仮想リスト。推奨A）。
+- 初回トークン化の async 化・プログレッシブ表示、EPUB blob URL 解放、
+  initReader ティアダウン、document model の遅延構築。
+- §3 に10ステップ、§4 に要判断4点。実装は別セッション。
+
 ### 次
 
-- 実機確認（スクロール感・モバイル横幅・プログレスバー・Markdown）。
-- `docs/51` §4 は判断済み → B-2 実装（別セッション）。
-- C-3 没入モード設計。
+- 実機確認（スクロール感・モバイル横幅・プログレスバー・Markdown・大容量ページ切替）。
+- `docs/51`（見開き）/ `docs/52`（大容量スクロール）/ C-3（没入モード）は各々別セッション。
