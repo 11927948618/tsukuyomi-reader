@@ -9,7 +9,9 @@ export async function onRequestGet(context) {
   if (rateLimited) return rateLimited;
 
   const bucket = getBucket(context.env);
-  if (!bucket) return error("R2 bucket binding が未設定です", 500);
+  // No R2 catalog on this deployment (e.g. a preview project). Answer 404 so the
+  // reader falls back to the static ./books/manifest.json bundled in the assets.
+  if (!bucket) return error("R2 bucket binding が未設定です", 404);
 
   const reviewAuth = await requireReviewPasswordAuth(context.request, bucket, context.env);
   if (!reviewAuth.ok) return reviewAuth.response;
