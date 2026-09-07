@@ -1780,5 +1780,40 @@ TSUKUYOMI_REVIEW_PASSWORD_DAYS=7
 ### 次
 
 - 実機（Android Chrome / iOS Safari）で両方を確認。
-- コミット/デプロイはユーザー確認後（`git push origin main` で Cloudflare Pages 自動デプロイ）。
-- H: ドライブ後始末＋クラウドベース運用の検討。
+
+## 2026-09-07 デプロイ・検証環境の整備 と H: ドライブ後始末
+
+### デプロイ
+
+- `def5303`（scroll+mobile幅 v0.1.222）/ `8784ea5`（`books/` に検証用「銀河鉄道の夜」）/
+  `8f79997`（`/api/books` を R2 未設定時 500→404 にして静的カタログへフォールバック）を
+  main に push。評価版 `tsukuyomi-reader-tachiyomi.pages.dev` に v0.1.222 反映済み。
+
+### 検証用プレビュー環境
+
+- Cloudflare Pages プロジェクト `tsukuyomi-reader-preview`（`tsukuyomi-reader-preview.pages.dev`）を新規作成。
+  - 同 repo / branch `main` / Framework None / build command 空 / output `/`
+  - **`TSUKUYOMI_REVIEW_PASSWORD_AUTH` なし・R2 バインディングなし** → `/api/books` が 404 →
+    静的 `books/manifest.json`（サンプル＋銀河鉄道の夜）にフォールバック
+- 認証なしで開けるため、以後 Claude がデプロイ版のスクロール／レイアウトを実測できる。
+  評価版・一般公開版とは R2 が別なので分離。
+- デプロイ版で ①スクロール修正（`overflow-x:auto` / `touch-action:pan-x` / ホイール横スクロール）動作確認済み。
+
+### H: ドライブ（旧「Drive 正本」方式）の廃止
+
+- 旧方式: H: の素ファイルコピーを編集正本にし、`deploy-from-drive.ps1` /
+  `☆Driveから反映してデプロイ.bat` で Drive→C: robocopy → push。
+  → git 管理外コピーと C: ミラーが分裂。さらに古い Drive からバッチ実行すると本番を巻き戻す危険。
+- 対応:
+  - `H:\...\D.TsukuyomiReader\tsukuyomi-reader\`（v0.1.168 素コピー）と
+    `deploy-from-drive.ps1` / `☆Driveから反映してデプロイ.bat` を
+    `H:\...\D.TsukuyomiReader\過去・凍結\×旧Drive正本_v0.1.168_20260907\` へ移動（× 実行厳禁）。
+  - `README_運用メモ.txt` を新方式（git リポジトリ 1 本、正本 = GitHub、push で自動デプロイ）に全面改訂。
+  - `backups\`（0.1.97 の pre-pager zip）は △ で保持、説明メモ追加。
+- 「クラウドベース運用へ移行」は不要と判断。問題は二重管理であってローカル/クラウドではない。
+  現行（単一 git repo + GitHub + Cloudflare 自動デプロイ）で消失対策も十分。
+
+### 次
+
+- 実機確認（Android / iOS）で ①スマホのスクロール感 ②モバイル横幅。
+- 実機OKなら本件クローズ。
