@@ -361,6 +361,13 @@ export function initReader({
     if (bookFormat === "epub") return false;
     return getMaxLeft(scrollContainer) <= 1 && getMaxTop(scrollContainer) > 1;
   };
+  // Scroll mode scrolls on the y axis for horizontal writing, and on the x axis
+  // for vertical writing (the body flows sideways). Paged TXT can also wrap into
+  // a vertical scroll — usesVerticalPagedAxis() catches that.
+  const usesVerticalScrollAxis = (mode = displayMode) =>
+    usesVerticalPagedAxis()
+    || (normalizeDisplayMode(mode) === "scroll"
+        && normalizeWritingModePreference(writingModePreference) !== "vertical");
   const scrollToLogicalLeft = (logicalLeft, behavior = "auto") => {
     const physicalLeft = toPhysicalLeft(scrollContainer, logicalLeft, pageDirection);
     if (isVerticalPagedMode() && !usesVerticalPagedAxis() && scrollContainer.scrollTop !== 0) {
@@ -1759,7 +1766,7 @@ export function initReader({
       if (mobileTextPager.active) return;
       const chapterId = getCurrentChapterId();
 
-      if (displayMode === "scroll" || usesVerticalPagedAxis()) {
+      if (usesVerticalScrollAxis()) {
         const offset = usesVerticalPagedAxis() ? verticalPagedLogicalTop(scrollContainer.scrollTop) : scrollContainer.scrollTop;
         const size = getVerticalPageSize();
         const pageIndex = Math.round(offset / size);
@@ -1826,7 +1833,7 @@ export function initReader({
           if (typeof refresh === "function") refresh();
           return;
         }
-        if (displayMode === "scroll" || usesVerticalPagedAxis()) {
+        if (usesVerticalScrollAxis()) {
           const topRaw = Number(nextProgress?.scrollTop);
           const top = Number.isFinite(topRaw)
             ? topRaw
@@ -2272,7 +2279,7 @@ export function initReader({
 
   function captureDisplayModePosition(mode = displayMode) {
     if (!scrollContainer) return null;
-    if (normalizeDisplayMode(mode) === "scroll" || usesVerticalPagedAxis()) {
+    if (usesVerticalScrollAxis(mode)) {
       const pageSize = getVerticalPageSize();
       return {
         pageIndex: Math.max(0, Math.round((Number(scrollContainer.scrollTop) || 0) / pageSize)),
@@ -2289,7 +2296,7 @@ export function initReader({
 
   function restoreDisplayModePosition(position, mode = displayMode) {
     if (!position || !scrollContainer) return;
-    if (normalizeDisplayMode(mode) === "scroll" || usesVerticalPagedAxis()) {
+    if (usesVerticalScrollAxis(mode)) {
       const top = Number.isFinite(Number(position.scrollTop))
         ? Number(position.scrollTop)
         : (Number(position.pageIndex) || 0) * getVerticalPageSize();
@@ -2563,7 +2570,9 @@ function throttle(fn, wait) {
 
 function pageBy(content, delta, mode = "paged") {
   const behavior = mode === "paged" ? "auto" : "smooth";
-  if (normalizeDisplayMode(mode) === "scroll") {
+  const maxTop = content.scrollHeight - content.clientHeight;
+  const maxLeft = content.scrollWidth - content.clientWidth;
+  if (normalizeDisplayMode(mode) === "scroll" && maxTop >= maxLeft) {
     content.scrollTo({ top: content.scrollTop + delta, behavior });
     return;
   }
