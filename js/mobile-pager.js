@@ -326,6 +326,8 @@ function extendInlineMarks(node, marks = {}) {
     || /(^|[-_\s])(bouten|emphasis|sesame)([-_\s]|$)/.test(className)) {
     nextMarks.emphasis = true;
   }
+  if (/(^|[-_\s])md-quote([-_\s]|$)/.test(className) || tag === "blockquote") nextMarks.quote = true;
+  if (tag === "code") nextMarks.code = true;
   return nextMarks;
 }
 
@@ -336,6 +338,8 @@ function decorateInlineHtml(html, marks = {}) {
   if (marks.italic) classes.push("mp-italic");
   if (marks.underline) classes.push("mp-underline");
   if (marks.emphasis) classes.push("mp-emphasis");
+  if (marks.quote) classes.push("mp-quote");
+  if (marks.code) classes.push("mp-code");
   if (!classes.length) return html;
   return `<span class="${classes.join(" ")}">${html}</span>`;
 }

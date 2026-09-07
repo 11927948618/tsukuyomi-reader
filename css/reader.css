@@ -661,6 +661,16 @@ body.pager-fit-warning::after {
   -webkit-text-emphasis-position: over right;
 }
 
+/* Markdown 引用・インラインコード（ページ切替時。段落単位の枠は付けず色で示す） */
+.mobile-text-page .mp-quote {
+  color: color-mix(in srgb, currentColor, transparent 30%);
+}
+
+.mobile-text-page .mp-code {
+  background: color-mix(in srgb, currentColor, transparent 88%);
+  border-radius: 3px;
+}
+
 .mobile-text-page img,
 .mobile-text-page svg {
   max-inline-size: 100%;
