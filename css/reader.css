@@ -1029,6 +1029,57 @@ body.mode-scrolly .reader-content.force-vertical .chapter {
   pointer-events: none;
 }
 
+/* Whole-book progress bar. Stays visible even when the chrome is hidden.
+   Drawn as a gradient on the bar itself so there is no inner box to lay out. */
+.reader-progress-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 3px;
+  z-index: 700;
+  pointer-events: none;
+  transition: background-position 0.2s ease;
+  background: linear-gradient(
+    to right,
+    var(--accent) 0 var(--reader-progress, 0%),
+    color-mix(in srgb, var(--border), transparent 35%) 0
+  );
+}
+
+/* Vertical (right-to-left) reading fills from the right edge. */
+body.writing-vertical .reader-progress-bar {
+  background: linear-gradient(
+    to left,
+    var(--accent) 0 var(--reader-progress, 0%),
+    color-mix(in srgb, var(--border), transparent 35%) 0
+  );
+}
+
+body:not(.progress-bar-enabled) .reader-progress-bar {
+  display: none;
+}
+
+.reader-progress-label {
+  position: fixed;
+  right: 8px;
+  bottom: 7px;
+  z-index: 700;
+  pointer-events: none;
+  font-size: 10px;
+  line-height: 1;
+  padding: 2px 5px;
+  border-radius: 6px;
+  color: var(--muted);
+  background: color-mix(in srgb, var(--panel), transparent 12%);
+  border: 1px solid color-mix(in srgb, var(--border), transparent 30%);
+}
+
+body:not(.progress-bar-enabled) .reader-progress-label,
+body:not(.progress-bar-percent) .reader-progress-label {
+  display: none;
+}
+
 .ui-overlay {
   position: fixed;
   inset: 0;
@@ -1389,6 +1440,14 @@ body.theme-dark .settings-panel select option {
   border-color: color-mix(in srgb, var(--accent), var(--text) 55%);
   background: color-mix(in srgb, var(--accent), var(--panel) 78%);
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent), transparent 72%);
+}
+
+.option-sub {
+  display: block;
+  margin-top: 6px;
+  margin-left: 22px;
+  font-size: 0.92em;
+  color: var(--muted);
 }
 
 .settings-panel .button:hover,

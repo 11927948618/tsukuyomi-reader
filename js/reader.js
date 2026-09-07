@@ -61,6 +61,10 @@ export function initReader({
   const spreadViewCheck = qs("#spreadViewCheck") || qs("#pageColumnsCheck");
   const stackedViewCheck = qs("#stackedViewCheck") || qs("#twoTierViewCheck");
   const lineNumbersCheck = qs("#lineNumbersCheck");
+  const progressBarCheck = qs("#progressBarCheck");
+  const progressBarPercentCheck = qs("#progressBarPercentCheck");
+  const progressBarEl = qs("#readerProgressBar");
+  const progressLabelEl = qs("#readerProgressLabel");
   const debugLayoutCheck = qs("#debugLayoutCheck");
   const reloadBtn = qs("#reloadBtn");
   const hardReloadBtn = qs("#hardReloadBtn");
@@ -79,6 +83,8 @@ export function initReader({
   let spreadViewEnabled = isSpreadViewSettingEnabled(settings);
   let stackedViewEnabled = !spreadViewEnabled && isStackedViewSettingEnabled(settings);
   let lineNumbers = settings?.lineNumbers === true;
+  let showProgressBar = settings?.progressBar !== false;
+  let showProgressPercent = settings?.progressBarPercent === true;
   let debugLayout = settings?.debugLayout === true;
   let pageMarginPercent = normalizePageMarginPercent(settings?.pageMarginPercent, settings?.wrapWidthPercent);
   let savedSettingsSnapshot = null;
@@ -170,6 +176,8 @@ export function initReader({
     stackedView: false,
     twoTierView: false,
     lineNumbers: false,
+    progressBar: true,
+    progressBarPercent: false,
     debugLayout: false,
     writingModePreference: "vertical"
   };
@@ -199,6 +207,8 @@ export function initReader({
       stackedView: !spread && isStackedViewSettingEnabled(source),
       twoTierView: !spread && isStackedViewSettingEnabled(source),
       lineNumbers: source?.lineNumbers === true,
+      progressBar: source?.progressBar !== false,
+      progressBarPercent: source?.progressBarPercent === true,
       debugLayout: source?.debugLayout === true,
       writingModePreference: normalizeWritingModePreference(source?.writingModePreference || READER_DEFAULT_SETTINGS.writingModePreference)
     };
@@ -681,6 +691,8 @@ export function initReader({
   bindSettingsGroupToggles();
   bindPanelWheelScroll(settingsPanel, settingsBody);
   bindPanelWheelScroll(tocPanel, tocList || tocPanel);
+  applyProgressBarSettings();
+  updateProgressBar(Number(progress?.progressPercent) || 0);
   applyProgress(progress, refreshHScroll);
   bindProgressTracking();
   bindPageTap(tapZone, scrollContainer);
@@ -1230,13 +1242,33 @@ export function initReader({
     updateMobileTextPagerProgress();
   }
 
+  function updateProgressBar(percent) {
+    const value = clamp(Math.round(Number(percent) || 0), 0, 100);
+    if (progressBarEl) progressBarEl.style.setProperty("--reader-progress", `${value}%`);
+    if (progressLabelEl) progressLabelEl.textContent = `${value}%`;
+  }
+
+  // Single funnel for progress reporting: keep the on-screen bar in sync, then
+  // hand the payload to the host (bookmark save + analytics).
+  function reportProgress(payload) {
+    updateProgressBar(payload?.progressPercent);
+    onUpdateProgress(payload);
+  }
+
+  function applyProgressBarSettings() {
+    document.body.classList.toggle("progress-bar-enabled", showProgressBar);
+    document.body.classList.toggle("progress-bar-percent", showProgressBar && showProgressPercent);
+    if (progressBarCheck) progressBarCheck.checked = showProgressBar;
+    if (progressBarPercentCheck) progressBarPercentCheck.checked = showProgressPercent;
+  }
+
   function updateMobileTextPagerProgress() {
     if (!mobileTextPager.active) return;
     const maxPage = Math.max(0, mobileTextPager.pages.length - 1);
     const pageIndex = clamp(mobileTextPager.pageIndex, 0, maxPage);
     const page = mobileTextPager.pages[pageIndex] || {};
     const progressPercent = maxPage > 0 ? Math.round((pageIndex / maxPage) * 100) : 100;
-    onUpdateProgress({
+    reportProgress({
       chapterId: page.chapterId || "chapter-001",
       pageIndex,
       progressPercent,
@@ -1378,8 +1410,11 @@ export function initReader({
     spreadViewEnabled = isSpreadViewSettingEnabled(nextSettings);
     stackedViewEnabled = !spreadViewEnabled && isStackedViewSettingEnabled(nextSettings);
     lineNumbers = nextSettings.lineNumbers === true;
+    showProgressBar = nextSettings.progressBar !== false;
+    showProgressPercent = nextSettings.progressBarPercent === true;
     applyDebugLayout(nextSettings.debugLayout === true);
     applySpreadViewBodyClass();
+    applyProgressBarSettings();
     document.body.classList.toggle("line-numbers-enabled", lineNumbers);
     pageMarginPercent = normalizePageMarginPercent(nextSettings.pageMarginPercent, nextSettings.wrapWidthPercent);
     writingModePreference = normalizeWritingModePreference(nextSettings.writingModePreference);
@@ -1455,6 +1490,16 @@ export function initReader({
     });
     lineNumbersCheck?.addEventListener("change", () => {
       updateSettings({ lineNumbers: Boolean(lineNumbersCheck.checked) });
+    });
+    progressBarCheck?.addEventListener("change", () => {
+      showProgressBar = Boolean(progressBarCheck.checked);
+      applyProgressBarSettings();
+      updateSettings({ progressBar: showProgressBar });
+    });
+    progressBarPercentCheck?.addEventListener("change", () => {
+      showProgressPercent = Boolean(progressBarPercentCheck.checked);
+      applyProgressBarSettings();
+      updateSettings({ progressBarPercent: showProgressPercent });
     });
     debugLayoutCheck?.addEventListener("input", () => {
       applyDebugLayout(Boolean(debugLayoutCheck.checked));
@@ -1643,6 +1688,8 @@ export function initReader({
       stackedView: Boolean(stackedViewCheck?.checked) && !Boolean(spreadViewCheck?.checked),
       twoTierView: Boolean(stackedViewCheck?.checked) && !Boolean(spreadViewCheck?.checked),
       lineNumbers: Boolean(lineNumbersCheck?.checked),
+      progressBar: progressBarCheck ? Boolean(progressBarCheck.checked) : showProgressBar,
+      progressBarPercent: progressBarPercentCheck ? Boolean(progressBarPercentCheck.checked) : showProgressPercent,
       debugLayout: Boolean(debugLayoutCheck?.checked),
       writingModePreference: normalizeWritingModePreference(writingModeSelect?.value || writingModePreference),
       ...patch
@@ -1719,7 +1766,7 @@ export function initReader({
         const maxTop = Math.max(0, scrollContainer.scrollHeight - scrollContainer.clientHeight);
         const logicalMaxTop = usesVerticalPagedAxis() ? Math.max(0, maxTop - getVerticalPagedBoundaryBleed()) : maxTop;
         const progressPercent = logicalMaxTop > 0 ? Math.round((offset / logicalMaxTop) * 100) : 100;
-        onUpdateProgress({
+        reportProgress({
           chapterId,
           scrollTop: offset,
           pageIndex,
@@ -1735,7 +1782,7 @@ export function initReader({
       const pageIndex = Math.round(logical / size);
       const maxLeft = getMaxLeft(scrollContainer);
       const progressPercent = maxLeft > 0 ? Math.round((logical / maxLeft) * 100) : 100;
-      onUpdateProgress({
+      reportProgress({
         chapterId,
         scrollLeft: logical,
         pageIndex,

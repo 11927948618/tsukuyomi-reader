@@ -35,6 +35,9 @@
     <footer class="copyright-footer reader-copyright"></footer>
   </div>
 
+  <div class="reader-progress-bar" id="readerProgressBar" aria-hidden="true"></div>
+  <span class="reader-progress-label" id="readerProgressLabel" aria-hidden="true"></span>
+
   <div class="tap-zone" id="tapZone"></div>
   <div class="ui-overlay" id="uiOverlay" aria-hidden="true"></div>
 
@@ -162,6 +165,11 @@
 
           <div class="field">
             <label><input id="lineNumbersCheck" type="checkbox" /> 行番号を表示する</label>
+          </div>
+
+          <div class="field">
+            <label><input id="progressBarCheck" type="checkbox" checked /> 全体の進捗バーを表示する</label>
+            <label class="option-sub"><input id="progressBarPercentCheck" type="checkbox" /> 進捗バーに数値（％）も表示する</label>
           </div>
 
           <div class="field">

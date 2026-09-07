@@ -48,7 +48,9 @@ const DEFAULT_SETTINGS = {
   twoTierView: false,
   lineNumbers: false,
   debugLayout: false,
-  pageTurnEffect: "none"
+  pageTurnEffect: "none",
+  progressBar: true,
+  progressBarPercent: false
 };
 
 const DEFAULT_PROGRESS = {
@@ -771,6 +773,8 @@ function buildSettingsPayload(settings) {
     lineNumbers: settings.lineNumbers === true,
     debugLayout: settings.debugLayout === true,
     pageTurnEffect: normalizePageTurnEffect(settings.pageTurnEffect),
+    progressBar: settings.progressBar !== false,
+    progressBarPercent: settings.progressBarPercent === true,
     updatedAt: new Date().toISOString()
   };
 }

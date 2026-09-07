@@ -1816,4 +1816,45 @@ TSUKUYOMI_REVIEW_PASSWORD_DAYS=7
 ### 次
 
 - 実機確認（Android / iOS）で ①スマホのスクロール感 ②モバイル横幅。
-- 実機OKなら本件クローズ。
+
+## 2026-09-07 死んだコード削除 (v0.1.223) ＋ 全体プログレスバー (v0.1.224)
+
+台帳: `docs/50-code-inventory.md`
+
+### v0.1.223 死んだコード削除（棚卸し A-1〜A-3）
+
+- **scrollx**（横スクロール表示モード）: 実行時に到達しない分岐（bindPageTap のドラッグ、
+  applyDisplayMode の mode-scrollx、CSS）を削除。`normalizeDisplayMode` の入力エイリアスは
+  旧設定互換で残す。
+- **genkoPreset**（原稿用紙プリセット）: `false` 固定で発火しない変数・引数・分岐・候補表を削除し
+  `resolveVerticalPagePlan` / `resolveHorizontalPagePlan` / `scoreVerticalPageCandidate` を簡素化。
+  CSS の `genko-badge-flash` / `--genko-guide-percent` は名前が genko なだけの別機能で残置。
+- **css/vertical.css**: `.vertical-root` はバックアップZIP用（storage.js に別コピー）。
+  ファイルと index.html / sw.js の参照を削除。
+- reader.js 約 -95 行。`node --test` 11 pass。ローカルで paged/scroll 両モードの
+  描画・ページ送り・オーバーフロー警告なしを確認。
+
+### v0.1.224 全体プログレスバー
+
+- 設定に `progressBar`（既定ON・常時表示）と `progressBarPercent`（既定OFF・数値も表示）を追加。
+  `js/app.js` の DEFAULT_SETTINGS / buildSettingsPayload、`js/reader.js` の
+  READER_DEFAULT_SETTINGS / normalizeSavedSettingsSnapshot / 設定適用・保存経路。
+- `templates/reader.html`: 画面下端の `#readerProgressBar` と `#readerProgressLabel`、
+  設定パネルにチェックボックス2つ。
+- `css/reader.css`: バー自身の `linear-gradient` で進捗描画（内側要素を持たない）。
+  縦書き（RTL）は `to left`。`pointer-events:none`、テーマ連動、chrome 非表示でも表示。
+- `js/reader.js`: `reportProgress()` を新設し、`updateMobileTextPagerProgress()` /
+  `bindProgressTracking()` の `onUpdateProgress()` 3 か所を集約。そこでバーも更新。
+- ローカル検証: ページ 1/14→0%, 5/14→31%, 9/14→62%, 14/14→100% とバーが追従。
+  設定トグルで表示/非表示・数値表示が切り替わり、`tsukiyomi:settings:global` に永続化。
+- 既知の小課題: 数値ピルが右下で縦書き最終行に近い。実機で見て調整。
+
+### 検証（共通）
+
+- `node --check js/reader.js` / `js/app.js`: OK
+- `node --test tests/*.test.mjs`: 11 pass / 0 fail
+
+### 次
+
+- 実機確認（Android Chrome / iOS Safari）: スクロール感、モバイル横幅、プログレスバーの見え方。
+- 台帳 B-1（measured-pager v2 の去就）/ C-3（没入モード設計）は別セッション。

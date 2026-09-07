@@ -9,7 +9,9 @@
 
 ## A. 削除OK — より良い方式に置換済み or 完全に未使用
 
-### A-1. `scrollx` 横スクロール表示モード  ← 次で削除予定
+> A-1 / A-2 / A-3 は 2026-09-07 (v0.1.223) で削除済み。reader.js 約 -95 行。
+
+### A-1. `scrollx` 横スクロール表示モード  ← 済 (v0.1.223)
 - **状況**: 表示モードは `paged` / `scroll` の2つに集約済み。`normalizeDisplayMode()` は `"scrollx"` を入力エイリアスとして受けるが必ず `"scroll"` に畳む。実行時 `displayMode` が `"scrollx"` になることはない。
 - **デッド箇所**:
   - `js/reader.js`: `1939`（`bindPageTap` の `shouldHandlePagingTap` 内）/ `2067` `2083` `2095` `2129`（pointer/mouse ドラッグスクロール）/ `2240` `2243-2244`（`applyDisplayMode` の `mode-scrollx` 分岐）
@@ -18,7 +20,10 @@
 - **規模**: reader.js 約60行、css 約15行。
 - **リスク**: 低。到達不能コードの除去のみ。
 
-### A-2. `genkoPreset` 原稿用紙プリセット  ← 次で削除予定
+### A-2. `genkoPreset` 原稿用紙プリセット  ← 済 (v0.1.223)
+> ロジックは削除。CSS の `genko-badge-flash`（設定バッジのフラッシュ演出）と
+> `--genko-guide-percent`（スライダーのガイドピン）は名前が genko なだけで
+> 生きている別機能なので残した。
 - **状況**: `let genkoPreset = false;`（`reader.js:83`）が `true` になる経路が存在しない。全呼び出しで `false` リテラルを渡している。
 - **デッド箇所**:
   - `js/reader.js`: `83`（宣言）/ `290` `297` `1572` `1579`（`genkoPreset: false` で呼び出し）/ `1385` `1388`（reset と `genko-preset-enabled` クラス除去）/ `2429-2433`（`resolveHorizontalPagePlan` の分岐）/ `2445-2475`（`resolveVerticalPagePlan` の候補テーブル・スケール・分岐）/ `2509-2511`（`scoreVerticalPageCandidate`）
@@ -27,7 +32,7 @@
 - **規模**: reader.js 約70行、css 約10行。
 - **リスク**: 低〜中。ページ候補生成の共通関数を触るので、削除後に `node --test`（`tests/mobile-pager.test.mjs`）と実測（プレビュー）で回帰確認。
 
-### A-3. `css/vertical.css` とその `<link>`  ← 次で削除予定
+### A-3. `css/vertical.css` とその `<link>`  ← 済 (v0.1.223)
 - **状況**: リーダー本体は `.reader-content.force-vertical` 系を使う。`css/vertical.css`（16行）の `.vertical-root` はバックアップZIP書き出し用で、その定義は `js/storage.js` の `VERTICAL_CSS` に複製がある。`index.html:11` の `<link rel="stylesheet" href="./css/vertical.css">` はリーダーに無関係なルールを読み込んでいるだけ。
 - **やること**: `css/vertical.css` 削除、`index.html` の `<link>` 削除。`js/storage.js` の `VERTICAL_CSS` は**残す**（ZIP書き出しで使用）。
 - **規模**: ファイル1つ＋1行。
@@ -74,11 +79,16 @@
 - 案（別セッション）: 設定 `immersiveMode` で独立フラグ化。ON時は全chrome非表示＋Fullscreen API（Android はステータスバー＝時計も消える）＋細いプログレスバーのみ。復帰は中央タップで数秒表示 or 長押しで設定。
 - 規模: 中。Fullscreen は user gesture 必須なので発火点の設計が要る。C-4（プログレスバー）の後に。
 
-### C-4. 全体プログレスバー  ← 次でA削除と同時に実装
+### C-4. 全体プログレスバー  ← 済 (v0.1.224)
 - 設定 `progressBar`（既定 ON、常時表示）＋ `progressBarPercent`（既定 OFF、数字も表示）。
-- 画面下端 2〜3px、`pointer-events:none`、テーマ連動、塗り方向は `pageDirection` 準拠。
-- データ: 既存の `updateMobileTextPagerProgress()`（`reader.js:1236`）/ `bindProgressTracking()`（`reader.js:1717`）が算出する `progressPercent` をそのまま使う。
-- 規模: 小。表示のみ、ページャ非干渉。
+- 画面下端 3px。バー自体の `linear-gradient` で描画（内側要素なし）。塗り方向は
+  `body.writing-vertical` で `to left`（RTL）に切替。`pointer-events:none`、テーマ連動、
+  chrome 非表示でも表示。数字は右下の小さいピル。
+- `reportProgress()` を新設して `updateMobileTextPagerProgress()` /
+  `bindProgressTracking()` の `onUpdateProgress()` 3 か所を集約、そこでバーも更新。
+- 実装メモ: 当初 `.reader-progress-fill { width: var(--reader-progress) }` の
+  内側要素方式にしたが `#readerProgressBar` 内で子の `width` が 0 に潰れる
+  ブラウザ挙動に当たったため、バー自身の背景グラデーション方式に変更。
 
 ### C-5. 管理画面の並べ替え / 検索 / プレビュー / 入力検証表示
 - 出典: `docs/99`（2026-05-15）。`js/admin.js`（約1,750行）。
@@ -96,8 +106,8 @@
 
 ## 進め方
 
-1. **（次）** A-1 / A-2 / A-3 の削除 ＋ C-4 プログレスバー実装 → まとめて 1〜数コミット、`node --test` ＋ プレビュー実測。
-2. 実機確認（Android / iOS）。
+1. ~~A-1 / A-2 / A-3 の削除 ＋ C-4 プログレスバー実装~~ → **済 (v0.1.223 / v0.1.224)**
+2. **（次）** 実機確認（Android / iOS）: スクロール感、モバイル横幅、プログレスバー。
 3. C-3 没入モードの設計・実装（別セッション）。
 4. B-1 / B-2 の判断（実機所感を踏まえて）。
 5. C-1 `.md` 対応、C-2 仮想描画は個別に計画。
