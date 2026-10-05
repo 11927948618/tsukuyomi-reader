@@ -1,4 +1,4 @@
-const CACHE_NAME = "tsukuyomi-reader-v0.1.234";
+const CACHE_NAME = "tsukuyomi-reader-v0.1.235";
 const STATIC_ASSETS = [
   "./",
   "./index.html",
@@ -90,6 +90,19 @@ function encodeRelativeUrl(url) {
   return `${encodedPath}${query ? `?${query}` : ""}${hash ? `#${hash}` : ""}`;
 }
 
+// Cloudflare Pages 308-redirects "/x/y.html" to "/x/y". Firefox re-dispatches the redirect target
+// ("/x/y") to this worker, which the precache only holds as "/x/y.html" - so offline fallbacks
+// also try the ".html" form for extension-less same-origin paths.
+async function matchCached(req) {
+  const hit = await caches.match(req);
+  if (hit) return hit;
+  const url = new URL(req.url);
+  if (url.origin === self.location.origin && !url.pathname.endsWith("/") && !/\.[a-z0-9]+$/i.test(url.pathname)) {
+    return caches.match(url.pathname + ".html");
+  }
+  return undefined;
+}
+
 self.addEventListener("install", (event) => {
   self.skipWaiting();
   event.waitUntil((async () => {
@@ -138,7 +151,7 @@ self.addEventListener("fetch", (event) => {
           caches.open(CACHE_NAME).then((cache) => cache.put(req, resClone));
           return res;
         })
-        .catch(() => caches.match(req))
+        .catch(() => matchCached(req))
     );
     return;
   }
@@ -152,7 +165,7 @@ self.addEventListener("fetch", (event) => {
           return res;
         })
         .catch(() =>
-          caches.match(req).then((cached) => {
+          matchCached(req).then((cached) => {
             if (cached) return cached;
             return caches.match("./index.html");
           })
@@ -170,6 +183,6 @@ self.addEventListener("fetch", (event) => {
         caches.open(CACHE_NAME).then((cache) => cache.put(req, resClone));
         return res;
       })
-      .catch(() => caches.match(req))
+      .catch(() => matchCached(req))
   );
 });
