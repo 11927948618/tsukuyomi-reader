@@ -230,7 +230,25 @@ export function sandboxShimMain() {
     // Defence in depth: the CSP survives document.open() in every engine tested, but re-assert it anyway.
     if (CSP_META) { var cm = doc.createElement("meta"); cm.setAttribute("http-equiv", "Content-Security-Policy"); cm.setAttribute("content", CSP_META); head.insertBefore(cm, head.firstChild); }
     document.open(); document.write("<!doctype html>" + doc.documentElement.outerHTML); document.close();
+    guardLinks();
     post({ type: "tk:booted" });
+  }
+
+  // Packs are single-page apps. A link click would navigate the iframe itself (the sandbox does not forbid that) and
+  // load a foreign page. With <base href=...> even "#fragment" links resolve to another document, so no anchor is
+  // allowed to navigate: in-page "#id" links are turned into a scroll instead.
+  function guardLinks() { // must run after document.open()/close(), which drop listeners registered earlier
+    document.addEventListener("click", function (ev) {
+      var a = ev.target && ev.target.closest ? ev.target.closest("a[href]") : null;
+      if (!a) return;
+      ev.preventDefault();
+      var href = a.getAttribute("href") || "";
+      if (href.charAt(0) !== "#" || href.length < 2) return;
+      var id = href.slice(1), target = null;
+      try { id = decodeURIComponent(id); } catch (e) { /* keep raw */ }
+      target = document.getElementById(id) || document.getElementsByName(id)[0] || null;
+      if (target && target.scrollIntoView) target.scrollIntoView();
+    }, true);
   }
 
   // The only API exposed to a pack.

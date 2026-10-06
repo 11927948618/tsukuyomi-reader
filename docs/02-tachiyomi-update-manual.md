@@ -696,6 +696,7 @@ Markdown（.md）の場合は `"format": "md"` にします。ファイル拡張
 - ES Module（相対 import・動的 import・`import.meta.url`）は使えます。循環 import は Safari 16.4 以降など import map 対応端末のみ。迷う場合は 1 ファイルにバンドルする。
 - Web Worker は可。ただし Worker の中から相対パスで `importScripts` / `fetch` はできません（fetch したソースから Blob Worker を作る形は可）。
 - `localStorage` / `IndexedDB` / Cookie は使えません（例外になるので `try/catch` で落ちないように）。
+- ページ遷移はできません（`<a>` リンクは無効、`location` 変更はコンテンツの終了扱い）。単一ページで作り、ページ内ジャンプは `#id` のリンクを使う。
 - 終了は Reader の「戻る」ボタン、またはパッケージ内から `tk.exit()`。
 - 見本: `scripts/webapp-sample/`（`node scripts/build-webapp-sample.mjs --manifest` で ZIP を作り直せます）。
 

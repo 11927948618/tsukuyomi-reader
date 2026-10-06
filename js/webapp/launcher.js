@@ -90,6 +90,7 @@ export async function launchWebapp(packId, { onClosed } = {}) {
         }, "*");
         break;
       case "tk:booted":
+        bootedAt = Date.now();
         showState("");
         break;
       case "tk:exit":
@@ -101,6 +102,19 @@ export async function launchWebapp(packId, { onClosed } = {}) {
       default:
         break; // closed message set: unknown types are dropped
     }
+  };
+
+  // Backstop for navigation the shim cannot intercept (e.g. `location.href = ...`): after the pack has booted the
+  // iframe must never load another document; if it does, the pack is ended instead of showing foreign content.
+  let bootedAt = 0;
+  const onFrameLoad = () => {
+    if (isClosed || !bootedAt) return;
+    if (Date.now() - bootedAt < 1500) return; // the document.write() of our own loader may still be settling
+    bootedAt = 0;
+    showState("コンテンツがページ移動を試みたため終了しました");
+    window.setTimeout(close, 1200);
+    iframe.removeAttribute("srcdoc");
+    iframe.src = "about:blank";
   };
 
   const onPopState = () => {
@@ -126,6 +140,7 @@ export async function launchWebapp(packId, { onClosed } = {}) {
   }
 
   back.addEventListener("click", close);
+  iframe.addEventListener("load", onFrameLoad);
   window.addEventListener("message", onMessage);
   window.addEventListener("popstate", onPopState);
   try {

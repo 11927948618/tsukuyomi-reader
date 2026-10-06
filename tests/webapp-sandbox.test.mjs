@@ -65,3 +65,10 @@ test("module strategy: importmap when supported, otherwise dependency-ordered bl
   assert.equal(chooseModuleStrategy(undefined), "topo");
   assert.equal(chooseModuleStrategy({ supports() { throw new Error("x"); } }), "topo");
 });
+
+test("the shim turns every anchor click into a non-navigation (pack iframes are single-page)", () => {
+  assert.match(SHIM_SOURCE, /function guardLinks\(\)/);
+  assert.match(SHIM_SOURCE, /ev\.preventDefault\(\)/);
+  // guardLinks must be (re)installed after document.close(), which drops earlier listeners
+  assert.ok(SHIM_SOURCE.indexOf("document.close();\n    guardLinks();") > 0 || /document\.close\(\);\s*guardLinks\(\);/.test(SHIM_SOURCE));
+});
