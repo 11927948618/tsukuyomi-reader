@@ -31,5 +31,21 @@
     "cover": "",
     "published": true,
     "updatedAt": "2026-09-07"
+  },
+  {
+    "id": "webapp-sample",
+    "title": "Webコンテンツ見本（時計とクイズ）",
+    "author": "hal the juggernaut",
+    "description": "オフラインで動く小さなWebアプリの見本（合成データ）。ダウンロード後は通信なしで開けます。",
+    "format": "zip",
+    "contentType": "webapp",
+    "version": 1,
+    "entry": "index.html",
+    "size": 2987,
+    "sha256": "fcfd78ecaa23c4167eb16323bdd6419916c8751413edeb774503e9c2b100ec95",
+    "path": "./books/works/webapp-sample.zip",
+    "cover": "",
+    "published": true,
+    "updatedAt": "2026-10-06"
   }
 ]

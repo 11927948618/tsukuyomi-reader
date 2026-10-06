@@ -6,6 +6,8 @@
 
 # Archives
 *.zip
+# the synthetic demo pack is a tracked fixture (see scripts/build-webapp-sample.mjs)
+!books/works/webapp-sample.zip
 *.rar
 *.7z
 

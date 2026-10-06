@@ -143,3 +143,17 @@ test("catalog entry: book entries are unchanged, webapp entries expose only pack
   assert.equal(web.path, "/api/books/w/content");
   assert.equal(contentTypeForExt("zip"), "application/zip");
 });
+
+test("the bundled sample pack is valid, reproducible and matches its manifest entry", async () => {
+  const fs = await import("node:fs");
+  const buf = fs.readFileSync(new URL("../books/works/webapp-sample.zip", import.meta.url));
+  const manifest = JSON.parse(fs.readFileSync(new URL("../books/manifest.json", import.meta.url), "utf8"));
+  const entry = manifest.find((e) => e.id === "webapp-sample");
+  assert.ok(entry && isWebappEntry(entry));
+  const r = inspectZip(buf, { entry: entry.entry });
+  assert.equal(r.ok, true, JSON.stringify(r.errors));
+  assert.equal(entry.size, buf.length);
+  assert.equal(entry.sha256, await sha256Hex(buf));
+  assert.equal(entry.format, "zip");
+  assert.ok(buf.length < PACK_LIMITS.zipBytes / 100, "the demo pack should stay tiny");
+});

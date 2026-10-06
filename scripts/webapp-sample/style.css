@@ -1,0 +1,12 @@
+:root { color-scheme: light; }
+body { margin: 0; font-family: system-ui, "Hiragino Sans", "Yu Gothic", sans-serif; background: #f7f3ea; color: #222; }
+main { max-width: 34rem; margin: 0 auto; padding: 1rem; }
+h1 { font-size: 1.3rem; margin: 0 0 .5rem; }
+.note { margin: 0 0 1rem; color: #555; }
+canvas { display: block; margin: 0 auto 1rem; background: #fff; border-radius: 50%; box-shadow: 0 1px 6px #0003; }
+#quiz { background: #fff; border-radius: 10px; padding: .8rem 1rem; box-shadow: 0 1px 4px #0002; }
+#choices button { display: block; width: 100%; margin: .4rem 0; padding: .7rem; font: inherit; border: 1px solid #889; border-radius: 8px; background: #eef; }
+#choices button.correct { background: #cfc; border-color: #4a4; }
+#choices button.wrong { background: #fcc; border-color: #c44; }
+.small { color: #666; font-size: .85rem; }
+#exit { margin-top: .5rem; padding: .6rem 1.2rem; font: inherit; }
