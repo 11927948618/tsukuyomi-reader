@@ -8,6 +8,7 @@ import {
 } from "./analytics.js";
 import { exportZipFromBook } from "./storage.js";
 import { qs, loadJSON, saveJSON } from "./utils.js";
+import { mountInstalledShelf } from "./webapp/shelf.js";
 import { APP_VERSION, BUILD_TIME, COMMIT } from "./version.js";
 
 const DEFAULT_SITE_CONFIG = {
@@ -98,6 +99,7 @@ async function render(screen) {
     applyTheme(appState.settings.theme);
     applySiteChrome();
     initReviewAuthScreen();
+    void initAuthInstalledPanel();
     return;
   }
 
@@ -202,6 +204,16 @@ function initHelpScreen() {
   helpBackBtn.addEventListener("click", () => {
     render(returnScreen);
   });
+}
+
+// Content that is already on this device must stay reachable when login is impossible (expired session, offline).
+async function initAuthInstalledPanel() {
+  const panel = document.getElementById("authInstalledPanel");
+  const list = document.getElementById("authInstalledList");
+  if (!panel || !list) return;
+  const hideWhenEmpty = () => { panel.hidden = list.children.length === 0; };
+  const count = await mountInstalledShelf(list, { onChange: hideWhenEmpty }).catch(() => 0);
+  panel.hidden = count === 0;
 }
 
 function initReviewAuthScreen() {

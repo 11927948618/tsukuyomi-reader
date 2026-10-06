@@ -3,6 +3,9 @@ import { normalizeTxtToBook } from "./normalize-txt.js";
 import { normalizeMdToBook } from "./normalize-md.js";
 import { normalizeEpub } from "./normalize-epub.js";
 import { importZipToBook } from "./storage.js";
+import { isWebappEntry } from "./webapp/pack-validate.js";
+import { listPacks } from "./webapp/pack-store.js";
+import { bindStoragePanel, housekeeping, mountInstalledShelf, mountPackCard } from "./webapp/shelf.js";
 
 const manuscriptStatsCache = new Map();
 
@@ -218,6 +221,8 @@ export function initLibrary({ siteConfig = null, onOpenBook, onExport, getCurren
     }
   });
 
+  void bindStoragePanel(qs("#webappStoragePanel"));
+  void housekeeping();
   void initBundledBooksShelf({
     bundledBooksStatus,
     bundledBooksList,
@@ -379,20 +384,34 @@ async function initBundledBooksShelf({
   try {
     const manifest = await loadBundledBookManifest(manifestPath);
     const books = normalizeBookManifestEntries(manifest).filter((entry) => entry?.published === true);
+    // Webコンテンツ(webapp): installed packs survive being withdrawn from the catalog (shown as local-only below)
+    const localPacks = new Map((await listPacks().catch(() => [])).filter((p) => p.status !== "installing").map((p) => [p.id, p]));
+    const catalogWebappIds = new Set(books.filter(isWebappEntry).map((entry) => entry.id));
+    const localOnlyCount = Array.from(localPacks.keys()).filter((id) => !catalogWebappIds.has(id)).length;
 
-    if (books.length === 0) {
+    if (books.length === 0 && localOnlyCount === 0) {
       bundledBooksStatus.textContent = `${manifestPath} に公開中の作品が登録されていません`;
       bundledBooksStatus.className = "status error";
       if (bundledBooksToggleBtn) bundledBooksToggleBtn.disabled = true;
       return;
     }
 
-    bundledBooksStatus.textContent = `${books.length}作品`;
+    bundledBooksStatus.textContent = `${books.length + localOnlyCount}作品`;
     bundledBooksStatus.className = "status ok";
     if (bundledBooksToggleBtn) bundledBooksToggleBtn.disabled = false;
     bundledBooksList.innerHTML = "";
 
     books.forEach((entry) => {
+      if (isWebappEntry(entry)) {
+        // Web content packs never go through the book reader; they have their own download / launch flow.
+        mountPackCard({
+          entry,
+          pack: localPacks.get(entry.id) || null,
+          resolveUrl: (path) => buildManifestAssetUrl(path, manifestPath),
+          listEl: bundledBooksList
+        });
+        return;
+      }
       const kind = normalizeBundledBookKind(entry?.format || entry?.kind, entry?.path || entry?.filename || "");
       const displayTitle = safeText(entry.title, entry.filename || entry.path || "Untitled");
       const article = document.createElement("article");
@@ -489,7 +508,19 @@ async function initBundledBooksShelf({
 
       bundledBooksList.appendChild(article);
     });
+
+    if (localOnlyCount > 0) await mountInstalledShelf(bundledBooksList, { skipIds: catalogWebappIds });
+    void bindStoragePanel(qs("#webappStoragePanel"));
   } catch (err) {
+    // Offline / API unreachable: installed Web content is still available (that is the point of installing it).
+    bundledBooksList.innerHTML = "";
+    const offlineCount = await mountInstalledShelf(bundledBooksList).catch(() => 0);
+    if (offlineCount > 0) {
+      bundledBooksStatus.textContent = `一覧を取得できません（オフライン？）。端末に保存済みのコンテンツ ${offlineCount}件のみ表示しています`;
+      bundledBooksStatus.className = "status";
+      if (bundledBooksToggleBtn) bundledBooksToggleBtn.disabled = false;
+      return;
+    }
     bundledBooksStatus.textContent = err.message || "作品一覧の取得に失敗しました";
     bundledBooksStatus.className = "status error";
     if (bundledBooksToggleBtn) bundledBooksToggleBtn.disabled = true;

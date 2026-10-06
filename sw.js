@@ -15,6 +15,7 @@ const STATIC_ASSETS = [
   "./css/base.css",
   "./css/admin.css",
   "./css/reader.css",
+  "./css/webapp.css",
   "./js/app.js",
   "./js/admin.js",
   "./js/analytics.js",
@@ -30,6 +31,14 @@ const STATIC_ASSETS = [
   "./js/normalize-epub.js",
   "./js/storage.js",
   "./js/utils.js",
+  "./js/webapp/pack-validate.js",
+  "./js/webapp/pack-store.js",
+  "./js/webapp/pack-installer.js",
+  "./js/webapp/sandbox-host.js",
+  "./js/webapp/sandbox-shim.js",
+  "./js/webapp/lexer-source.js",
+  "./js/webapp/launcher.js",
+  "./js/webapp/shelf.js",
   "./vendor/jszip.min.js",
   "./templates/library.html",
   "./templates/auth.html",
@@ -53,7 +62,8 @@ async function cacheManifestBooks(cache) {
     const books = Array.isArray(manifest) ? manifest : Array.isArray(manifest?.books) ? manifest.books : [];
     const urls = books
       .filter((entry) => entry?.published === true)
-      .flatMap((entry) => [entry?.path, entry?.cover])
+      // Web content packs are downloaded explicitly into IndexedDB; never pre-cache their ZIP here (only the cover).
+      .flatMap((entry) => (String(entry?.contentType || "").toLowerCase() === "webapp" ? [entry?.cover] : [entry?.path, entry?.cover]))
       .filter(Boolean)
       .map((path) => buildAssetUrl(path, manifestPath));
     if (urls.length > 0) {
@@ -166,6 +176,10 @@ self.addEventListener("fetch", (event) => {
     event.respondWith(fetch(req, { cache: "no-store" }));
     return;
   }
+
+  // Content-pack ZIPs go straight to the network: they are stored in IndexedDB by the installer, and keeping a second
+  // copy in the Service Worker cache would double the storage and tie the pack to the SW cache lifecycle.
+  if (isSameOrigin && url.pathname.toLowerCase().endsWith(".zip")) return;
 
   if (isBookAsset) {
     event.respondWith(
