@@ -247,6 +247,16 @@ export async function countInstalledPacks() {
 
 // ---- storage panel ("ダウンロード済みコンテンツの管理") ---------------------------------------------------
 
+function isIosSafariTab() {
+  try {
+    const iosLike = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+    const standalone = navigator.standalone === true || (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches);
+    return iosLike && !standalone;
+  } catch {
+    return false;
+  }
+}
+
 export function bindStoragePanel(container) {
   storagePanelEl = container || null;
   return refreshStoragePanel();
@@ -264,6 +274,10 @@ export async function refreshStoragePanel() {
   panel.append(el("p", "label", "ダウンロード済みコンテンツ"));
   const persistedText = summary.persisted === true ? "永続化: 許可" : summary.persisted === false ? "永続化: 未許可（端末の空き容量が少ないと消える場合があります）" : "";
   panel.append(el("p", "webapp-storage-text", `${packs.length}件 ・ ${formatBytes(total)}${summary.quota ? ` ・ 端末の空き 約${formatBytes(Math.max(0, summary.quota - (summary.usage || 0)))}` : ""}${persistedText ? ` ・ ${persistedText}` : ""}`));
+  if (isIosSafariTab()) {
+    // WebKit's ITP may delete script-writable storage of sites that were not opened for ~7 days, unless added to the Home Screen
+    panel.append(el("p", "webapp-storage-text", "iPhone / iPad の Safari では、しばらく開かないと保存データが消えることがあります。「ホーム画面に追加」して使うと消えにくくなります。"));
+  }
   const clearBtn = el("button", "button ghost danger", "ダウンロード済みコンテンツをすべて削除");
   clearBtn.type = "button";
   clearBtn.addEventListener("click", async () => {

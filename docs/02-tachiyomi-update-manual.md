@@ -676,6 +676,33 @@ Markdown（.md）の場合は `"format": "md"` にします。ファイル拡張
 
 ファイルをすぐ消す必要はありません。公開一覧から外したあと、不要になったタイミングで `books/works/` と `books/covers/` から削除します。
 
+## Webコンテンツ（小さなオフラインWebアプリ）を配布する
+
+書籍とは別に、入口の HTML を含む小さな Web アプリを **ZIP** にして配布できます（種別 `webapp`）。読者は Library からダウンロードして端末に保存し、以後は**通信なし・ログインなし**で起動します。中身（教材・地図・クイズなど）は Reader では解釈しません。
+
+### 登録（管理画面）
+
+1. 「種別」で **Webコンテンツ（ZIP）** を選ぶ（登録後に種別は変更できません）。
+2. タイトル・紹介文・表紙などを入力し、本文ファイルに ZIP を選ぶ。
+3. `version`（空なら自動。初回は1、ZIP 差し替え時は前回+1）、`entry`（ZIP 内の入口。既定 `index.html`）を確認して保存。
+4. 更新するときは、同じ作品IDで ZIP を差し替える。読者の Library に「更新あり」が出て、読者が「更新」を押すと入れ替わる（失敗しても旧版は使い続けられる）。
+
+サーバー側で ZIP の形式・サイズ・パスを検証します（上限: ZIP 32MB / 展開後 150MB / 1ファイル 60MB / 2000 ファイル。**制作目標は1教材 20〜25MB 以下**）。
+
+### パッケージの作り方（契約）
+
+- ZIP のルートに入口（既定 `index.html`）を置く。パスは UTF-8、`..`・絶対パス・`\` は不可。
+- **外部通信は使えません**（CDN・外部 API・外部フォント不可）。資源はすべて ZIP に同梱し、相対パスで参照する。
+- ES Module（相対 import・動的 import・`import.meta.url`）は使えます。循環 import は Safari 16.4 以降など import map 対応端末のみ。迷う場合は 1 ファイルにバンドルする。
+- Web Worker は可。ただし Worker の中から相対パスで `importScripts` / `fetch` はできません（fetch したソースから Blob Worker を作る形は可）。
+- `localStorage` / `IndexedDB` / Cookie は使えません（例外になるので `try/catch` で落ちないように）。
+- 終了は Reader の「戻る」ボタン、またはパッケージ内から `tk.exit()`。
+- 見本: `scripts/webapp-sample/`（`node scripts/build-webapp-sample.mjs --manifest` で ZIP を作り直せます）。
+
+### 安全性
+
+パッケージは Reader 本体の JavaScript としては実行されません。`sandbox`（`allow-same-origin` なし）の iframe に隔離され、Reader の保存領域・認証情報・内部 API には触れず、外部通信も遮断されます。
+
 ## ローカル確認
 
 `tsukuyomi-reader` フォルダで以下を実行します。

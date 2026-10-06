@@ -1960,3 +1960,15 @@ TSUKUYOMI_REVIEW_PASSWORD_DAYS=7
 - 実機（Android Chrome / iOS Safari）: 実タッチの手触り・誤爆、iOS アドレスバー伸縮、
   大容量書籍の初回表示、長押し設定・向きロック。
 - `docs/51`（見開き）/ `docs/52` step5（大容量スクロール仮想化=案A）/ C-3（没入モード）は別セッション。
+
+## 2026-10-06 Webコンテンツ(webapp)配布機能・SW修正
+
+- SW: `legacy-check.js` の precache 漏れ(v0.1.234)と、Pages の 308 を Firefox が処理できずオフライン起動が空白になる問題(v0.1.236)を修正し main 反映。
+  production 3 サイトで通常起動・オフライン起動を確認。
+- 機能ブランチ `feature/webapp-pack`: Webコンテンツ(contentType=webapp、入口HTMLを含むZIP)を端末(IndexedDB)へ保存し、
+  以後は通信なし・ログインなしで sandbox iframe 上に起動する仕組みを追加(書籍の Reader・認証コードは無変更)。
+  Library に専用カード(ダウンロード/更新/開く/削除)、認証画面に「保存済みのコンテンツ」、管理画面に種別・version・entry、Functions 側のZIP検証を追加。
+- 別ブランチ(未反映): `fix/issue1-firefox-offline-site-config`(Firefox 機内モード起動が開発版に落ちる問題)、`fix/issue3-sw-redirect-nav`(オフラインの .html リダイレクトループ)。
+- 実機: iPad Safari は未確認(正式配布前の必須確認)。Android Chrome は確認済み。
+- 運用メモ: ブランチのプレビューURLの別名は 28 文字に切り詰められる(例 `fix-issue1-firefox-offline-s`)。
+
