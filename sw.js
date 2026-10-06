@@ -1,4 +1,4 @@
-const CACHE_NAME = "tsukuyomi-reader-v0.1.235";
+const CACHE_NAME = "tsukuyomi-reader-v0.1.236";
 const STATIC_ASSETS = [
   "./",
   "./index.html",
@@ -90,6 +90,30 @@ function encodeRelativeUrl(url) {
   return `${encodedPath}${query ? `?${query}` : ""}${hash ? `#${hash}` : ""}`;
 }
 
+// A redirected Response (Cloudflare Pages answers "/x/y.html" with a 308 to "/x/y") must not be
+// handed to the page or stored as-is: Firefox then hangs on the fetch / re-dispatches the redirect
+// target to this worker. Re-wrap it so it is a plain 200 response without the "redirected" flag.
+async function plainResponse(res) {
+  if (!res || !res.redirected) return res;
+  const body = await res.blob();
+  return new Response(body, { status: res.status, statusText: res.statusText, headers: res.headers });
+}
+
+async function networkAndCache(req) {
+  const res = await plainResponse(await fetch(req));
+  const resClone = res.clone();
+  caches.open(CACHE_NAME).then((cache) => cache.put(req, resClone));
+  return res;
+}
+
+async function precacheStatic(cache, urls) {
+  await Promise.all(urls.map(async (url) => {
+    const res = await fetch(url, { cache: "reload" });
+    if (!res.ok) throw new TypeError(`precache failed: ${url} (${res.status})`);
+    await cache.put(url, await plainResponse(res));
+  }));
+}
+
 // Cloudflare Pages 308-redirects "/x/y.html" to "/x/y". Firefox re-dispatches the redirect target
 // ("/x/y") to this worker, which the precache only holds as "/x/y.html" - so offline fallbacks
 // also try the ".html" form for extension-less same-origin paths.
@@ -107,7 +131,7 @@ self.addEventListener("install", (event) => {
   self.skipWaiting();
   event.waitUntil((async () => {
     const cache = await caches.open(CACHE_NAME);
-    await cache.addAll(STATIC_ASSETS);
+    await precacheStatic(cache, STATIC_ASSETS);
     await cacheManifestBooks(cache);
   })());
 });
@@ -145,25 +169,14 @@ self.addEventListener("fetch", (event) => {
 
   if (isBookAsset) {
     event.respondWith(
-      fetch(req)
-        .then((res) => {
-          const resClone = res.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(req, resClone));
-          return res;
-        })
-        .catch(() => matchCached(req))
+      networkAndCache(req).catch(() => matchCached(req))
     );
     return;
   }
 
   if (isHtmlRequest) {
     event.respondWith(
-      fetch(req)
-        .then((res) => {
-          const resClone = res.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(req, resClone));
-          return res;
-        })
+      networkAndCache(req)
         .catch(() =>
           matchCached(req).then((cached) => {
             if (cached) return cached;
@@ -177,12 +190,6 @@ self.addEventListener("fetch", (event) => {
   if (!isSameOrigin) return;
 
   event.respondWith(
-    fetch(req)
-      .then((res) => {
-        const resClone = res.clone();
-        caches.open(CACHE_NAME).then((cache) => cache.put(req, resClone));
-        return res;
-      })
-      .catch(() => matchCached(req))
+    networkAndCache(req).catch(() => matchCached(req))
   );
 });
