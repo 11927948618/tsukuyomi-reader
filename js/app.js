@@ -631,15 +631,27 @@ function applyTheme(theme) {
   document.body.classList.add(theme === "dark" ? "theme-dark" : "theme-light");
 }
 
+// Last successfully loaded site config. Used only when the config cannot be fetched at all (offline start),
+// so a distribution build never silently falls back to the development defaults (local import UI, no copy guard).
+const SITE_CONFIG_CACHE_KEY = "tsukiyomi:siteConfigCache";
+
 async function loadSiteConfig() {
   try {
-    const res = await fetch("./config/site-config.json", { cache: "no-store" });
-    if (!res.ok) return { ...DEFAULT_SITE_CONFIG };
+    // "no-cache" (always revalidate) instead of "no-store": Firefox does not hand "no-store"/"reload" requests to
+    // the Service Worker, so they could never be answered from the SW cache when offline.
+    const res = await fetch("./config/site-config.json", { cache: "no-cache" });
+    if (!res.ok) return loadCachedSiteConfig();
     const config = await res.json();
+    saveJSON(SITE_CONFIG_CACHE_KEY, config);
     return normalizeSiteConfig(config);
   } catch (err) {
-    return { ...DEFAULT_SITE_CONFIG };
+    return loadCachedSiteConfig();
   }
+}
+
+function loadCachedSiteConfig() {
+  const cached = loadJSON(SITE_CONFIG_CACHE_KEY, null);
+  return cached && typeof cached === "object" ? normalizeSiteConfig(cached) : { ...DEFAULT_SITE_CONFIG };
 }
 
 function normalizeSiteConfig(config) {
@@ -951,9 +963,9 @@ async function isCachedBookStillPublished(cached) {
 async function loadPublishedManifestBooks() {
   try {
     const manifestPath = appState.siteConfig?.booksManifest || DEFAULT_SITE_CONFIG.booksManifest;
-    let res = await fetch(manifestPath, { cache: "no-store" });
+    let res = await fetch(manifestPath, { cache: "no-cache" });
     if (res.status === 404 && manifestPath !== DEFAULT_SITE_CONFIG.booksManifest) {
-      res = await fetch(DEFAULT_SITE_CONFIG.booksManifest, { cache: "no-store" });
+      res = await fetch(DEFAULT_SITE_CONFIG.booksManifest, { cache: "no-cache" });
     }
     if (!res.ok) return [];
     const manifest = await res.json();
