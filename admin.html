@@ -75,6 +75,23 @@
         </div>
 
         <div class="field">
+          <label class="label" for="contentType">種別</label>
+          <select class="input" id="contentType" name="contentType">
+            <option value="book" selected>書籍（EPUB / TXT / Markdown / PDF）</option>
+            <option value="webapp">Webコンテンツ（ZIP）</option>
+          </select>
+          <p class="admin-note">Webコンテンツ = 入口の HTML を含む小さなオフライン Web アプリを ZIP で配布する種別です。読者の端末へダウンロードして保存され、以後は通信なしで起動します。登録後に種別は変更できません。</p>
+        </div>
+
+        <div class="field" id="webappFields" hidden>
+          <label class="label" for="webappVersion">version</label>
+          <input class="input" id="webappVersion" name="version" type="number" min="1" step="1" placeholder="空なら自動（初回は1、ZIP差し替え時は前回+1）" />
+          <label class="label" for="webappEntry">入口ファイル（entry）</label>
+          <input class="input" id="webappEntry" name="entry" type="text" placeholder="index.html（ZIP内の相対パス）" />
+          <p class="admin-note">ZIP は 32MB まで（目安: 1教材 20〜25MB 以下）。外部通信は使えません（CDN・外部API不可）。資源は相対パスで参照してください。アップロード時にサーバーでも検証します。</p>
+        </div>
+
+        <div class="field">
           <label class="label" for="bookTitle">タイトル</label>
           <input class="input" id="bookTitle" name="title" type="text" required />
         </div>
@@ -238,6 +255,7 @@
     </section>
   </div>
 
+  <script src="./vendor/jszip.min.js"></script>
   <script type="module" src="./js/admin.js"></script>
 </body>
 </html>

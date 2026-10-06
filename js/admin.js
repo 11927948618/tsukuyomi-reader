@@ -1,5 +1,6 @@
 import { escapeHtml } from "./utils.js";
 import { APP_VERSION, BUILD_TIME, COMMIT } from "./version.js";
+import { PACK_LIMITS, formatBytes as formatPackBytes, normalizeEntryPath, validatePackEntries } from "./webapp/pack-validate.js";
 
 const TOKEN_KEY = "tsukuyomi:adminToken";
 const adminToken = document.getElementById("adminToken");
@@ -194,6 +195,14 @@ bookForm?.addEventListener("submit", async (event) => {
   const sourceFormData = new FormData(bookForm);
   sourceFormData.set("published", document.getElementById("publishedCheck")?.checked ? "true" : "false");
   const bookFile = sourceFormData.get("bookFile");
+  if (selectedContentType() === "webapp" && fileSize(bookFile) > 0) {
+    // same rules the server applies; failing here only saves an upload
+    const problem = await checkWebappPackFile(bookFile, sourceFormData.get("entry"));
+    if (problem) {
+      setStatus(problem, "error");
+      return;
+    }
+  }
   const coverFile = sourceFormData.get("cover");
   const uploadBytes = fileSize(bookFile) + fileSize(coverFile);
 
@@ -1031,7 +1040,9 @@ function renderBooks(books, scope = selectedBookScope()) {
       const cover = published && book.cover
         ? `<img src="${escapeHtml(book.cover)}" alt="${escapeHtml(book.title || "")} 表紙" />`
         : `<span class="admin-book-cover-label">${hasCover ? "表紙あり" : "表紙なし"}</span>`;
-      const format = String(book.format || "-").toUpperCase();
+      const format = book.contentType === "webapp"
+        ? `Webコンテンツ v${book.version || 1}（${formatPackBytes(book.size)}）`
+        : String(book.format || "-").toUpperCase();
       return `
         <article class="admin-book-card" data-book-id="${escapeHtml(book.id || "")}">
           <div class="admin-book-cover">${cover}</div>
@@ -1252,8 +1263,57 @@ function adminBookUrl(id, scope = selectedBookScope()) {
   return `./api/admin/books/${encodeURIComponent(id)}?scope=${encodeURIComponent(normalizeBookScope(scope))}`;
 }
 
+// ---- 種別（書籍 / Webコンテンツ） ----
+const DEFAULT_VERSION_PLACEHOLDER = "空なら自動（初回は1、ZIP差し替え時は前回+1）";
+function selectedContentType() {
+  return bookForm?.elements?.contentType?.value === "webapp" ? "webapp" : "book";
+}
+
+function applyContentTypeUi() {
+  const webapp = selectedContentType() === "webapp";
+  const fields = document.getElementById("webappFields");
+  if (fields) fields.hidden = !webapp;
+  const input = document.getElementById("bookFile");
+  if (input) {
+    input.accept = webapp
+      ? ".zip,application/zip"
+      : ".txt,.md,.markdown,.epub,.pdf,text/plain,text/markdown,application/epub+zip,application/pdf";
+  }
+}
+
+async function checkWebappPackFile(file, entryValue) {
+  if (file.size > PACK_LIMITS.zipBytes) return `ZIPの上限(${formatPackBytes(PACK_LIMITS.zipBytes)})を超えています（${formatPackBytes(file.size)}）。教材は20MB前後を目安にしてください`;
+  const entry = normalizeEntryPath(entryValue);
+  if (!entry) return "入口ファイル（entry）の指定が不正です";
+  if (typeof JSZip === "undefined") return ""; // the server validates anyway
+  try {
+    const zip = await JSZip.loadAsync(file);
+    const items = Object.values(zip.files).map((f) => ({ name: f.name, dir: f.dir, size: Number(f._data?.uncompressedSize) || 0 }));
+    const result = validatePackEntries(items, { entry });
+    if (!result.ok) return `パッケージを検証できませんでした: ${result.errors.slice(0, 5).map((e) => e.message).join(" / ")}`;
+  } catch (err) {
+    return `ZIPを開けませんでした: ${err?.message || err}`;
+  }
+  return "";
+}
+
+document.getElementById("contentType")?.addEventListener("change", applyContentTypeUi);
+applyContentTypeUi();
+
 function fillForm(book, scope = loadedBookScope) {
   loadedBookScope = normalizeBookScope(scope);
+  const typeSelect = bookForm.elements.contentType;
+  if (typeSelect) {
+    typeSelect.value = book.contentType === "webapp" ? "webapp" : "book";
+    typeSelect.disabled = true; // the type of a registered work cannot change (the server rejects it too)
+  }
+  if (bookForm.elements.version) {
+    // left empty on purpose: a new ZIP then gets "current + 1" automatically
+    bookForm.elements.version.value = "";
+    bookForm.elements.version.placeholder = book.contentType === "webapp" ? `現在 v${book.version || 1}。空なら ZIP 差し替え時に自動で +1` : DEFAULT_VERSION_PLACEHOLDER;
+  }
+  if (bookForm.elements.entry) bookForm.elements.entry.value = book.contentType === "webapp" ? book.entry || "" : "";
+  applyContentTypeUi();
   bookForm.elements.id.value = book.id || "";
   bookForm.elements.title.value = book.title || "";
   bookForm.elements.author.value = book.author || "";
@@ -1265,6 +1325,9 @@ function fillForm(book, scope = loadedBookScope) {
 
 function resetForm() {
   bookForm.reset();
+  if (bookForm.elements.contentType) bookForm.elements.contentType.disabled = false;
+  if (bookForm.elements.version) bookForm.elements.version.placeholder = DEFAULT_VERSION_PLACEHOLDER;
+  applyContentTypeUi();
   bookForm.elements.author.value = "hal the juggernaut";
   bookForm.elements.updatedAt.value = new Date().toISOString().slice(0, 10);
   document.getElementById("publishedCheck").checked = true;
