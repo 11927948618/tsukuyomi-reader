@@ -16,6 +16,8 @@ import {
   contentTypeForExt
 } from "../../../_shared/books.js";
 import { readUsageGuard, shouldBlockPublishing } from "../../../_shared/usage-guard.js";
+import { inspectZip, sha256Hex } from "../../../_shared/zip-inspect.js";
+import { PACK_LIMITS, normalizeEntryPath, normalizeVersion } from "../../../../js/webapp/pack-validate.js";
 import { adminOperationActor, recordAdminOperationEvent } from "../../../_shared/admin-operation-log.js";
 
 export async function onRequestGet(context) {
@@ -78,6 +80,18 @@ export async function onRequestPost(context) {
   const bookFile = form.get("bookFile");
   const cover = form.get("cover");
   const nextPublished = boolValue(form.get("published"));
+
+  // "book" (default, unchanged behaviour) or "webapp" (ZIP of a small offline web app).
+  const currentContentType = String(current.contentType || "book").toLowerCase() === "webapp" ? "webapp" : "book";
+  const requestedContentType = String(form.get("contentType") || "").trim().toLowerCase();
+  if (requestedContentType && !["book", "webapp"].includes(requestedContentType)) {
+    return error("種別は book または webapp を指定してください");
+  }
+  const contentType = requestedContentType || currentContentType;
+  if (current.id && contentType !== currentContentType) {
+    return error("既存作品の種別（書籍 / Webコンテンツ）は変更できません。新しいIDで登録してください");
+  }
+  const isWebapp = contentType === "webapp";
   const guard = await readUsageGuard(bucket, context.env);
   if (shouldBlockPublishing(guard, current.published === true, nextPublished)) {
     await recordAdminOperationEvent(bucket, {
@@ -94,20 +108,57 @@ export async function onRequestPost(context) {
 
   let contentKey = current.contentKey || "";
   let coverKey = current.coverKey || "";
-  let format = current.format || "epub";
+  let format = current.format || (isWebapp ? "zip" : "epub");
   let contentUploaded = false;
   let coverUploaded = false;
+  const packFields = {};
+
+  // ---- webapp pack: validate before anything is written to R2 ----
+  const hasNewFile = Boolean(bookFile && typeof bookFile.arrayBuffer === "function" && bookFile.size > 0);
+  let packBuffer = null;
+  if (isWebapp) {
+    const entryPath = normalizeEntryPath(form.get("entry"), current.entry || "index.html");
+    if (!entryPath) return error("入口ファイル（entry）の指定が不正です");
+    const requestedVersion = String(form.get("version") || "").trim();
+    const version = requestedVersion ? normalizeVersion(requestedVersion) : null;
+    if (requestedVersion && !version) return error("version は 1 以上の整数で指定してください");
+
+    if (hasNewFile) {
+      if (extFromFile(bookFile, "") !== "zip") return error("Webコンテンツは ZIP ファイルを選択してください");
+      if (bookFile.size > PACK_LIMITS.zipBytes) {
+        return error(`ZIPの上限(${Math.round(PACK_LIMITS.zipBytes / 1048576)}MB)を超えています。教材は20MB前後を目安にしてください`);
+      }
+      packBuffer = await bookFile.arrayBuffer();
+      const inspected = inspectZip(packBuffer, { entry: entryPath });
+      if (!inspected.ok) {
+        return error(`パッケージを検証できませんでした: ${inspected.errors.slice(0, 5).map((e) => e.message).join(" / ")}`);
+      }
+      packFields.size = packBuffer.byteLength;
+      packFields.sha256 = await sha256Hex(packBuffer);
+      packFields.entry = entryPath;
+      packFields.version = version || (normalizeVersion(current.version) || 0) + 1;
+    } else {
+      if (!current.contentKey) return error("初回登録では ZIP ファイルが必須です");
+      if (entryPath !== (current.entry || "index.html")) {
+        return error("入口ファイル（entry）を変更する場合は ZIP も再アップロードしてください");
+      }
+      packFields.entry = entryPath;
+      packFields.version = version || normalizeVersion(current.version) || 1;
+      packFields.size = current.size;
+      packFields.sha256 = current.sha256;
+    }
+  }
 
   try {
-    if (bookFile && typeof bookFile.arrayBuffer === "function" && bookFile.size > 0) {
-      const ext = extFromFile(bookFile, "epub");
-      if (!["epub", "txt", "md", "markdown", "pdf"].includes(ext)) {
+    if (hasNewFile) {
+      const ext = isWebapp ? "zip" : extFromFile(bookFile, "epub");
+      if (!isWebapp && !["epub", "txt", "md", "markdown", "pdf"].includes(ext)) {
         return error("本文ファイルはEPUB、TXT、Markdown、PDFを選択してください");
       }
       format = ext === "markdown" ? "md" : ext;
       contentKey = `works/${id}-${nowCompact}.${ext}`;
       if (current.contentKey && current.contentKey !== contentKey) staleKeys.push(current.contentKey);
-      await bucket.put(contentKey, await bookFile.arrayBuffer(), {
+      await bucket.put(contentKey, packBuffer || await bookFile.arrayBuffer(), {
         httpMetadata: { contentType: contentTypeForExt(ext) }
       });
       contentUploaded = true;
@@ -151,6 +202,7 @@ export async function onRequestPost(context) {
     author: safeText(form.get("author"), "hal the juggernaut"),
     description: safeText(form.get("description"), ""),
     format,
+    ...(isWebapp ? { contentType: "webapp", ...packFields } : {}),
     contentKey,
     coverKey,
     published: nextPublished,
@@ -173,6 +225,8 @@ export async function onRequestPost(context) {
     reason: cleanup.failed.length ? "cleanup-partial" : "admin",
     details: {
       format,
+      contentType,
+      ...(isWebapp ? { version: packFields.version, packBytes: packFields.size, entry: packFields.entry } : {}),
       published: nextPublished,
       contentUploaded,
       coverUploaded,

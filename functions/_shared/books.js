@@ -127,7 +127,7 @@ export async function deleteR2Keys(bucket, keys) {
 }
 
 export function toPublicManifestEntry(book) {
-  return {
+  const entry = {
     id: book.id,
     title: book.title || "Untitled",
     author: book.author || "",
@@ -139,6 +139,15 @@ export function toPublicManifestEntry(book) {
     publicExpiresAt: book.publicExpiresAt || "",
     updatedAt: book.updatedAt || ""
   };
+  // "webapp" content packs (ZIP of a small offline web app). Book entries keep their exact previous shape.
+  if (String(book.contentType || "").toLowerCase() === "webapp") {
+    entry.contentType = "webapp";
+    entry.version = Number(book.version) || 1;
+    entry.entry = book.entry || "index.html";
+    entry.size = Number(book.size) || 0;
+    entry.sha256 = book.sha256 || "";
+  }
+  return entry;
 }
 
 export function sanitizeId(value, fallback = "book") {
@@ -181,6 +190,7 @@ export function contentTypeForExt(ext) {
   if (normalized === "txt") return "text/plain; charset=utf-8";
   if (normalized === "md" || normalized === "markdown") return "text/markdown; charset=utf-8";
   if (normalized === "pdf") return "application/pdf";
+  if (normalized === "zip") return "application/zip";
   if (normalized === "jpg" || normalized === "jpeg") return "image/jpeg";
   if (normalized === "png") return "image/png";
   if (normalized === "webp") return "image/webp";
