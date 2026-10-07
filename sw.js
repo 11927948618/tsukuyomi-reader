@@ -110,9 +110,15 @@ async function plainResponse(res) {
 }
 
 async function networkAndCache(req) {
-  const res = await plainResponse(await fetch(req));
-  const resClone = res.clone();
-  caches.open(CACHE_NAME).then((cache) => cache.put(req, resClone));
+  // Navigations arrive with redirect:"manual". Cloudflare Pages answers "/x.html" with a 308 to "/x"; caching that
+  // opaque redirect made offline "/x.html" bounce between "/x.html" and "/x" (ERR_TOO_MANY_REDIRECTS). Follow the
+  // redirect here so a plain 200 is returned and cached, and never cache redirects / error responses.
+  const target = req.mode === "navigate" ? new Request(req.url, { credentials: "same-origin" }) : req;
+  const res = await plainResponse(await fetch(target));
+  if (res.ok && res.type !== "opaqueredirect") {
+    const resClone = res.clone();
+    caches.open(CACHE_NAME).then((cache) => cache.put(req, resClone));
+  }
   return res;
 }
 

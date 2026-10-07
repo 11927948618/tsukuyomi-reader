@@ -546,7 +546,7 @@ function filterBundledBooksList(listEl, statusEl, query) {
 async function loadBundledBookManifest(manifestPath) {
   let res;
   try {
-    res = await fetch(manifestPath, { cache: "no-store" });
+    res = await fetch(manifestPath, { cache: "no-cache" });
   } catch (err) {
     throw new Error(`${manifestPath} に接続できません: ${err?.message || "network error"}`);
   }

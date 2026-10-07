@@ -307,8 +307,11 @@ select.input option {
 }
 
 #libraryScreen {
-  min-height: 100vh;
-  min-height: 100dvh;
+  /* html/body are overflow:hidden (reader.css), so the screen itself must be the scroll container: a fixed height,
+     not min-height, otherwise the content grows past the viewport and is simply clipped (no scrolling on phones). */
+  height: 100vh;
+  height: 100dvh;
+  min-height: 0;
   overflow-y: auto;
   overscroll-behavior-y: contain;
   -webkit-overflow-scrolling: touch;
@@ -656,15 +659,20 @@ select.input option {
 }
 
 #reviewAuthScreen {
-  min-height: 100vh;
-  min-height: 100dvh;
-  display: grid;
-  align-items: center;
+  height: 100vh;
+  height: 100dvh;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  -webkit-overflow-scrolling: touch;
+  display: flex;
+  flex-direction: column;
 }
 
 #reviewAuthScreen .auth-container {
   width: min(420px, 92vw);
   padding: 24px 0;
+  margin-block: auto; /* centred when it fits, top-aligned and scrollable when it does not */
 }
 
 #reviewAuthScreen .auth-header {
