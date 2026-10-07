@@ -1968,7 +1968,9 @@ TSUKUYOMI_REVIEW_PASSWORD_DAYS=7
 - 機能ブランチ `feature/webapp-pack`: Webコンテンツ(contentType=webapp、入口HTMLを含むZIP)を端末(IndexedDB)へ保存し、
   以後は通信なし・ログインなしで sandbox iframe 上に起動する仕組みを追加(書籍の Reader・認証コードは無変更)。
   Library に専用カード(ダウンロード/更新/開く/削除)、認証画面に「保存済みのコンテンツ」、管理画面に種別・version・entry、Functions 側のZIP検証を追加。
-- 別ブランチ(未反映): `fix/issue1-firefox-offline-site-config`(Firefox 機内モード起動が開発版に落ちる問題)、`fix/issue3-sw-redirect-nav`(オフラインの .html リダイレクトループ)。
-- 実機: iPad Safari は未確認(正式配布前の必須確認)。Android Chrome は確認済み。
+- main 反映済み(単独コミット、順に): v0.1.237 `fix(app)` Firefox の機内モード起動が開発版既定に落ちる問題(原因: Firefox は cache no-store/reload の fetch を SW に渡さない)、
+  v0.1.238 `fix(sw)` オフラインの .html リダイレクトループ、v0.1.239 `fix(css)` スマホで Library/認証画面が上下スクロールできない問題
+  (reader.css の html,body overflow:hidden に対し画面が min-height のみだった)、v0.1.240 Webコンテンツ配布機能。
+- 実機: Android Chrome(Xiaomi 11T Pro)で通し確認済み。iPad Safari は未確認(正式配布前・娘用配布前の必須確認)。
 - 運用メモ: ブランチのプレビューURLの別名は 28 文字に切り詰められる(例 `fix-issue1-firefox-offline-s`)。
 
