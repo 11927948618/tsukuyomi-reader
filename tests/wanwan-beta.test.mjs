@@ -1,10 +1,25 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 import { onRequest } from '../functions/apps/wanwan/[[path]].js';
 import { onRequestGet } from '../functions/api/apps/wanwan.js';
 import { createReviewSession, REVIEW_AUTH_COOKIE } from '../functions/_shared/review-auth.js';
 
 const origin = 'https://tsukuyomi-reader-tachiyomi.pages.dev';
+test('Pages routes send every map resource through the authentication gateway', async () => {
+  const routes = JSON.parse(await readFile(new URL('../_routes.json', import.meta.url), 'utf8'));
+  const matches = (pattern, path) => pattern.endsWith('*')
+    ? path.startsWith(pattern.slice(0, -1)) : pattern === path;
+  for (const path of ['/apps/wanwan', '/apps/wanwan/', '/apps/wanwan/viewer/',
+    '/apps/wanwan/viewer/app.js', '/apps/wanwan/models/japan.glb',
+    '/apps/wanwan/db/questions.json', '/apps/wanwan/research/lakes.geojson', '/api/apps/wanwan']) {
+    assert.ok(routes.include.some(pattern => matches(pattern, path)), `${path} must invoke a Function`);
+    assert.ok(!routes.exclude.some(pattern => matches(pattern, path)), `${path} must not bypass the Function`);
+  }
+  for (const path of ['/', '/js/library.js', '/css/styles.css']) {
+    assert.ok(!routes.include.some(pattern => matches(pattern, path)), `${path} stays a static Reader resource`);
+  }
+});
 async function fixture({ status = 'applied', authenticated = true, host = origin, path = '/apps/wanwan/viewer/', authEnabled = true, binding = true, upstream } = {}) {
   const entry = { email: 'reader@example.invalid', reviewerId: 'test-reader', status,
     passwordHash: 'pbkdf2-sha256$100000$c2FsdA$dGVzdA', passwordIssuedAt: new Date(Date.now() - 60000).toISOString() };
