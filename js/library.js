@@ -6,6 +6,7 @@ import { importZipToBook } from "./storage.js";
 import { isWebappEntry } from "./webapp/pack-validate.js";
 import { listPacks } from "./webapp/pack-store.js";
 import { bindStoragePanel, housekeeping, mountInstalledShelf, mountPackCard } from "./webapp/shelf.js";
+import { loadLearningApp, mountLearningApp } from "./learning-apps.js";
 
 const manuscriptStatsCache = new Map();
 
@@ -388,15 +389,16 @@ async function initBundledBooksShelf({
     const localPacks = new Map((await listPacks().catch(() => [])).filter((p) => p.status !== "installing").map((p) => [p.id, p]));
     const catalogWebappIds = new Set(books.filter(isWebappEntry).map((entry) => entry.id));
     const localOnlyCount = Array.from(localPacks.keys()).filter((id) => !catalogWebappIds.has(id)).length;
+    const learningApp = await loadLearningApp();
 
-    if (books.length === 0 && localOnlyCount === 0) {
+    if (books.length === 0 && localOnlyCount === 0 && !learningApp) {
       bundledBooksStatus.textContent = `${manifestPath} に公開中の作品が登録されていません`;
       bundledBooksStatus.className = "status error";
       if (bundledBooksToggleBtn) bundledBooksToggleBtn.disabled = true;
       return;
     }
 
-    bundledBooksStatus.textContent = `${books.length + localOnlyCount}作品`;
+    bundledBooksStatus.textContent = `${books.length + localOnlyCount + (learningApp ? 1 : 0)}コンテンツ`;
     bundledBooksStatus.className = "status ok";
     if (bundledBooksToggleBtn) bundledBooksToggleBtn.disabled = false;
     bundledBooksList.innerHTML = "";
@@ -509,6 +511,7 @@ async function initBundledBooksShelf({
       bundledBooksList.appendChild(article);
     });
 
+    mountLearningApp(bundledBooksList, learningApp);
     if (localOnlyCount > 0) await mountInstalledShelf(bundledBooksList, { skipIds: catalogWebappIds });
     void bindStoragePanel(qs("#webappStoragePanel"));
   } catch (err) {
