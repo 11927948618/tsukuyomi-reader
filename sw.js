@@ -1,4 +1,4 @@
-const CACHE_NAME = "tsukuyomi-reader-v0.1.240";
+const CACHE_NAME = "tsukuyomi-reader-v0.1.241";
 const STATIC_ASSETS = [
   "./",
   "./index.html",
@@ -22,6 +22,7 @@ const STATIC_ASSETS = [
   "./js/version.js",
   "./js/legacy-check.js",
   "./js/library.js",
+  "./js/learning-apps.js",
   "./js/reader.js",
   "./js/mobile-pager.js",
   "./js/document-model.js",
@@ -171,6 +172,7 @@ self.addEventListener("fetch", (event) => {
   const url = new URL(req.url);
   const isSameOrigin = url.origin === self.location.origin;
   const isApiRequest = isSameOrigin && url.pathname.startsWith("/api/");
+  const isAuthenticatedMap = isSameOrigin && (url.pathname === '/apps/wanwan' || url.pathname.startsWith('/apps/wanwan/'));
   const isBookAsset = url.pathname.includes("/book/") || url.pathname.includes("/books/");
   const isHtmlRequest =
     req.mode === "navigate" ||
@@ -178,7 +180,7 @@ self.addEventListener("fetch", (event) => {
     url.pathname.endsWith(".html") ||
     url.pathname.endsWith("/");
 
-  if (isApiRequest) {
+  if (isApiRequest || isAuthenticatedMap) {
     event.respondWith(fetch(req, { cache: "no-store" }));
     return;
   }
