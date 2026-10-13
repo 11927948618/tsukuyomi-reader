@@ -19,5 +19,8 @@ export function privateResponse(response) {
   headers.set('X-Robots-Tag', 'noindex, nofollow');
   headers.set('X-Content-Type-Options', 'nosniff');
   headers.delete('Set-Cookie');
+  // Fetch may decode upstream compression; do not describe the streamed body as encoded bytes.
+  headers.delete('Content-Encoding');
+  headers.delete('Content-Length');
   return new Response(response.body, { status: response.status, headers });
 }

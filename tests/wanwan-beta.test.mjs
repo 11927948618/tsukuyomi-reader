@@ -42,13 +42,17 @@ test('revoked, muted and pending viewers cannot obtain the map', async () => {
   }
 });
 test('authenticated assets use a stripped path and never forward Reader credentials', async () => {
-  const f = await fixture();
+  const f = await fixture({ upstream: new Response('asset', { headers: {
+    'Set-Cookie': 'bad=1', 'Content-Encoding': 'gzip', 'Content-Length': '100'
+  } }) });
   const response = await onRequest(f.context);
   assert.equal(response.status, 200);
   assert.equal(new URL(f.forwarded().url).pathname, '/viewer/');
   assert.equal(f.forwarded().headers.has('Cookie'), false);
   assert.equal(f.forwarded().headers.has('Authorization'), false);
   assert.equal(response.headers.has('Set-Cookie'), false);
+  assert.equal(response.headers.has('Content-Encoding'), false);
+  assert.equal(response.headers.has('Content-Length'), false);
   assert.equal(response.headers.get('Cache-Control'), 'private, no-store');
 });
 test('launch page embeds the app and links back to the Reader list', async () => {
