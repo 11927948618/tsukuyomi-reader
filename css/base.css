@@ -12,6 +12,10 @@
   --letter-spacing: 0px;
 }
 
+html, body {
+  overscroll-behavior-y: none;
+}
+
 body {
   background: var(--bg);
   color: var(--text);
