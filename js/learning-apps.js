@@ -26,7 +26,8 @@ export function mountLearningApp(container, app) {
   title.textContent = app.title;
   const kind = document.createElement('p');
   kind.className = 'book-author';
-  kind.textContent = '学習アプリ';
+  const version = typeof app.version === 'string' && /^\d+\.\d+\.\d+$/.test(app.version) ? app.version : null;
+  kind.textContent = version ? `学習アプリ・v${version}` : '学習アプリ・バージョン確認できません';
   const description = document.createElement('p');
   description.className = 'book-description';
   description.textContent = app.description || '';

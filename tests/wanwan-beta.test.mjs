@@ -90,3 +90,23 @@ test('catalog app is only advertised to authenticated readers on the limited sit
   const denied = await fixture({ path:'/api/apps/wanwan', authenticated:false });
   assert.equal((await onRequestGet(denied.context)).status,401);
 });
+
+test('catalog reports deployed version without forwarding reader credentials', async () => {
+  const f = await fixture({ path:'/api/apps/wanwan', upstream:new Response("const $=s=>s,VERSION='0.4.200';") });
+  const response = await onRequestGet(f.context);
+  assert.equal((await response.json()).version, '0.4.200');
+  assert.equal(new URL(f.forwarded().url).pathname, '/viewer/app.js');
+  assert.equal(f.forwarded().headers.has('Cookie'), false);
+  assert.equal(f.forwarded().headers.has('Authorization'), false);
+  assert.match(response.headers.get('Cache-Control'), /no-store/);
+});
+test('catalog keeps the app available without inventing a version on upstream failure', async () => {
+  for (const upstream of [new Response('Unavailable', {status:503}), new Response('not a version')]) {
+    const f = await fixture({ path:'/api/apps/wanwan', upstream });
+    const response = await onRequestGet(f.context);
+    const app = await response.json();
+    assert.equal(response.status, 200);
+    assert.equal(app.version, null);
+    assert.equal(app.url, '/apps/wanwan/');
+  }
+});
