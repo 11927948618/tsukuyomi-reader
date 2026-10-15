@@ -130,7 +130,7 @@ export function initReader({
     const height = Number(window.innerHeight) || 0;
     return Math.min(width || Infinity, height || Infinity) <= 640;
   };
-  const isSpreadViewActive = () => spreadViewEnabled && !isMobileReadingDevice();
+  const isSpreadViewActive = () => spreadViewEnabled && !isSmallReadingViewport();
   const isStackedViewActive = () => stackedViewEnabled && !isSmallReadingViewport();
   const getPageGroupArrangement = () => {
     if (isSpreadViewActive()) return "spread";
@@ -501,8 +501,9 @@ export function initReader({
     const immersive = shouldUseImmersivePagedChrome();
     const wasImmersive = document.body.classList.contains("mobile-paged-immersive");
     document.body.classList.toggle("mobile-paged-immersive", immersive);
-    document.body.classList.toggle("rotation-locked", immersive);
-    requestPortraitOrientationLock(immersive);
+    const portraitLocked = immersive && isSmallReadingViewport();
+    document.body.classList.toggle("rotation-locked", portraitLocked);
+    requestPortraitOrientationLock(portraitLocked);
     if (!topbar) return;
 
     // Reflow runs after a menu toggle. Only entering immersive mode should
