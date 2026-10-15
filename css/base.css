@@ -334,6 +334,7 @@ select.input option {
 
 #libraryScreen .library-column {
   display: grid;
+  min-width: 0;
   gap: 10px;
   align-content: start;
 }
@@ -807,8 +808,30 @@ select.input option {
 }
 @media (min-width: 900px) {
   #libraryScreen .library-grid {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
     align-items: start;
+  }
+
+  #libraryScreen .library-book-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: stretch;
+  }
+
+  #libraryScreen .book-card {
+    min-width: 0;
+  }
+
+  #libraryScreen .book-title,
+  #libraryScreen .book-author {
+    grid-column: 1 / -1;
+  }
+
+  #libraryScreen .book-title {
+    display: -webkit-box;
+    white-space: normal;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow-wrap: anywhere;
   }
 }
 
