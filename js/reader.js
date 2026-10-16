@@ -168,7 +168,7 @@ export function initReader({
   };
   const READER_DEFAULT_SETTINGS = {
     fontSize: 100,
-    fontFamilyPreference: "system",
+    fontFamilyPreference: "mincho",
     lineHeight: 1.8,
     letterSpacing: 0,
     pageMarginPercent: PAGE_MARGIN_STANDARD_PERCENT,
@@ -721,6 +721,7 @@ export function initReader({
       reflowReaderLayout({ preservePosition: true });
     }, 140);
   };
+  bindWindowEvent(document.fonts, "loadingdone", handleViewportResize);
   bindWindowEvent(window, "resize", handleViewportResize);
   bindWindowEvent(window, "orientationchange", handleViewportResize);
   bindWindowEvent(window.visualViewport, "resize", handleViewportResize);
@@ -1355,6 +1356,14 @@ export function initReader({
   }
 
   function bindSettingsEvents() {
+    qs('#paperPresetBtn')?.addEventListener('click', () => updateSettings({
+      fontFamilyPreference: 'mincho', fontSize: 100, lineHeight: 1.8,
+      letterSpacing: 0, pageMarginPercent: 6, theme: 'light',
+      displayMode: 'paged', writingModePreference: 'vertical',
+      spreadView: false, pageColumns: false, stackedView: false,
+      twoTierView: false, lineNumbers: false, progressBar: false,
+      progressBarPercent: false, pageTurnEffect: 'none'
+    }));
     fontSizeRange.addEventListener("input", () => updateSettings({ fontSize: Number(fontSizeRange.value) }));
     fontFamilySelect?.addEventListener("change", () => {
       updateSettings({ fontFamilyPreference: normalizeFontFamilyPreference(fontFamilySelect.value) });
@@ -2430,6 +2439,7 @@ function normalizeFontFamilyPreference(value) {
 function resolveReaderFontFamily(preference) {
   if (preference === "mincho") {
     return [
+      '"Reader Mincho"',
       '"BIZ UDPMincho"',
       '"Hiragino Mincho ProN"',
       '"Yu Mincho"',

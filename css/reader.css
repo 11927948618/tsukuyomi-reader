@@ -1724,3 +1724,37 @@ body {
 
 
 
+
+/* Flat reading surface: the text and ruby, rather than a simulated book frame. */
+@font-face {
+  font-family: "Reader Mincho";
+  src: url("../assets/fonts/reader-mincho.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+body.mode-paged .reader-layout {
+  background: var(--panel);
+}
+
+body.mode-paged .reader-viewport,
+body.mode-paged.writing-vertical .reader-viewport,
+body.mobile-paged-immersive.mode-paged .reader-viewport,
+body.mobile-paged-immersive.mode-paged.writing-vertical .reader-viewport {
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  padding: clamp(24px, 7dvh, 88px) clamp(18px, 5vw, 64px);
+}
+
+body.mode-paged .reader-viewport::before,
+body.mode-paged .reader-viewport::after {
+  display: none;
+}
+
+/* A closed contents panel must not cast a shadow onto the reading surface. */
+.toc-panel:not(.open) {
+  visibility: hidden;
+  pointer-events: none;
+}
