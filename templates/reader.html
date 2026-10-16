@@ -106,16 +106,17 @@
 
           <div class="field">
             <div class="field-head">
-              <label class="label" id="pageMarginLabel" for="pageMarginRange">余白</label>
+              <label class="label" id="pageMarginLabel" for="pageMarginRange">左右の追加余白</label>
               <div class="field-meta">
                 <output class="field-value" id="pageMarginValue" for="pageMarginRange" aria-live="polite">-</output>
               </div>
             </div>
             <div class="range-with-guide">
-              <input id="pageMarginRange" type="range" min="0" max="100" step="1" />
+              <input id="pageMarginRange" aria-describedby="pageMarginHint" type="range" min="0" max="100" step="1" />
               <span class="standard-range-pin" aria-hidden="true"></span>
               <span class="saved-range-pin" data-saved-pin="pageMarginPercent" aria-hidden="true"></span>
             </div>
+            <p id="pageMarginHint" class="field-help">左へ：本文を広く ／ 右へ：余白を広く。上下の余白は変わりません。0でも基本の余白は残ります。</p>
           </div>
         </div>
       </section>

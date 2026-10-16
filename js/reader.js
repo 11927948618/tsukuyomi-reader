@@ -159,12 +159,6 @@ export function initReader({
   };
   const getContentWidthPercent = () => {
     const margin = normalizePageMarginPercent(pageMarginPercent);
-    // Mobile single-page reading uses nearly the whole viewport. The margin
-    // slider still widens the gutter, but from a near-zero base instead of the
-    // desktop "book on a desk" framing.
-    if (isMobileReadingDevice() && !isSpreadViewActive()) {
-      return Math.max(84, Math.min(100, 100 - margin * 0.5));
-    }
     return Math.max(60, Math.min(100, 100 - margin * 2));
   };
   const READER_DEFAULT_SETTINGS = {
@@ -1529,9 +1523,9 @@ export function initReader({
       const stackedActive = isStackedViewActive() && displayMode === "paged";
       const singlePageActive = displayMode === "paged";
       if (pageMarginLabel) {
-        pageMarginLabel.textContent = "余白";
+        pageMarginLabel.textContent = "左右の追加余白";
       }
-      const requestedPart = `余白${formatLayoutPercent(marginPercent)}% / 本文約${formatLayoutPercent(contentPercent)}% / 約${wrapPx}px`;
+      const requestedPart = `左右各${formatLayoutPercent(marginPercent)}%追加 / 本文幅${formatLayoutPercent(contentPercent)}%・約${wrapPx}px`;
       const actualPart = singlePageActive
         ? spreadActive
           ? `${requestedPart} / 片面約${Math.round(pageSize.width)}px / 見開き約${Math.round(spreadSize.width)}px / 中央約${Math.round(layout?.columnGap || 0)}px`

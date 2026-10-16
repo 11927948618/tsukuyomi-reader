@@ -1,0 +1,386 @@
+[
+  {
+    "baseline": true,
+    "viewport": [
+      390,
+      844
+    ],
+    "mode": "vertical",
+    "samples": [
+      {
+        "rect": {
+          "x": 19.5,
+          "y": 65.078125,
+          "width": 351,
+          "height": 711.84375,
+          "top": 65.078125,
+          "right": 370.5,
+          "bottom": 776.921875,
+          "left": 19.5
+        },
+        "paddingTop": "59.08px",
+        "paddingBottom": "59.08px",
+        "label": "余白0% / 本文約100% / 約351px / 実効約351px / 約44字×12列",
+        "stored": 0,
+        "warning": false,
+        "font": "mincho"
+      },
+      {
+        "rect": {
+          "x": 25,
+          "y": 65.078125,
+          "width": 340,
+          "height": 711.84375,
+          "top": 65.078125,
+          "right": 365,
+          "bottom": 776.921875,
+          "left": 25
+        },
+        "paddingTop": "59.08px",
+        "paddingBottom": "59.08px",
+        "label": "余白6% / 本文約88% / 約309px / 実効約309px / 約44字×10列",
+        "stored": 6,
+        "warning": false,
+        "font": "mincho"
+      },
+      {
+        "rect": {
+          "x": 37,
+          "y": 65.078125,
+          "width": 316,
+          "height": 711.84375,
+          "top": 65.078125,
+          "right": 353,
+          "bottom": 776.921875,
+          "left": 37
+        },
+        "paddingTop": "59.08px",
+        "paddingBottom": "59.08px",
+        "label": "余白20% / 本文約60% / 約211px / 実効約211px / 約44字×7列",
+        "stored": 20,
+        "warning": false,
+        "font": "mincho"
+      }
+    ]
+  },
+  {
+    "baseline": true,
+    "viewport": [
+      800,
+      1280
+    ],
+    "mode": "vertical",
+    "samples": [
+      {
+        "rect": {
+          "x": 40,
+          "y": 94,
+          "width": 720,
+          "height": 1090,
+          "top": 94,
+          "right": 760,
+          "bottom": 1184,
+          "left": 40
+        },
+        "paddingTop": "88px",
+        "paddingBottom": "88px",
+        "label": "余白0% / 本文約100% / 約720px / 実効約720px / 約68字×25列",
+        "stored": 0,
+        "warning": false,
+        "font": "mincho"
+      },
+      {
+        "rect": {
+          "x": 51,
+          "y": 94,
+          "width": 698,
+          "height": 1090,
+          "top": 94,
+          "right": 749,
+          "bottom": 1184,
+          "left": 51
+        },
+        "paddingTop": "88px",
+        "paddingBottom": "88px",
+        "label": "余白6% / 本文約88% / 約634px / 実効約634px / 約68字×22列",
+        "stored": 6,
+        "warning": false,
+        "font": "mincho"
+      },
+      {
+        "rect": {
+          "x": 76,
+          "y": 94,
+          "width": 648,
+          "height": 1090,
+          "top": 94,
+          "right": 724,
+          "bottom": 1184,
+          "left": 76
+        },
+        "paddingTop": "88px",
+        "paddingBottom": "88px",
+        "label": "余白20% / 本文約60% / 約432px / 実効約432px / 約68字×15列",
+        "stored": 20,
+        "warning": false,
+        "font": "mincho"
+      }
+    ]
+  },
+  {
+    "baseline": true,
+    "viewport": [
+      1280,
+      800
+    ],
+    "mode": "vertical",
+    "samples": [
+      {
+        "rect": {
+          "x": 64,
+          "y": 62,
+          "width": 1152,
+          "height": 674,
+          "top": 62,
+          "right": 1216,
+          "bottom": 736,
+          "left": 64
+        },
+        "paddingTop": "56px",
+        "paddingBottom": "56px",
+        "label": "余白0% / 本文約100% / 約1152px / 実効約1152px / 約42字×40列",
+        "stored": 0,
+        "warning": false,
+        "font": "mincho"
+      },
+      {
+        "rect": {
+          "x": 81.5,
+          "y": 62,
+          "width": 1117,
+          "height": 674,
+          "top": 62,
+          "right": 1198.5,
+          "bottom": 736,
+          "left": 81.5
+        },
+        "paddingTop": "56px",
+        "paddingBottom": "56px",
+        "label": "余白6% / 本文約88% / 約1014px / 実効約1014px / 約42字×35列",
+        "stored": 6,
+        "warning": false,
+        "font": "mincho"
+      },
+      {
+        "rect": {
+          "x": 121.5,
+          "y": 62,
+          "width": 1037,
+          "height": 674,
+          "top": 62,
+          "right": 1158.5,
+          "bottom": 736,
+          "left": 121.5
+        },
+        "paddingTop": "56px",
+        "paddingBottom": "56px",
+        "label": "余白20% / 本文約60% / 約691px / 実効約691px / 約42字×23列",
+        "stored": 20,
+        "warning": false,
+        "font": "mincho"
+      }
+    ]
+  },
+  {
+    "baseline": false,
+    "viewport": [
+      390,
+      844
+    ],
+    "mode": "vertical",
+    "samples": [
+      {
+        "rect": {
+          "x": 19.5,
+          "y": 65.078125,
+          "width": 351,
+          "height": 711.84375,
+          "top": 65.078125,
+          "right": 370.5,
+          "bottom": 776.921875,
+          "left": 19.5
+        },
+        "paddingTop": "59.08px",
+        "paddingBottom": "59.08px",
+        "label": "左右各0%追加 / 本文幅100%・約351px / 実効約351px / 約44字×12列",
+        "stored": 0,
+        "warning": false,
+        "font": "mincho"
+      },
+      {
+        "rect": {
+          "x": 40.5,
+          "y": 65.078125,
+          "width": 309,
+          "height": 711.84375,
+          "top": 65.078125,
+          "right": 349.5,
+          "bottom": 776.921875,
+          "left": 40.5
+        },
+        "paddingTop": "59.08px",
+        "paddingBottom": "59.08px",
+        "label": "左右各6%追加 / 本文幅88%・約309px / 実効約309px / 約44字×10列",
+        "stored": 6,
+        "warning": false,
+        "font": "mincho"
+      },
+      {
+        "rect": {
+          "x": 89.5,
+          "y": 65.078125,
+          "width": 211,
+          "height": 711.84375,
+          "top": 65.078125,
+          "right": 300.5,
+          "bottom": 776.921875,
+          "left": 89.5
+        },
+        "paddingTop": "59.08px",
+        "paddingBottom": "59.08px",
+        "label": "左右各20%追加 / 本文幅60%・約211px / 実効約211px / 約44字×7列",
+        "stored": 20,
+        "warning": false,
+        "font": "mincho"
+      }
+    ]
+  },
+  {
+    "baseline": false,
+    "viewport": [
+      800,
+      1280
+    ],
+    "mode": "vertical",
+    "samples": [
+      {
+        "rect": {
+          "x": 40,
+          "y": 94,
+          "width": 720,
+          "height": 1090,
+          "top": 94,
+          "right": 760,
+          "bottom": 1184,
+          "left": 40
+        },
+        "paddingTop": "88px",
+        "paddingBottom": "88px",
+        "label": "左右各0%追加 / 本文幅100%・約720px / 実効約720px / 約68字×25列",
+        "stored": 0,
+        "warning": false,
+        "font": "mincho"
+      },
+      {
+        "rect": {
+          "x": 83,
+          "y": 94,
+          "width": 634,
+          "height": 1090,
+          "top": 94,
+          "right": 717,
+          "bottom": 1184,
+          "left": 83
+        },
+        "paddingTop": "88px",
+        "paddingBottom": "88px",
+        "label": "左右各6%追加 / 本文幅88%・約634px / 実効約634px / 約68字×22列",
+        "stored": 6,
+        "warning": false,
+        "font": "mincho"
+      },
+      {
+        "rect": {
+          "x": 184,
+          "y": 94,
+          "width": 432,
+          "height": 1090,
+          "top": 94,
+          "right": 616,
+          "bottom": 1184,
+          "left": 184
+        },
+        "paddingTop": "88px",
+        "paddingBottom": "88px",
+        "label": "左右各20%追加 / 本文幅60%・約432px / 実効約432px / 約68字×15列",
+        "stored": 20,
+        "warning": false,
+        "font": "mincho"
+      }
+    ]
+  },
+  {
+    "baseline": false,
+    "viewport": [
+      1280,
+      800
+    ],
+    "mode": "vertical",
+    "samples": [
+      {
+        "rect": {
+          "x": 64,
+          "y": 62,
+          "width": 1152,
+          "height": 674,
+          "top": 62,
+          "right": 1216,
+          "bottom": 736,
+          "left": 64
+        },
+        "paddingTop": "56px",
+        "paddingBottom": "56px",
+        "label": "左右各0%追加 / 本文幅100%・約1152px / 実効約1152px / 約42字×40列",
+        "stored": 0,
+        "warning": false,
+        "font": "mincho"
+      },
+      {
+        "rect": {
+          "x": 133,
+          "y": 62,
+          "width": 1014,
+          "height": 674,
+          "top": 62,
+          "right": 1147,
+          "bottom": 736,
+          "left": 133
+        },
+        "paddingTop": "56px",
+        "paddingBottom": "56px",
+        "label": "左右各6%追加 / 本文幅88%・約1014px / 実効約1014px / 約42字×35列",
+        "stored": 6,
+        "warning": false,
+        "font": "mincho"
+      },
+      {
+        "rect": {
+          "x": 294.5,
+          "y": 62,
+          "width": 691,
+          "height": 674,
+          "top": 62,
+          "right": 985.5,
+          "bottom": 736,
+          "left": 294.5
+        },
+        "paddingTop": "56px",
+        "paddingBottom": "56px",
+        "label": "左右各20%追加 / 本文幅60%・約691px / 実効約691px / 約42字×23列",
+        "stored": 20,
+        "warning": false,
+        "font": "mincho"
+      }
+    ]
+  }
+]
