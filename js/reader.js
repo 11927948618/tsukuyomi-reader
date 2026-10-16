@@ -989,7 +989,9 @@ export function initReader({
       writingMode: mode,
       lineAdvancePx: plan.lineAdvance || baseLineAdvance,
       charSafetyReserve: 1,
-      lineSafetyReserve: 1
+      // The fixed frame already limits full line advances. Use the last vertical
+      // column; keep the legacy horizontal buffer for hanging punctuation.
+      lineSafetyReserve: mode === "vertical" ? 0 : 1
     };
   }
 
