@@ -31,7 +31,7 @@ const DEFAULT_SITE_CONFIG = {
 
 const DEFAULT_SETTINGS = {
   fontSize: 100,
-  fontFamilyPreference: "system",
+  fontFamilyPreference: "mincho",
   lineHeight: 1.8,
   letterSpacing: 0,
   pageMarginPercent: 6,
