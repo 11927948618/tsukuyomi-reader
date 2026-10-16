@@ -25,6 +25,31 @@ async def main():
    assert data['border']=='0px' and data['shadow']=='none' and data['theme'],data
    assert data['pages']==1 and data['paddingTop']>=24 and data['paddingLeft']>=18 and data['ruby']>0,data
    assert data['rect']['left']>=0 and data['rect']['right']<=width+1 and data['rect']['bottom']<=height+1,data
+   adjustments=[]
+   for font in ['mincho','gothic','system']:
+    for size in [80,100,140]:
+     await page.evaluate("""({font,size})=>{
+      const select=document.querySelector('#fontFamilySelect');select.value=font;select.dispatchEvent(new Event('change'));
+      const slider=document.querySelector('#fontSizeRange');slider.value=size;slider.dispatchEvent(new Event('input'));
+     }""",{'font':font,'size':size})
+     await page.wait_for_timeout(200)
+     frame=await page.locator('.mobile-text-page').evaluate('(e)=>e.getBoundingClientRect().toJSON()')
+     for key in ['x','y','width','height']:assert abs(frame[key]-data['rect'][key])<1,(font,size,key,data['rect'],frame)
+     fit=await page.evaluate("""()=>{const page=document.querySelector('.mobile-text-page'),body=page.querySelector('.mobile-text-page-body');return {warning:document.body.classList.contains('pager-fit-warning'),start:Number(page.dataset.sourceStart),end:Number(page.dataset.sourceEnd),font:parseFloat(getComputedStyle(document.querySelector('#bookContent')).fontSize)}}""")
+     assert not fit['warning'],(font,size,fit)
+     assert abs(fit['font']-16*size/100)<.1,fit
+     adjustments.append({'font':font,'size':size,'frame':frame,'text':fit})
+   for lineHeight in [1.4,2.4]:
+    await page.evaluate("""value=>{const slider=document.querySelector('#lineHeightRange');slider.value=value;slider.dispatchEvent(new Event('input'))}""",lineHeight)
+    await page.wait_for_timeout(200)
+    frame=await page.locator('.mobile-text-page').evaluate('(e)=>e.getBoundingClientRect().toJSON()')
+    for key in ['x','y','width','height']:assert abs(frame[key]-data['rect'][key])<1,(lineHeight,key,frame,data['rect'])
+    assert not await page.evaluate("document.body.classList.contains('pager-fit-warning')"),lineHeight
+    adjustments.append({'lineHeight':lineHeight,'frame':frame})
+   await page.evaluate("document.querySelector('#paperPresetBtn').click()")
+   await page.wait_for_timeout(250)
+   data['start']=await page.locator('.mobile-text-page').evaluate('(e)=>Number(e.dataset.sourceStart)')
+   data['end']=await page.locator('.mobile-text-page').evaluate('(e)=>Number(e.dataset.sourceEnd)')
    await page.touchscreen.tap(width*.1,height*.5)
    await page.wait_for_timeout(400)
    nextStart=await page.locator('.mobile-text-page').evaluate('(e)=>Number(e.dataset.sourceStart)')
@@ -32,9 +57,9 @@ async def main():
    if width==390:await page.screenshot(path=str(root/'reports/paper-layout/phone.png'))
    if width==800:await page.screenshot(path=str(root/'reports/paper-layout/tablet.png'))
    assert not errors,errors
-   results.append({'viewport':[width,height],**data,'nextStart':nextStart})
+   results.append({'viewport':[width,height],**data,'adjustments':adjustments,'nextStart':nextStart})
    await page.close()
   (root/'reports/paper-layout/checks.json').write_text(json.dumps(results,ensure_ascii=False,indent=2)+'\n')
-  print('PASS: paper preset, bundled Mincho, ruby, margins, no frame, three viewports and next page')
+  print('PASS: paper preset, bundled Mincho, ruby, margins, no frame, fixed frame across three fonts and 80/100/140% sizes, three viewports and next page')
   await b.close()
 asyncio.run(main())

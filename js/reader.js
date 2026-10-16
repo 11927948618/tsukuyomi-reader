@@ -146,7 +146,8 @@ export function initReader({
   };
   const getPageColumnGapPx = (lineAdvance = 24) => {
     if (getPageGroupArrangement() === "single") return 0;
-    const advance = Math.max(10, Number(lineAdvance) || 24);
+    // The gutter belongs to the page frame, not to the current font size.
+    const advance = 24;
     const minimum = Math.max(14, Math.min(24, advance * 0.7));
     const standard = Math.max(24, Math.min(40, advance * 1.2));
     const maximum = Math.max(40, Math.min(56, advance * 1.8));
@@ -1064,9 +1065,9 @@ export function initReader({
     const titleHtml = page.title ? `<h1>${escapeHtml(page.title)}</h1>` : "";
     const pageWritingMode = plan?.writingMode === "horizontal" ? "horizontal" : "vertical";
     const pageStyle = buildMobileTextPageStyle(page, plan, pageWritingMode);
-    const bodyStyle = buildMobileTextPageBodyStyle(page, plan, pageWritingMode);
+    const bodyStyle = "";
     const bodyStyleAttr = bodyStyle ? ` style="${bodyStyle}"` : "";
-    const bodyClass = pageWritingMode === "vertical" ? "mobile-text-page-body is-balanced" : "mobile-text-page-body";
+    const bodyClass = "mobile-text-page-body";
     const sourceStart = Math.max(0, Number(page.sourceStart) || 0);
     const sourceEnd = Math.max(sourceStart, Number(page.sourceEnd) || sourceStart);
     const chapterId = escapeAttribute(page.chapterId || "chapter-001");
@@ -1086,29 +1087,6 @@ export function initReader({
     return styles.length ? ` style="${styles.join(";")}"` : "";
   }
 
-  function buildMobileTextPageBodyStyle(page, plan, pageWritingMode) {
-    if (pageWritingMode !== "vertical") return "";
-    if (Number(plan?.visiblePageCount) > 1) return "";
-    const lineCount = Math.max(1, Math.floor(Number(page?.lineCount) || 1));
-    const lineCapacity = resolveMobileTextPageLineCapacity(page, plan);
-    const spareLines = Math.max(0, lineCapacity - lineCount);
-    if (spareLines <= 0) return "";
-    const fallbackLineAdvance = getReaderTextMetrics().lineHeightPx;
-    const lineAdvance = Math.max(1, Number(plan?.lineAdvancePx) || fallbackLineAdvance);
-    const balancePx = Math.round((spareLines * lineAdvance / 2) * 100) / 100;
-    if (balancePx <= 0.5) return "";
-    return `--mobile-page-balance-block:${escapeAttribute(balancePx)}px`;
-  }
-
-  function resolveMobileTextPageLineCapacity(page, plan = null) {
-    const totalLines = Math.max(4, Math.floor(Number(plan?.lines) || 10));
-    const safety = Math.max(0, Math.floor(Number(plan?.lineSafetyReserve) || 0));
-    const titleReserve = page?.title
-      ? Math.max(0, Math.floor(Number(plan?.titleLineReserve) || 3))
-      : 0;
-    const capacity = totalLines - safety - titleReserve;
-    return Math.max(1, capacity);
-  }
 
   function formatMobileTextPageBody(html, lineStart = 1) {
     if (!lineNumbers) return html;
@@ -2367,69 +2345,21 @@ function withPdfViewerParams(url) {
 }
 
 function resolveHorizontalPagePlan({ inlineBase, blockBase, charAdvance, lineAdvance }) {
-  const inlineSize = snapDownToStep(inlineBase, charAdvance, Math.max(120, charAdvance * 8));
-  const blockSize = snapDownToStep(blockBase, lineAdvance, Math.max(120, lineAdvance * 4));
+  // Physical page dimensions are fixed by viewport and margins. Quantize only
+  // the amount of text, so changing a font never moves the page boundary.
+  const inlineSize = Math.max(1, Math.round(inlineBase));
+  const blockSize = Math.max(1, Math.round(blockBase));
   return {
-    inlineSize: Math.max(1, Math.round(inlineSize)),
-    blockSize: Math.max(1, Math.round(blockSize)),
-    lineAdvance,
-    fontScale: 1,
-    verticalPageGutter: 0
+    chars: Math.max(1, Math.floor(inlineSize / Math.max(1, charAdvance))),
+    lines: Math.max(1, Math.floor(blockSize / Math.max(1, lineAdvance))),
+    inlineSize, blockSize, lineAdvance, fontScale: 1, verticalPageGutter: 0
   };
 }
 
-function resolveVerticalPagePlan({ inlineBase, blockBase, charAdvance, lineAdvance }) {
-  const maxInline = Math.max(120, inlineBase);
-  const maxBlock = Math.max(120, blockBase);
-  const candidates = buildNaturalVerticalCandidates(maxInline, maxBlock, charAdvance, lineAdvance);
-
-  const scaledCharAdvance = Math.max(6, charAdvance);
-  const scaledLineAdvance = Math.max(10, lineAdvance);
-  const gutter = Math.round(Math.min(48, Math.max(24, scaledLineAdvance * 0.7)));
-  const fit = candidates
-    .map((candidate) => {
-      const inlineSize = Math.round(candidate.chars * scaledCharAdvance + gutter * 2);
-      const blockSize = Math.round(candidate.lines * scaledLineAdvance);
-      return { ...candidate, inlineSize, blockSize, fontScale: 1, lineAdvance: scaledLineAdvance, verticalPageGutter: gutter };
-    })
-    .filter((candidate) => candidate.inlineSize <= maxInline && candidate.blockSize <= maxBlock)
-    .sort((a, b) => scoreVerticalPageCandidate(b, maxInline, maxBlock) - scoreVerticalPageCandidate(a, maxInline, maxBlock))[0];
-  if (fit) return fit;
-
-  // No candidate fit the frame; derive a plan directly from the available space.
-  const fbGutter = Math.round(Math.min(42, Math.max(20, scaledLineAdvance * 0.6)));
-  const chars = Math.max(8, Math.min(48, Math.floor((maxInline - fbGutter * 2) / scaledCharAdvance)));
-  const lines = Math.max(4, Math.floor(maxBlock / scaledLineAdvance));
-  return {
-    chars,
-    lines,
-    inlineSize: Math.max(1, Math.round(Math.min(maxInline, chars * scaledCharAdvance + fbGutter * 2))),
-    blockSize: Math.max(1, Math.round(Math.min(maxBlock, lines * scaledLineAdvance))),
-    lineAdvance: scaledLineAdvance,
-    fontScale: 1,
-    verticalPageGutter: fbGutter
-  };
+function resolveVerticalPagePlan(frame) {
+  return resolveHorizontalPagePlan(frame);
 }
 
-function buildNaturalVerticalCandidates(maxInline, maxBlock, charAdvance, lineAdvance) {
-  const readableMaxChars = 48;
-  const maxChars = Math.max(8, Math.min(readableMaxChars, Math.floor((maxInline - 48) / charAdvance)));
-  const maxLines = Math.max(4, Math.floor(maxBlock / lineAdvance));
-  const candidates = [];
-  for (const chars of [maxChars, maxChars - 2, maxChars - 4, Math.floor(maxChars * 0.9)].filter((value) => value >= 8)) {
-    for (const lines of [maxLines, maxLines - 1, Math.floor(maxLines * 0.9)].filter((value) => value >= 4)) {
-      candidates.push({ chars, lines });
-    }
-  }
-  return candidates;
-}
-
-function scoreVerticalPageCandidate(candidate, maxInline = 1, maxBlock = 1) {
-  const total = candidate.chars * candidate.lines;
-  const blockUse = Number(candidate.blockSize) / Math.max(1, maxBlock);
-  const inlineUse = Number(candidate.inlineSize) / Math.max(1, maxInline);
-  return total + blockUse * 36 + inlineUse * 8;
-}
 function normalizeFontFamilyPreference(value) {
   const normalized = String(value || "").toLowerCase();
   if (normalized === "mincho" || normalized === "gothic") return normalized;
