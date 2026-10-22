@@ -54,7 +54,7 @@ export function createContentManager({list,getHeaders,prepareUpload,reload}){
  $('#contentZipInput').onchange=e=>{const file=e.target.files[0];if(file)stageZip(file).catch(e=>{plan=[];importFolders=[];preview();status(e.message)})};
  $('[data-cm=stop]').onclick=()=>{stop=true};
  async function importAll(){if(running)return;if(scope!=='limited')return status('取込先は限定レビューです。限定レビューの一覧に切り替えてください。');for(const r of plan){try{r.folderPath=normalizeFolderPath(r.folderPath);if(!String(r.author||'').trim()||!String(r.title||'').trim())throw Error('作者と作品名を入力してください')}catch(e){return status(e.message)}}const existingIds=new Set(books.map(b=>b.id));running=true;stop=false;$('[data-cm=import]').disabled=true;$('[data-cm=stop]').hidden=false;try{
-   for(const f of importFolders)await jsonRequest('./api/admin/folders',{action:'create',...f});
+   for(const f of importFolders){if(stop)break;await jsonRequest('./api/admin/folders',{action:'create',...f})}
    let done=0,skipped=0;
    for(const r of plan){if(stop)break;if(r.done||existingIds.has(r.id)){skipped++;continue}const form=new FormData();for(const k of ['id','title','author','folderPath','description','contentType','version','entry','updatedAt'])if(r[k]!=null)form.set(k,String(r[k]));form.set('published','false');form.set('createOnly','true');form.set('bookFile',r.file);if(r.cover)form.set('cover',r.cover);status((done+skipped+1)+' / '+plan.length+'：'+r.title);await request(endpoint(),{method:'POST',body:await prepareUpload(form)});r.done=true;done++}
    await reload();status('取込 '+done+'件 / スキップ '+skipped+'件'+(stop?'（停止しました）':''));
@@ -69,5 +69,5 @@ export function createContentManager({list,getHeaders,prepareUpload,reload}){
   if(action==='move'){const ids=selected();if(!ids.length)return status('移動する作品を選んでください');const loc=await ask(ids.length+'作品の移動先',author,path);if(!loc)return;loc.path=normalizeFolderPath(loc.path);for(const id of ids)await jsonRequest(endpoint('/'+encodeURIComponent(id)+'?scope='+scope),{author:loc.author,folderPath:loc.path},'PATCH');await reload();status(ids.length+'作品を移動しました');return}
   if(action==='create'||action==='rename'){const loc=await ask(action==='create'?'新しいフォルダ':'フォルダの移動・名前変更',author,path);if(!loc)return;loc.path=normalizeFolderPath(loc.path);await jsonRequest('./api/admin/folders?scope='+scope,{action:action==='create'?'create':'move',...loc,fromAuthor:author,fromPath:path});author=loc.author;path=loc.path;await reload();status('フォルダを保存しました')}
  }catch(e){status(e.message)}});
- return {setCatalog(next,nextFolders=[],nextScope='limited'){if(scope!==nextScope){author='';path=''}books=next;folders=nextFolders;scope=nextScope;render()}};
+ return {setCatalog(next,nextFolders=[],nextScope='limited'){if(scope!==nextScope){author='';path=''}books=next;folders=nextFolders;scope=nextScope;$('[data-cm=backup]').textContent=(scope==='limited'?'限定レビュー':'一般公開')+'の全作品をバックアップ';render()}};
 }
