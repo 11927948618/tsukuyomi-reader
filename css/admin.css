@@ -736,3 +736,7 @@ textarea.input {
     padding: 14px;
   }
 }
+
+.content-manager{padding:12px;border:1px solid var(--border);border-radius:12px;margin:12px 0}.content-manager nav,.content-manager-actions,.content-folder-grid{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}.content-manager button{min-height:40px;padding:8px;border:1px solid var(--border);border-radius:8px;cursor:pointer}.content-manager label{display:block;margin:10px 0}.content-manager input{max-width:100%}#contentImportPreview{max-height:260px;overflow:auto}.admin-book-card[hidden]{display:none}
+
+.content-location-dialog{width:min(90vw,480px);border-radius:14px}.content-location-dialog form,.content-location-dialog label{display:grid;gap:10px}.content-location-dialog input{width:100%;box-sizing:border-box;padding:10px}.content-location-dialog button{min-height:40px;margin-top:6px}

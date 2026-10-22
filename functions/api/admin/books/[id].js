@@ -1,3 +1,4 @@
+import { normalizeFolderPath } from "../../../../js/content-folders.js";
 import {
   json,
   error,
@@ -30,6 +31,8 @@ export async function onRequestPatch(context) {
   const index = books.findIndex((entry) => entry.id === id);
   if (index < 0) return error("作品が見つかりません", 404);
 
+  let folderPath;
+  try { folderPath = patch.folderPath == null ? undefined : normalizeFolderPath(patch.folderPath); } catch (err) { return error(err.message); }
   const current = books[index];
   const nextPublished = patch.published == null ? current.published === true : boolValue(patch.published);
   const removeCover = boolValue(patch.removeCover);
@@ -49,6 +52,7 @@ export async function onRequestPatch(context) {
 
   const next = {
     ...current,
+    folderPath: folderPath ?? current.folderPath ?? "",
     title: patch.title == null ? current.title : safeText(patch.title, current.title),
     author: patch.author == null ? current.author : safeText(patch.author, current.author),
     description: patch.description == null ? current.description : safeText(patch.description, ""),

@@ -1,3 +1,4 @@
+import { normalizeFolderPath } from "../../../../js/content-folders.js";
 import {
   json,
   error,
@@ -44,6 +45,7 @@ export async function onRequestGet(context) {
   const guard = await readUsageGuard(bucket, context.env);
   return json({
     books,
+    folders: catalog.folders || [],
     updatedAt: catalog.updatedAt || "",
     guard,
     scope: target.scope,
@@ -67,10 +69,13 @@ export async function onRequestPost(context) {
     return error(`アップロード内容を読み取れませんでした: ${err?.message || String(err || "")}`, 400);
   }
 
+  let folderPath;
+  try { folderPath = form.has("folderPath") ? normalizeFolderPath(form.get("folderPath")) : undefined; } catch (err) { return error(err.message); }
   const title = safeText(form.get("title"), "");
   if (!title) return error("タイトルは必須です");
 
   const id = sanitizeId(form.get("id"), sanitizeId(title, `book-${Date.now()}`));
+  if (form.get("createOnly") === "true" && (await readCatalog(bucket)).books.some(b => b.id === id)) return error("同じ作品IDが存在します。上書きしません。", 409);
   const nowCompact = new Date().toISOString().replace(/[-:.TZ]/g, "").slice(0, 14);
   const catalog = await readCatalog(bucket);
   const books = Array.isArray(catalog.books) ? catalog.books : [];
@@ -200,6 +205,7 @@ export async function onRequestPost(context) {
     id,
     title,
     author: safeText(form.get("author"), "hal the juggernaut"),
+    folderPath: folderPath ?? current.folderPath ?? "",
     description: safeText(form.get("description"), ""),
     format,
     ...(isWebapp ? { contentType: "webapp", ...packFields } : {}),
