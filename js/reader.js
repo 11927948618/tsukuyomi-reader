@@ -42,6 +42,9 @@ export function initReader({
   const tapZone = qs("#tapZone");
   const hScroll = qs("#hScroll");
   const hScrollPageInfo = qs("#hScrollPageInfo");
+  const pageVerticalMarginRange = qs("#pageVerticalMarginRange");
+  const pageVerticalMarginValue = qs("#pageVerticalMarginValue");
+  const addVerticalColumnBtn = qs("#addVerticalColumnBtn");
   const fontSizeRange = qs("#fontSizeRange");
   const fontFamilySelect = qs("#fontFamilySelect");
   const lineHeightRange = qs("#lineHeightRange");
@@ -167,6 +170,7 @@ export function initReader({
     lineHeight: 1.8,
     letterSpacing: 0,
     pageMarginPercent: PAGE_MARGIN_STANDARD_PERCENT,
+    pageVerticalMarginPercent: 7,
     wrapWidthPercent: 88,
     theme: "light",
     displayMode: "paged",
@@ -184,8 +188,9 @@ export function initReader({
     writingModePreference: "vertical"
   };
   const rangePinConfig = {
-    fontSize: { min: 80, max: 140 },
+    fontSize: { min: 80, max: 240 },
     lineHeight: { min: 1.4, max: 2.4 },
+    pageVerticalMarginPercent: { min: 0, max: 20 },
     letterSpacing: { min: -0.5, max: 1.5 },
     pageMarginPercent: { min: 0, max: PAGE_MARGIN_SLIDER_MAX, map: pageMarginPercentToSliderPosition }
   };
@@ -197,6 +202,7 @@ export function initReader({
       lineHeight: Number(source?.lineHeight) || READER_DEFAULT_SETTINGS.lineHeight,
       letterSpacing: Number.isFinite(Number(source?.letterSpacing)) ? Number(source.letterSpacing) : READER_DEFAULT_SETTINGS.letterSpacing,
       pageMarginPercent: margin,
+      pageVerticalMarginPercent: normalizeVerticalMarginPercent(source?.pageVerticalMarginPercent),
       wrapWidthPercent: pageMarginToWrapWidthPercent(margin),
       fontFamilyPreference: normalizeFontFamilyPreference(source?.fontFamilyPreference || READER_DEFAULT_SETTINGS.fontFamilyPreference),
       theme: source?.theme || READER_DEFAULT_SETTINGS.theme,
@@ -965,8 +971,8 @@ export function initReader({
     const lineNumberCharReserve = lineNumbers
       ? Math.max(1, Math.ceil(lineNumberInlineReserve / inlineCharAdvance))
       : 0;
-    const chars = Math.max(8, rawChars - lineNumberCharReserve);
-    const lines = Math.max(4, Number(plan.lines) || Math.floor((plan.blockSize || getViewportInnerSize("y")) / baseLineAdvance) || 10);
+    const chars = Math.max(2, rawChars - lineNumberCharReserve);
+    const lines = Math.max(1, Number(plan.lines) || Math.floor((plan.blockSize || getViewportInnerSize("y")) / baseLineAdvance) || 10);
     return {
       chars,
       lines,
@@ -1291,6 +1297,9 @@ export function initReader({
     applySpreadViewBodyClass();
     applyProgressBarSettings();
     document.body.classList.toggle("line-numbers-enabled", lineNumbers);
+    const verticalMargin = normalizeVerticalMarginPercent(nextSettings.pageVerticalMarginPercent);
+    document.documentElement.style.setProperty("--reader-vertical-margin", verticalMargin);
+    if (pageVerticalMarginRange) pageVerticalMarginRange.value = String(verticalMargin);
     pageMarginPercent = normalizePageMarginPercent(nextSettings.pageMarginPercent, nextSettings.wrapWidthPercent);
     writingModePreference = normalizeWritingModePreference(nextSettings.writingModePreference);
     applyWritingModePreference(writingModePreference);
@@ -1332,12 +1341,22 @@ export function initReader({
   function bindSettingsEvents() {
     qs('#paperPresetBtn')?.addEventListener('click', () => updateSettings({
       fontFamilyPreference: 'mincho', fontSize: 100, lineHeight: 1.8,
-      letterSpacing: 0, pageMarginPercent: 6, theme: 'light',
+      letterSpacing: 0, pageMarginPercent: 6, pageVerticalMarginPercent: 7, theme: 'light',
       displayMode: 'paged', writingModePreference: 'vertical',
       spreadView: false, pageColumns: false, stackedView: false,
       twoTierView: false, lineNumbers: false, progressBar: false,
       progressBarPercent: false, pageTurnEffect: 'none'
     }));
+    pageVerticalMarginRange?.addEventListener("input", () => updateSettings({
+      pageVerticalMarginPercent: Number(pageVerticalMarginRange.value)
+    }));
+    addVerticalColumnBtn?.addEventListener("click", () => {
+      if (normalizeWritingModePreference(writingModePreference) !== "vertical") return;
+      const plan = resolveMobileTextPagerPlan();
+      const metrics = getReaderTextMetrics();
+      const next = Math.max(1.4, Math.floor((plan.blockSize / (plan.lines + 1) / metrics.fontPx) * 100) / 100);
+      updateSettings({ lineHeight: Math.min(Number(lineHeightRange.value), next) });
+    });
     fontSizeRange.addEventListener("input", () => updateSettings({ fontSize: Number(fontSizeRange.value) }));
     fontFamilySelect?.addEventListener("change", () => {
       updateSettings({ fontFamilyPreference: normalizeFontFamilyPreference(fontFamilySelect.value) });
@@ -1470,6 +1489,12 @@ export function initReader({
     const marginPercent = pageMarginRange
       ? pageMarginSliderPositionToPercent(pageMarginRange.value)
       : normalizePageMarginPercent(pageMarginPercent);
+    if (pageVerticalMarginValue) pageVerticalMarginValue.textContent = `上下各${Number(pageVerticalMarginRange?.value ?? 7)}%`;
+    if (addVerticalColumnBtn) {
+      const plan = resolveMobileTextPagerPlan();
+      addVerticalColumnBtn.disabled = normalizeWritingModePreference(writingModePreference) !== "vertical"
+        || plan.blockSize / (plan.lines + 1) / metrics.fontPx < 1.4;
+    }
     const contentPercent = Math.max(60, 100 - marginPercent * 2);
     const viewportWidth = getHorizontalPageSize();
     const viewportHeight = getViewportInnerSize("y");
@@ -1523,7 +1548,7 @@ export function initReader({
       const stackedActive = isStackedViewActive() && displayMode === "paged";
       const singlePageActive = displayMode === "paged";
       if (pageMarginLabel) {
-        pageMarginLabel.textContent = "左右の追加余白";
+        pageMarginLabel.textContent = "左右の余白";
       }
       const requestedPart = `左右各${formatLayoutPercent(marginPercent)}%追加 / 本文幅${formatLayoutPercent(contentPercent)}%・約${wrapPx}px`;
       const actualPart = singlePageActive
@@ -1560,6 +1585,7 @@ export function initReader({
       lineHeight: Number(lineHeightRange.value) || 1.8,
       letterSpacing: Number(letterSpacingRange.value) || 0,
       pageMarginPercent: currentPageMargin,
+      pageVerticalMarginPercent: Number(pageVerticalMarginRange?.value??7),
       wrapWidthPercent: pageMarginToWrapWidthPercent(currentPageMargin),
       theme: themeSelect.value || "light",
       displayMode: normalizeDisplayMode(displayModeRadios.find((radio) => radio.checked)?.value || displayMode),
@@ -1619,6 +1645,7 @@ export function initReader({
       lineHeightPx: metrics.lineHeightPx,
       letterSpacing: Number(letterSpacingRange?.value) || Number(settings?.letterSpacing) || 0,
       pageMarginPercent,
+      pageVerticalMarginPercent: Number(pageVerticalMarginRange?.value??7),
       wrapWidthPercent: pageMarginToWrapWidthPercent(pageMarginPercent),
       fontFamilyPreference: normalizeFontFamilyPreference(fontFamilySelect?.value || settings?.fontFamilyPreference),
       spreadView: spreadViewEnabled,
@@ -2471,9 +2498,9 @@ function normalizeWrapWidthPercent(value) {
 }
 
 function normalizePageMarginPercent(value, legacyWrapWidth = null) {
-  const raw = Number(value);
+  const raw = value == null || value === "" ? NaN : Number(value);
   if (Number.isFinite(raw)) return Math.max(0, Math.min(PAGE_MARGIN_MAX_PERCENT, Math.round(raw * 10) / 10));
-  const legacy = Number(legacyWrapWidth);
+  const legacy = legacyWrapWidth == null || legacyWrapWidth === "" ? NaN : Number(legacyWrapWidth);
   if (!Number.isFinite(legacy)) return PAGE_MARGIN_STANDARD_PERCENT;
   return Math.max(0, Math.min(PAGE_MARGIN_MAX_PERCENT, Math.round(((100 - Math.min(100, legacy)) / 2) * 10) / 10));
 }
@@ -2532,3 +2559,8 @@ function snapDownToStep(value, step, min) {
 
 
 
+
+function normalizeVerticalMarginPercent(value) {
+  const number = value == null || value === "" ? NaN : Number(value);
+  return Math.max(0, Math.min(20, Number.isFinite(number) ? number : 7));
+}
