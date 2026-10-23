@@ -1,3 +1,4 @@
+import { splitAdminAuthEvents } from "./admin-log-view.js";
 import {createContentManager} from "./content-manager.js";
 import { escapeHtml } from "./utils.js";
 import { APP_VERSION, BUILD_TIME, COMMIT } from "./version.js";
@@ -113,15 +114,21 @@ adminToken.value = localStorage.getItem(TOKEN_KEY) || "";
 updatedAt.value = new Date().toISOString().slice(0, 10);
 renderAdminBuildInfo();
 
-saveTokenBtn?.addEventListener("click", () => {
-  adminAuthenticated = true;
-  localStorage.setItem(TOKEN_KEY, adminToken.value || "");
-  setStatus("管理トークンを保存しました", "ok");
-  loadBooks();
-  loadStorage();
-  loadAnalytics();
-  loadReviewAccess();
-  loadAdminAuthLog();
+saveTokenBtn?.addEventListener("click", async () => {
+  saveTokenBtn.disabled = true;
+  try {
+    const response = await fetch('./api/admin-auth/token-check', {
+      method: 'POST', headers: authHeaders(adminToken.value), cache: 'no-store'
+    });
+    const payload = await readJson(response);
+    if (!response.ok) throw new Error(payload?.error || 'トークンの確認に失敗しました');
+    adminAuthenticated = true;
+    localStorage.setItem(TOKEN_KEY, adminToken.value || "");
+    setStatus(payload.logged ? '管理トークンを確認・保存しました（認証ログ記録済み）' : '管理トークンを保存しました。認証ログの記録は失敗しました。', payload.logged ? 'ok' : 'warn');
+    loadBooks(); loadStorage(); loadAnalytics(); loadReviewAccess(); loadAdminAuthLog();
+  } catch (err) {
+    setStatus(err.message || 'トークンの確認に失敗しました', 'error');
+  } finally { saveTokenBtn.disabled = false; }
 });
 
 clearTokenBtn?.addEventListener("click", () => {
@@ -247,6 +254,7 @@ async function loadBooks() {
     renderPromotionSummary(payload, loadedBookScope);
     renderBooks(Array.isArray(payload?.books) ? payload.books : [], loadedBookScope);
     contentManager.setCatalog(payload.books||[],payload.folders||[],loadedBookScope);
+    loadAdminOperationLog();
     setStatus(`${bookScopeLabel(loadedBookScope)} ${payload.books?.length || 0}件`, payload?.promotionSummary?.error ? "warn" : "ok");
   } catch (err) {
     adminBookList.innerHTML = "";
@@ -1608,6 +1616,12 @@ function clearAdminAuthLog() {
   adminAuthLogEvents = [];
   if (adminAuthLogBlock) adminAuthLogBlock.open = false;
   showAllAdminAuthLog = false;
+  const legacyBlock = document.getElementById('adminLegacyAuthBlock');
+  if (legacyBlock) legacyBlock.open = false;
+  const operationsBlock = document.getElementById('adminOperationLogBlock');
+  if (operationsBlock) { operationsBlock.hidden = true; operationsBlock.open = false; }
+  document.getElementById('adminOperationLog')?.replaceChildren();
+  document.getElementById('adminLegacyAuthLog')?.replaceChildren();
   renderAdminAuthLog("");
 }
 
@@ -1626,7 +1640,12 @@ function renderAdminAuthLog(message = "") {
     if (adminAuthLogNote) adminAuthLogNote.textContent = "";
     return;
   }
-  const allEvents = Array.isArray(adminAuthLogEvents) ? adminAuthLogEvents : [];
+  const { current: allEvents, legacy } = splitAdminAuthEvents(Array.isArray(adminAuthLogEvents) ? adminAuthLogEvents : []);
+  const legacyBlock = document.getElementById('adminLegacyAuthBlock');
+  if (legacyBlock) legacyBlock.hidden = !legacy.length;
+  const legacyLog = document.getElementById('adminLegacyAuthLog');
+  if (legacyLog) legacyLog.innerHTML = legacy.map(renderAdminAuthEvent).join('');
+  if (count) count.textContent = allEvents.length ? `（現在の記録 ${allEvents.length.toLocaleString()}件）` : '';
   const events = showAllAdminAuthLog ? allEvents : allEvents.slice(0, 20);
   if (toggleAdminAuthLogBtn) {
     toggleAdminAuthLogBtn.hidden = allEvents.length <= 20;
@@ -1638,23 +1657,24 @@ function renderAdminAuthLog(message = "") {
       : "";
   }
   if (!events.length) {
-    adminAuthLog.innerHTML = `<p class="admin-note">管理者認証ログはまだありません。</p>`;
+    adminAuthLog.innerHTML = `<p class="admin-note">現在の管理者認証ログはまだありません。</p>`;
     return;
   }
-  adminAuthLog.innerHTML = events
-    .map((event) => `
-      <div class="admin-auth-log-row">
-        <span>${escapeHtml(formatDateTime(event.createdAt))}</span>
-        <strong>${escapeHtml(adminAuthLogTypeLabel(event.type, event.result))}</strong>
-        <span>${escapeHtml(event.email || "-")}</span>
-        <span>${escapeHtml(event.reason || "")}</span>
-      </div>
-    `)
-    .join("");
+  adminAuthLog.innerHTML = events.map(renderAdminAuthEvent).join('');
+}
+
+function renderAdminAuthEvent(event) {
+  return `<div class="admin-auth-log-row">
+    <span>${escapeHtml(formatDateTime(event.createdAt))}</span>
+    <strong>${escapeHtml(adminAuthLogTypeLabel(event.type, event.result))}</strong>
+    <span>${escapeHtml(event.email || '-')}</span>
+    <span>${escapeHtml(event.reason || '')}</span>
+  </div>`;
 }
 
 function adminAuthLogTypeLabel(type, result) {
   const suffix = result === "failed" ? "失敗" : result === "ok" ? "成功" : result || "";
+  if (type === "token-checked") return result === "ok" ? "管理トークン確認成功" : "管理トークン確認失敗";
   if (type === "otp-sent") return "OTP送信";
   if (type === "otp-send-failed") return "OTP送信失敗";
   if (type === "otp-verified") return "OTP検証成功";
@@ -1813,3 +1833,37 @@ function normalizeReviewEmail(value) {
 }
 
 initAdminAuth();
+
+
+document.getElementById('refreshAdminOperationLogBtn')?.addEventListener('click', () => loadAdminOperationLog());
+document.getElementById('downloadAdminOperationLogBtn')?.addEventListener('click', () => loadAdminOperationLog(true));
+document.getElementById('adminOperationLogBlock')?.addEventListener('toggle', event => {
+  if (event.target.open) loadAdminOperationLog();
+});
+async function loadAdminOperationLog(download = false) {
+  const block = document.getElementById('adminOperationLogBlock');
+  if (!block || !isAdminReady()) { if (block) block.hidden = true; return; }
+  block.hidden = false;
+  const note = document.getElementById('adminOperationLogNote');
+  const target = document.getElementById('adminOperationLog');
+  const count = document.getElementById('adminOperationLogCount');
+  const scope = selectedBookScope();
+  try {
+    const response = await fetch(`./api/admin/operations/log?scope=${encodeURIComponent(scope)}`, { headers: authHeaders(getToken()), cache: 'no-store' });
+    const payload = await readJson(response);
+    if (!response.ok) throw new Error(payload?.error || '管理操作ログの取得に失敗しました');
+    if (scope !== selectedBookScope() || !isAdminReady()) return;
+    const events = payload?.operationLog?.events || [];
+    count.textContent = `（${bookScopeLabel(scope)} ${events.length}件）`;
+    note.textContent = `${bookScopeLabel(scope)}の最新20件を表示。ログ取得は保存されている全件（上限300件）です。`;
+    target.innerHTML = events.slice(0,20).map(event => `<div class="admin-auth-log-row">
+      <span>${escapeHtml(formatDateTime(event.createdAt))}</span>
+      <strong>${escapeHtml(operationTypeLabel(event.type))} ${event.result === 'failed' ? '失敗' : event.result === 'warn' ? '要確認' : '成功'}</strong>
+      <span>${escapeHtml(event.title || event.bookId || event.actor || '-')}</span>
+      <span>${escapeHtml(event.reason || '')}</span></div>`).join('') || '<p class="admin-note">この保存先の管理操作ログはまだありません。</p>';
+    if (download) downloadJsonFile(`tsukuyomi-operations-${scope}-${todayStamp()}.json`, { exportedAt: new Date().toISOString(), scope, operationLog: payload.operationLog });
+  } catch (err) { note.textContent = err.message; target.replaceChildren(); count.textContent = ''; }
+}
+function operationTypeLabel(type) {
+  return ({'book-created':'作品追加','book-saved':'作品保存','book-metadata-updated':'作品情報更新','book-publish-changed':'公開状態変更','book-publish-failed':'公開状態変更','book-save-failed':'作品保存','book-updated':'作品更新','book-deleted':'作品削除','book-cover-removed':'表紙削除','book-promoted-public':'一般公開へ昇格','content-folder-create':'フォルダ作成','content-folder-move':'フォルダ移動'})[type] || type || '-';
+}
