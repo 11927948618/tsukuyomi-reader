@@ -49,7 +49,8 @@
         </div>
         <p class="admin-note" id="adminOtpNote">許可された管理者メールにだけログインコードを送信します。</p>
       </div>
-      <div id="adminAuthLogBlock" hidden>
+      <details id="adminAuthLogBlock" class="admin-log-history" hidden>
+        <summary>管理者認証の過去ログ<span id="adminAuthLogCount"></span></summary>
         <div class="admin-list-head">
           <h3 class="admin-subhead">管理者認証イベント</h3>
           <div class="admin-log-actions">
@@ -59,7 +60,7 @@
         </div>
         <p class="admin-note" id="adminAuthLogNote"></p>
         <div id="adminAuthLog" class="admin-auth-log"></div>
-      </div>
+      </details>
     </section>
 
     <section class="admin-layout">
