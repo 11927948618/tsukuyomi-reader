@@ -166,11 +166,15 @@
           </div>
 
           <div class="field">
-            <label class="option-check"><input id="spreadViewCheck" type="checkbox" /> 見開き表示（2ページ横並び・タブレット／PC向け・試験中）</label>
-          </div>
-
-          <div class="field">
-            <label class="option-check"><input id="stackedViewCheck" type="checkbox" /> 上下2段表示（2ページ縦並び・タブレット向け・試験中）</label>
+            <label class="option-check"><input id="twoPageViewCheck" type="checkbox" aria-controls="pageArrangementOptions" /> 見開き表示（2ページ）</label>
+            <fieldset id="pageArrangementOptions" hidden>
+              <legend>並べ方</legend>
+              <label><input name="pageArrangement" type="radio" value="columns" /> 横並び</label>
+              <label><input name="pageArrangement" type="radio" value="rows" /> 上下二段</label>
+            </fieldset>
+            <p id="pageGroupStatus" class="muted" role="status"></p>
+            <input id="spreadViewCheck" type="checkbox" hidden aria-hidden="true" tabindex="-1" />
+            <input id="stackedViewCheck" type="checkbox" hidden aria-hidden="true" tabindex="-1" />
           </div>
 
           <div class="field">

@@ -1,3 +1,4 @@
+import { pageGroupSettings, pageGroupPatch, canFitPageGroup, normalizeSourceLocator } from "./page-groups.js";
 import { qs, escapeHtml } from "./utils.js";
 import { buildMobileTextPagerPages } from "./mobile-pager.js";
 import { APP_VERSION } from "./version.js";
@@ -61,6 +62,11 @@ export function initReader({
   const wheelPagingCheck = qs("#wheelPagingCheck");
   const structureAutoDetectCheck = qs("#structureAutoDetectCheck");
   const pageTurnEffectSelect = qs("#pageTurnEffectSelect");
+  const twoPageViewCheck = qs("#twoPageViewCheck");
+  const pageArrangementOptions = qs("#pageArrangementOptions");
+  const pageArrangementRadios = Array.from(document.querySelectorAll('input[name="pageArrangement"]'));
+  const pageGroupStatus = qs("#pageGroupStatus");
+  let preferredPageArrangement = pageGroupSettings(settings).arrangement;
   const spreadViewCheck = qs("#spreadViewCheck") || qs("#pageColumnsCheck");
   const stackedViewCheck = qs("#stackedViewCheck") || qs("#twoTierViewCheck");
   const lineNumbersCheck = qs("#lineNumbersCheck");
@@ -129,13 +135,19 @@ export function initReader({
     const coarsePointer = window.matchMedia?.("(pointer: coarse)")?.matches || false;
     return coarsePointer || shortSide <= 640;
   };
-  const isSmallReadingViewport = () => {
-    const width = Number(window.innerWidth) || 0;
-    const height = Number(window.innerHeight) || 0;
-    return Math.min(width || Infinity, height || Infinity) <= 640;
+  const isPageGroupEligible = (arrangement) => {
+    if (displayMode !== "paged" || getPdfUrl(book)) return false;
+    const metrics = getReaderTextMetrics();
+    return canFitPageGroup({
+      width: getViewportInnerSize("x") * getContentWidthPercent() / 100,
+      height: getViewportInnerSize("y"), arrangement,
+      writingMode: normalizeWritingModePreference(writingModePreference),
+      fontPx: metrics.fontPx, lineHeightPx: metrics.lineHeightPx,
+      gap: getPageColumnGapPx(metrics.lineHeightPx, true)
+    });
   };
-  const isSpreadViewActive = () => spreadViewEnabled && !isSmallReadingViewport();
-  const isStackedViewActive = () => stackedViewEnabled && !isSmallReadingViewport();
+  const isSpreadViewActive = () => spreadViewEnabled && isPageGroupEligible("columns");
+  const isStackedViewActive = () => stackedViewEnabled && isPageGroupEligible("rows");
   const getPageGroupArrangement = () => {
     if (isSpreadViewActive()) return "spread";
     if (isStackedViewActive()) return "stacked";
@@ -148,8 +160,8 @@ export function initReader({
     document.body.classList.toggle("page-columns-enabled", spreadActive);
     document.body.classList.toggle("stacked-view-enabled", stackedActive);
   };
-  const getPageColumnGapPx = (lineAdvance = 24) => {
-    if (getPageGroupArrangement() === "single") return 0;
+  const getPageColumnGapPx = (lineAdvance = 24, forEligibility = false) => {
+    if (!forEligibility && getPageGroupArrangement() === "single") return 0;
     // The gutter belongs to the page frame, not to the current font size.
     const advance = 24;
     const minimum = Math.max(14, Math.min(24, advance * 0.7));
@@ -211,6 +223,7 @@ export function initReader({
       wheelPaging: Boolean(source?.wheelPaging),
       structureAutoDetect: source?.structureAutoDetect !== false,
       pageTurnEffect: normalizePageTurnEffect(source?.pageTurnEffect || READER_DEFAULT_SETTINGS.pageTurnEffect),
+      spreadArrangement: pageGroupSettings(source).arrangement,
       spreadView: spread,
       pageColumns: spread,
       stackedView: !spread && isStackedViewSettingEnabled(source),
@@ -503,7 +516,7 @@ export function initReader({
     const immersive = shouldUseImmersivePagedChrome();
     const wasImmersive = document.body.classList.contains("mobile-paged-immersive");
     document.body.classList.toggle("mobile-paged-immersive", immersive);
-    const portraitLocked = immersive && isSmallReadingViewport();
+    const portraitLocked = false; // Reading layouts follow the device orientation.
     document.body.classList.toggle("rotation-locked", portraitLocked);
     requestPortraitOrientationLock(portraitLocked);
     if (!topbar) return;
@@ -561,6 +574,7 @@ export function initReader({
   };
 
   const captureReaderPosition = () => {
+    if (mobileTextPager.active) return { sourceLocator: captureMobileTextPagerLocator(), pageIndex: mobileTextPager.pageIndex };
     if (!scrollContainer) return null;
     return {
       logicalLeft: toLogicalLeft(scrollContainer, scrollContainer.scrollLeft, pageDirection),
@@ -570,6 +584,14 @@ export function initReader({
 
   const restoreReaderPosition = (position) => {
     if (!position || !scrollContainer) return;
+    if (mobileTextPager.active) {
+      const locator = normalizeSourceLocator(position.sourceLocator);
+      const located = locator ? findMobileTextPagerPage(mobileTextPager.pages, locator) : null;
+      if (locator) mobileTextPager.sourceLocator = locator;
+      renderMobileTextPage(located ?? (Number(position.pageIndex) || 0));
+      updateMobileTextPagerProgress();
+      return;
+    }
     if (displayMode === "scroll") {
       scrollContainer.scrollTop = Math.max(0, Number(position.scrollTop) || 0);
       return;
@@ -628,6 +650,7 @@ export function initReader({
       else if (options.resetPosition !== false) scrollToBookStart();
       if (typeof refreshHScroll === "function") refreshHScroll();
       if (typeof options.afterSettle === "function") options.afterSettle();
+      updateSettingValueLabels();
     };
 
     requestAnimationFrame(() => {
@@ -716,7 +739,7 @@ export function initReader({
   bindPageTap(readerViewport, scrollContainer);
   bindWheelScroll(readerViewport, scrollContainer, tapZone);
   applyDisplayMode(displayMode, { tapInScroll, preservePosition: hasInitialProgress });
-  reflowReaderLayout({ preservePosition: hasInitialProgress });
+  reflowReaderLayout({ preservePosition: hasInitialProgress, position: hasInitialProgress ? progress : null });
   const handleViewportResize = () => {
     window.clearTimeout(viewportResizeTimer);
     viewportResizeTimer = window.setTimeout(() => {
@@ -887,16 +910,14 @@ export function initReader({
   }
 
   function captureMobileTextPagerLocator() {
-    const visibleLocator = captureVisibleMobileTextPagerLocator();
-    if (visibleLocator) return visibleLocator;
-    const stored = mobileTextPager.sourceLocator;
-    if (stored && Number.isFinite(Number(stored.sourceOffset))) {
-      return {
-        chapterId: String(stored.chapterId || "chapter-001"),
-        sourceOffset: Math.max(0, Number(stored.sourceOffset) || 0)
-      };
-    }
-    return createMobileTextPagerLocator(mobileTextPager.pages[mobileTextPager.pageIndex]);
+    // Keep the original reading anchor through font loading and repeated reflows.
+    // Replacing it with the rounded first face each time can walk backwards by
+    // a face on every pass when two-page frames change size.
+    const stored = normalizeSourceLocator(mobileTextPager.sourceLocator);
+    const located = stored ? findMobileTextPagerPage(mobileTextPager.pages, stored) : null;
+    if (located !== null && normalizeMobileTextPagerPageIndex(located) === mobileTextPager.pageIndex) return stored;
+    return captureVisibleMobileTextPagerLocator()
+      || createMobileTextPagerLocator(mobileTextPager.pages[mobileTextPager.pageIndex]);
   }
 
   function captureVisibleMobileTextPagerLocator() {
@@ -1150,9 +1171,11 @@ export function initReader({
     const maxPage = Math.max(0, mobileTextPager.pages.length - 1);
     const pageIndex = clamp(mobileTextPager.pageIndex, 0, maxPage);
     const page = mobileTextPager.pages[pageIndex] || {};
-    const progressPercent = maxPage > 0 ? Math.round((pageIndex / maxPage) * 100) : 100;
+    const lastGroup = Math.floor(maxPage / getMobileTextPagerVisiblePageCount()) * getMobileTextPagerVisiblePageCount();
+    const progressPercent = lastGroup > 0 ? Math.round((pageIndex / lastGroup) * 100) : 100;
     reportProgress({
       chapterId: page.chapterId || "chapter-001",
+      sourceLocator: captureMobileTextPagerLocator(),
       pageIndex,
       progressPercent,
       viewerProfile: createViewerProfile({ pageIndex, pageCount: mobileTextPager.pages.length })
@@ -1294,6 +1317,7 @@ export function initReader({
     pageTurnEffect = normalizePageTurnEffect(nextSettings.pageTurnEffect);
     spreadViewEnabled = isSpreadViewSettingEnabled(nextSettings);
     stackedViewEnabled = !spreadViewEnabled && isStackedViewSettingEnabled(nextSettings);
+    preferredPageArrangement = pageGroupSettings(nextSettings).arrangement;
     lineNumbers = nextSettings.lineNumbers === true;
     showProgressBar = nextSettings.progressBar !== false;
     showProgressPercent = nextSettings.progressBarPercent === true;
@@ -1358,6 +1382,13 @@ export function initReader({
   }
 
   function bindSettingsEvents() {
+    const updatePageGroupChoice = () => {
+      const arrangement = pageArrangementRadios.find(radio => radio.checked)?.value || preferredPageArrangement;
+      updateSettings(pageGroupPatch(Boolean(twoPageViewCheck?.checked), arrangement));
+    };
+    twoPageViewCheck?.addEventListener("change", updatePageGroupChoice);
+    pageArrangementRadios.forEach(radio => radio.addEventListener("change", updatePageGroupChoice));
+
     qs('#paperPresetBtn')?.addEventListener('click', () => updateSettings({
       fontFamilyPreference: 'mincho', fontSize: 100, lineHeight: 1.8, extraColumnBaseLineHeight: null,
       letterSpacing: 0, pageMarginPercent: 6, pageVerticalMarginPercent: 7, theme: 'light',
@@ -1501,6 +1532,24 @@ export function initReader({
   }
 
   function updateSettingValueLabels() {
+    const twoPagesEnabled = spreadViewEnabled || stackedViewEnabled;
+    const textPaged = displayMode === "paged" && !getPdfUrl(book);
+    if (twoPageViewCheck) {
+      twoPageViewCheck.checked = twoPagesEnabled;
+      twoPageViewCheck.disabled = !textPaged;
+    }
+    if (pageArrangementOptions) pageArrangementOptions.hidden = !twoPagesEnabled;
+    pageArrangementRadios.forEach(radio => {
+      radio.checked = radio.value === preferredPageArrangement;
+      radio.disabled = !textPaged;
+    });
+    if (pageGroupStatus) pageGroupStatus.textContent = !textPaged
+      ? "見開きは本文のページ切替表示で使えます。選択は保持されます。"
+      : twoPagesEnabled && getPageGroupArrangement() === "single"
+        ? "本文を置く広さが足りないため、現在は1ページ表示です。選択は保持されます。"
+        : twoPagesEnabled ? (preferredPageArrangement === "rows" ? "上→下の順に読み、2ページずつ送ります。" : normalizeWritingModePreference(writingModePreference) === "vertical" ? "右→左の順に読み、2ページずつ送ります。" : "左→右の順に読み、2ページずつ送ります。")
+        : "";
+
     const metrics = getReaderTextMetrics();
     const baseFontPx = metrics.baseFontPx;
     const fontPercent = Number(fontSizeRange?.value) || 100;
@@ -1617,6 +1666,7 @@ export function initReader({
       wheelPaging: Boolean(wheelPagingCheck?.checked),
       structureAutoDetect: structureAutoDetectCheck ? Boolean(structureAutoDetectCheck.checked) : structureAutoDetect,
       pageTurnEffect: normalizePageTurnEffect(pageTurnEffectSelect?.value || pageTurnEffect),
+      spreadArrangement: preferredPageArrangement,
       spreadView: Boolean(spreadViewCheck?.checked),
       pageColumns: Boolean(spreadViewCheck?.checked),
       stackedView: Boolean(stackedViewCheck?.checked) && !Boolean(spreadViewCheck?.checked),
@@ -1673,6 +1723,8 @@ export function initReader({
       pageVerticalMarginPercent: Number(pageVerticalMarginRange?.value??7),
       wrapWidthPercent: pageMarginToWrapWidthPercent(pageMarginPercent),
       fontFamilyPreference: normalizeFontFamilyPreference(fontFamilySelect?.value || settings?.fontFamilyPreference),
+      spreadArrangement: preferredPageArrangement,
+      extraColumnBaseLineHeight,
       spreadView: spreadViewEnabled,
       pageColumns: spreadViewEnabled,
       stackedView: stackedViewEnabled,
@@ -1756,7 +1808,10 @@ export function initReader({
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         if (mobileTextPager.active) {
-          renderMobileTextPage(Number(nextProgress?.pageIndex) || 0);
+          const locator = normalizeSourceLocator(nextProgress?.sourceLocator);
+          const located = locator ? findMobileTextPagerPage(mobileTextPager.pages, locator) : null;
+          if (locator) mobileTextPager.sourceLocator = locator;
+          renderMobileTextPage(located ?? (Number(nextProgress?.pageIndex) || 0));
           updateMobileTextPagerProgress();
           if (typeof refresh === "function") refresh();
           return;
@@ -2373,7 +2428,7 @@ function isReaderProgress(progress) {
   const scrollLeft = Number(progress.scrollLeft) || 0;
   const pageIndex = Number(progress.pageIndex) || 0;
   const progressPercent = Number(progress.progressPercent);
-  return scrollTop > 0 || scrollLeft > 0 || pageIndex > 0 || (Number.isFinite(progressPercent) && progressPercent > 0 && progressPercent < 100);
+  return Boolean(normalizeSourceLocator(progress.sourceLocator)?.sourceOffset > 0) || scrollTop > 0 || scrollLeft > 0 || pageIndex > 0 || (Number.isFinite(progressPercent) && progressPercent > 0 && progressPercent < 100);
 }
 
 function isSpreadViewSettingEnabled(settings) {
@@ -2512,7 +2567,8 @@ function normalizeWritingModePreference(mode) {
 function resolveReaderCharAdvance(fontPx, letterSpacingPx, mode) {
   const font = Math.max(1, Number(fontPx) || 16);
   const spacing = Number(letterSpacingPx) || 0;
-  const glyphAdvance = mode === "vertical" ? font : font * 0.95;
+  // Japanese full-width glyphs occupy one em in either writing direction.
+  const glyphAdvance = font;
   return Math.max(6, glyphAdvance + spacing);
 }
 

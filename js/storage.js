@@ -1,3 +1,4 @@
+import { pageGroupSettings, normalizeSourceLocator } from "./page-groups.js";
 import { readFileAsArrayBuffer, safeText, textWithoutRuby } from "./utils.js";
 
 const VERTICAL_CSS = `
@@ -79,6 +80,7 @@ export async function exportZipFromBook(book, options = {}) {
 
   const bookmarkPayload = {
     chapterId: bookmark.chapterId || "chapter-001",
+    sourceLocator: normalizeSourceLocator(bookmark.sourceLocator),
     scrollLeft: Number.isFinite(bookmark.scrollLeft) ? bookmark.scrollLeft : 0,
     scrollTop: Number.isFinite(bookmark.scrollTop) ? bookmark.scrollTop : 0,
     pageIndex: Number.isFinite(bookmark.pageIndex) ? bookmark.pageIndex : 0,
@@ -107,6 +109,7 @@ export async function exportZipFromBook(book, options = {}) {
       tapInScroll: Boolean(settings.tapInScroll),
       wheelPaging: Boolean(settings.wheelPaging),
       writingModePreference: settings.writingModePreference || "vertical",
+      spreadArrangement: pageGroupSettings(settings).arrangement,
       spreadView,
       pageColumns: spreadView,
       stackedView,
