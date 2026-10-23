@@ -1,0 +1,118 @@
+[
+  {
+    "width": 800,
+    "height": 1280,
+    "mode": "vertical",
+    "arrangement": "columns",
+    "passed": true
+  },
+  {
+    "width": 800,
+    "height": 1280,
+    "mode": "vertical",
+    "arrangement": "rows",
+    "passed": true
+  },
+  {
+    "width": 800,
+    "height": 1280,
+    "mode": "horizontal",
+    "arrangement": "columns",
+    "passed": true
+  },
+  {
+    "width": 800,
+    "height": 1280,
+    "mode": "horizontal",
+    "arrangement": "rows",
+    "passed": true
+  },
+  {
+    "width": 1280,
+    "height": 800,
+    "mode": "vertical",
+    "arrangement": "columns",
+    "passed": true
+  },
+  {
+    "width": 1280,
+    "height": 800,
+    "mode": "vertical",
+    "arrangement": "rows",
+    "passed": true
+  },
+  {
+    "width": 1280,
+    "height": 800,
+    "mode": "horizontal",
+    "arrangement": "columns",
+    "passed": true
+  },
+  {
+    "width": 1280,
+    "height": 800,
+    "mode": "horizontal",
+    "arrangement": "rows",
+    "passed": true
+  },
+  {
+    "width": 1024,
+    "height": 768,
+    "mode": "vertical",
+    "arrangement": "columns",
+    "passed": true
+  },
+  {
+    "width": 1024,
+    "height": 768,
+    "mode": "vertical",
+    "arrangement": "rows",
+    "passed": true
+  },
+  {
+    "width": 1024,
+    "height": 768,
+    "mode": "horizontal",
+    "arrangement": "columns",
+    "passed": true
+  },
+  {
+    "width": 1024,
+    "height": 768,
+    "mode": "horizontal",
+    "arrangement": "rows",
+    "passed": true
+  },
+  {
+    "width": 844,
+    "height": 390,
+    "mode": "vertical",
+    "arrangement": "columns",
+    "touch": true,
+    "passed": true
+  },
+  {
+    "width": 844,
+    "height": 390,
+    "mode": "horizontal",
+    "arrangement": "columns",
+    "touch": true,
+    "passed": true
+  },
+  {
+    "width": 390,
+    "height": 900,
+    "mode": "vertical",
+    "arrangement": "rows",
+    "touch": true,
+    "passed": true
+  },
+  {
+    "width": 390,
+    "height": 900,
+    "mode": "horizontal",
+    "arrangement": "rows",
+    "touch": true,
+    "passed": true
+  }
+]

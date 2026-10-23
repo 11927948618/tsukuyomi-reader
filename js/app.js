@@ -1,3 +1,4 @@
+import { pageGroupSettings, normalizeSourceLocator } from "./page-groups.js";
 import { initLibrary } from "./library.js";
 import { initReader } from "./reader.js";
 import {
@@ -478,6 +479,7 @@ function saveProgress(bookId, progress) {
     pageIndex: Number(progress.pageIndex) || 0,
     progressPercent: Number(progress.progressPercent) || 0,
     chapterId: progress.chapterId || null,
+    sourceLocator: normalizeSourceLocator(progress.sourceLocator),
     viewerProfile: normalizeStoredViewerProfile(progress.viewerProfile || buildAppViewerProfile()),
     updatedAt: new Date().toISOString()
   };
@@ -501,6 +503,7 @@ function buildAppViewerProfile() {
     pageMarginPercent: finiteNumber(appState.settings.pageMarginPercent, legacyWrapWidthToPageMargin(appState.settings.wrapWidthPercent)),
     wrapWidthPercent: pageMarginToWrapWidthPercent(appState.settings.pageMarginPercent ?? legacyWrapWidthToPageMargin(appState.settings.wrapWidthPercent)),
     fontFamilyPreference: appState.settings.fontFamilyPreference,
+    spreadArrangement: pageGroupSettings(appState.settings).arrangement,
     spreadView: isSpreadViewSettingEnabled(appState.settings),
     pageColumns: isSpreadViewSettingEnabled(appState.settings),
     stackedView: isStackedViewSettingEnabled(appState.settings),
@@ -530,6 +533,7 @@ function normalizeStoredViewerProfile(profile) {
     pageMarginPercent: finiteNumber(profile.pageMarginPercent, legacyWrapWidthToPageMargin(profile.wrapWidthPercent)),
     wrapWidthPercent: pageMarginToWrapWidthPercent(profile.pageMarginPercent ?? legacyWrapWidthToPageMargin(profile.wrapWidthPercent)),
     fontFamilyPreference: String(profile.fontFamilyPreference || "system").slice(0, 32),
+    spreadArrangement: pageGroupSettings(profile).arrangement,
     spreadView: isSpreadViewSettingEnabled(profile),
     pageColumns: isSpreadViewSettingEnabled(profile),
     stackedView: isStackedViewSettingEnabled(profile),
@@ -582,6 +586,7 @@ function isReadableProgress(progress) {
   if (Number(progress.scrollTop) > 0) return true;
   if (Number(progress.scrollLeft) > 0) return true;
   if (Number(progress.pageIndex) > 0) return true;
+  if (normalizeSourceLocator(progress.sourceLocator)?.sourceOffset > 0) return true;
   const chapterId = String(progress.chapterId || "").trim();
   return Boolean(chapterId && chapterId !== "chapter-001");
 }
@@ -829,6 +834,7 @@ function buildSettingsPayload(settings) {
     wheelPaging: Boolean(settings.wheelPaging),
     writingModePreference: settings.writingModePreference || "vertical",
     structureAutoDetect: settings.structureAutoDetect !== false,
+    spreadArrangement: pageGroupSettings(settings).arrangement,
     spreadView,
     pageColumns: spreadView,
     stackedView,
