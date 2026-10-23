@@ -1745,7 +1745,7 @@ body.mobile-paged-immersive.mode-paged.writing-vertical .reader-viewport {
   border: 0;
   border-radius: 0;
   box-shadow: none;
-  padding: clamp(24px, 7dvh, 88px) clamp(18px, 5vw, 64px);
+  padding: calc(var(--reader-vertical-margin, 7) * 1dvh) clamp(18px, 5vw, 64px);
 }
 
 body.mode-paged .reader-viewport::before,

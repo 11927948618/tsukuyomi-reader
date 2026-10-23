@@ -1,3 +1,4 @@
+import { mountAuthorFolders } from "./content-folders.js";
 import { qs, readFileAsText, safeText, textWithoutRuby } from "./utils.js";
 import { normalizeTxtToBook } from "./normalize-txt.js";
 import { normalizeMdToBook } from "./normalize-md.js";
@@ -418,7 +419,9 @@ async function initBundledBooksShelf({
       const displayTitle = safeText(entry.title, entry.filename || entry.path || "Untitled");
       const article = document.createElement("article");
       article.className = "book-card";
-      article.dataset.searchText = [displayTitle, entry.author, entry.description, entry.updatedAt, kind]
+      article.dataset.authorName = safeText(entry.author, "作者未設定");
+      article.dataset.folderPath = entry.folderPath || "";
+      article.dataset.searchText = [displayTitle, entry.author, entry.folderPath, entry.description, entry.updatedAt, kind]
         .map((value) => String(value || "").toLowerCase())
         .join(" ");
 
@@ -513,12 +516,14 @@ async function initBundledBooksShelf({
 
     mountLearningApp(bundledBooksList, learningApp);
     if (localOnlyCount > 0) await mountInstalledShelf(bundledBooksList, { skipIds: catalogWebappIds });
+    mountAuthorFolders(bundledBooksList);
     void bindStoragePanel(qs("#webappStoragePanel"));
   } catch (err) {
     // Offline / API unreachable: installed Web content is still available (that is the point of installing it).
     bundledBooksList.innerHTML = "";
     const offlineCount = await mountInstalledShelf(bundledBooksList).catch(() => 0);
     if (offlineCount > 0) {
+      mountAuthorFolders(bundledBooksList);
       bundledBooksStatus.textContent = `一覧を取得できません（オフライン？）。端末に保存済みのコンテンツ ${offlineCount}件のみ表示しています`;
       bundledBooksStatus.className = "status";
       if (bundledBooksToggleBtn) bundledBooksToggleBtn.disabled = false;
@@ -544,6 +549,11 @@ function filterBundledBooksList(listEl, statusEl, query) {
   if (statusEl && cards.length > 0) {
     statusEl.textContent = needle ? `${visible} / ${cards.length}作品` : `${cards.length}作品`;
     statusEl.className = visible > 0 ? "status ok" : "status error";
+  }
+  for (const folder of listEl.querySelectorAll('.content-folder')) {
+    const matches=[...folder.querySelectorAll('.book-card')].some(card=>!card.hidden);
+    folder.hidden=!matches;
+    if(String(query||'').trim())folder.open=matches;
   }
 }
 async function loadBundledBookManifest(manifestPath) {

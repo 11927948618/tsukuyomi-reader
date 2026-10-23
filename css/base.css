@@ -996,3 +996,7 @@ select.input option {
   }
 }
 
+
+.content-folder{grid-column:1/-1;min-width:0;border:1px solid var(--border);border-radius:12px;padding:8px;margin:6px 0}.content-folder>summary{cursor:pointer;padding:10px;font-weight:600}.content-folder .content-folder{margin-left:12px}.content-folder>.book-card{margin-top:8px}
+
+.content-folder[open]{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.content-folder>summary,.content-folder>.content-folder{grid-column:1/-1}@media(max-width:520px){.content-folder[open]{grid-template-columns:minmax(0,1fr)}}

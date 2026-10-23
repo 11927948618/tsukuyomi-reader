@@ -1,3 +1,4 @@
+import {createContentManager} from "./content-manager.js";
 import { escapeHtml } from "./utils.js";
 import { APP_VERSION, BUILD_TIME, COMMIT } from "./version.js";
 import { PACK_LIMITS, formatBytes as formatPackBytes, normalizeEntryPath, validatePackEntries } from "./webapp/pack-validate.js";
@@ -28,6 +29,7 @@ const reloadStorageBtn = document.getElementById("reloadStorageBtn");
 const reloadReviewAccessBtn = document.getElementById("reloadReviewAccessBtn");
 const adminBookList = document.getElementById("adminBookList");
 const adminStatus = document.getElementById("adminStatus");
+const contentManager = createContentManager({list:adminBookList,getHeaders:()=>authHeaders(getToken()),prepareUpload:prepareUploadFormData,reload:loadBooks});
 const promotionSummary = document.getElementById("promotionSummary");
 const storageStatus = document.getElementById("storageStatus");
 const storageSummary = document.getElementById("storageSummary");
@@ -244,6 +246,7 @@ async function loadBooks() {
     renderUsageGuard(payload?.guard || null);
     renderPromotionSummary(payload, loadedBookScope);
     renderBooks(Array.isArray(payload?.books) ? payload.books : [], loadedBookScope);
+    contentManager.setCatalog(payload.books||[],payload.folders||[],loadedBookScope);
     setStatus(`${bookScopeLabel(loadedBookScope)} ${payload.books?.length || 0}件`, payload?.promotionSummary?.error ? "warn" : "ok");
   } catch (err) {
     adminBookList.innerHTML = "";
@@ -1317,6 +1320,7 @@ function fillForm(book, scope = loadedBookScope) {
   bookForm.elements.id.value = book.id || "";
   bookForm.elements.title.value = book.title || "";
   bookForm.elements.author.value = book.author || "";
+  bookForm.elements.folderPath.value = book.folderPath || "";
   bookForm.elements.description.value = book.description || "";
   bookForm.elements.updatedAt.value = book.updatedAt || new Date().toISOString().slice(0, 10);
   document.getElementById("publishedCheck").checked = book.published === true;
@@ -1329,6 +1333,7 @@ function resetForm() {
   if (bookForm.elements.version) bookForm.elements.version.placeholder = DEFAULT_VERSION_PLACEHOLDER;
   applyContentTypeUi();
   bookForm.elements.author.value = "hal the juggernaut";
+  bookForm.elements.folderPath.value = "";
   bookForm.elements.updatedAt.value = new Date().toISOString().slice(0, 10);
   document.getElementById("publishedCheck").checked = true;
 }

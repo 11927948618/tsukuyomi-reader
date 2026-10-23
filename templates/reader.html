@@ -68,7 +68,7 @@
               <output class="field-value" id="fontSizeValue" for="fontSizeRange" aria-live="polite">-</output>
             </div>
             <div class="range-with-guide">
-              <input id="fontSizeRange" type="range" min="80" max="140" step="1" />
+              <input id="fontSizeRange" type="range" min="80" max="240" step="1" />
               <span class="saved-range-pin" data-saved-pin="fontSize" aria-hidden="true"></span>
             </div>
           </div>
@@ -88,10 +88,11 @@
               <output class="field-value" id="lineHeightValue" for="lineHeightRange" aria-live="polite">-</output>
             </div>
             <div class="range-with-guide">
-              <input id="lineHeightRange" type="range" min="1.4" max="2.4" step="0.1" />
+              <input id="lineHeightRange" type="range" min="1.4" max="2.4" step="0.01" />
               <span class="saved-range-pin" data-saved-pin="lineHeight" aria-hidden="true"></span>
             </div>
           </div>
+          <button id="addVerticalColumnBtn" type="button">縦書きを1列多く</button>
 
           <div class="field">
             <div class="field-head">
@@ -106,17 +107,21 @@
 
           <div class="field">
             <div class="field-head">
-              <label class="label" id="pageMarginLabel" for="pageMarginRange">左右の追加余白</label>
+              <label class="label" id="pageMarginLabel" for="pageMarginRange">左右の余白</label>
               <div class="field-meta">
                 <output class="field-value" id="pageMarginValue" for="pageMarginRange" aria-live="polite">-</output>
               </div>
             </div>
             <div class="range-with-guide">
-              <input id="pageMarginRange" aria-describedby="pageMarginHint" type="range" min="0" max="100" step="1" />
+              <input id="pageMarginRange" type="range" min="0" max="100" step="1" />
               <span class="standard-range-pin" aria-hidden="true"></span>
               <span class="saved-range-pin" data-saved-pin="pageMarginPercent" aria-hidden="true"></span>
             </div>
-            <p id="pageMarginHint" class="field-help">左へ：本文を広く ／ 右へ：余白を広く。上下の余白は変わりません。0でも基本の余白は残ります。</p>
+
+          </div>
+          <div class="field">
+            <div class="field-head"><label class="label" for="pageVerticalMarginRange">上下の余白</label><output class="field-value" id="pageVerticalMarginValue" for="pageVerticalMarginRange" aria-live="polite">-</output></div>
+            <div class="range-with-guide"><input id="pageVerticalMarginRange" type="range" min="0" max="20" step="0.5"><span class="saved-range-pin" data-saved-pin="pageVerticalMarginPercent" aria-hidden="true"></span></div>
           </div>
         </div>
       </section>

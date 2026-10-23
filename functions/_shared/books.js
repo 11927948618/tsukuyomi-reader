@@ -101,6 +101,7 @@ export async function readCatalog(bucket) {
 export async function writeCatalog(bucket, catalog) {
   const payload = {
     books: Array.isArray(catalog.books) ? catalog.books : [],
+    folders: Array.isArray(catalog.folders) ? catalog.folders : (await readCatalog(bucket)).folders || [],
     updatedAt: new Date().toISOString()
   };
   await bucket.put(MANIFEST_KEY, JSON.stringify(payload, null, 2), {
@@ -139,6 +140,7 @@ export function toPublicManifestEntry(book) {
     publicExpiresAt: book.publicExpiresAt || "",
     updatedAt: book.updatedAt || ""
   };
+  if (book.folderPath) entry.folderPath = book.folderPath;
   // "webapp" content packs (ZIP of a small offline web app). Book entries keep their exact previous shape.
   if (String(book.contentType || "").toLowerCase() === "webapp") {
     entry.contentType = "webapp";

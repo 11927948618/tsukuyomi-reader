@@ -54,7 +54,9 @@ export function mountPackCard({ entry, pack, resolveUrl, listEl, onChange = refr
   const id = data.id;
   const displayTitle = data.title || id;
   const article = el("article", "book-card webapp-card");
-  article.dataset.searchText = [displayTitle, data.author, data.description, "web webapp"].map((v) => String(v || "").toLowerCase()).join(" ");
+  article.dataset.authorName = entry?.author || "作者未設定";
+  article.dataset.folderPath = entry?.folderPath || "";
+  article.dataset.searchText = [displayTitle, data.author, data.folderPath, data.description, "web webapp"].map((v) => String(v || "").toLowerCase()).join(" ");
 
   const cover = buildCover({ coverUrl: entry?.cover && resolveUrl ? resolveUrl(entry.cover) : "", coverBlob: pack?.cover, alt: `${displayTitle} 表紙` });
   const info = el("div", "book-info");

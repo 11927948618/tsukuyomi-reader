@@ -84,8 +84,8 @@ export function tokenizeMobilePagerSource(sourceHtml, writingMode = "vertical") 
 }
 
 function normalizePlan(plan = {}) {
-  const chars = Math.max(8, Math.floor(Number(plan.chars) || 20));
-  const lines = Math.max(4, Math.floor(Number(plan.lines) || 10));
+  const chars = Math.max(2, Math.floor(Number(plan.chars) || 20));
+  const lines = Math.max(1, Math.floor(Number(plan.lines) || 10));
   return {
     ...plan,
     chars,
@@ -269,8 +269,8 @@ function createPage(chapterMeta, plan, firstPage, sourceStart = 0) {
     anchorIds: new Set(),
     sourceStart: Math.max(0, Number(sourceStart) || 0),
     // Keep a small buffer for hanging punctuation and closing brackets.
-    charsPerLine: Math.max(6, plan.chars - charSafetyReserve),
-    linesPerPage: Math.max(3, plan.lines - plan.lineSafetyReserve - reserve),
+    charsPerLine: Math.max(1, plan.chars - charSafetyReserve),
+    linesPerPage: Math.max(1, plan.lines - plan.lineSafetyReserve - reserve),
     charIndex: 0,
     lineIndex: 0
   };
