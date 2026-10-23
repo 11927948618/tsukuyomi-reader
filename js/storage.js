@@ -97,6 +97,7 @@ export async function exportZipFromBook(book, options = {}) {
       fontSize: Number(settings.fontSize) || 100,
       fontFamilyPreference: settings.fontFamilyPreference || "system",
       lineHeight: Number(settings.lineHeight) || 1.8,
+      extraColumnBaseLineHeight: Number(settings.extraColumnBaseLineHeight) >= 1.4 ? Number(settings.extraColumnBaseLineHeight) : null,
       letterSpacing: Number(settings.letterSpacing) || 0,
       pageVerticalMarginPercent: Math.max(0,Math.min(20,Number.isFinite(Number(settings.pageVerticalMarginPercent))?Number(settings.pageVerticalMarginPercent):7)),
       pageMarginPercent: normalizeExportPageMargin(settings.pageMarginPercent, settings.wrapWidthPercent),
