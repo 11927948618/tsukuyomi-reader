@@ -1191,9 +1191,12 @@ body.settings-open .tap-zone {
 }
 
 .settings-group {
-  border: 1px solid var(--border);
+  --section-edge: #8995a8;
+  --section-open: #eef2f7;
+  --section-closed: #d9e0ea;
+  border: 2px solid var(--section-edge);
   border-radius: 8px;
-  background: color-mix(in srgb, var(--panel), #000 4%);
+  background: var(--panel);
   overflow: hidden;
   min-height: 0;
 }
@@ -1206,32 +1209,63 @@ body.settings-open .tap-zone {
 }
 
 .settings-group-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   width: 100%;
+  min-height: 48px;
   border: 0;
-  background: transparent;
+  border-inline-start: 5px solid var(--section-edge);
+  background: var(--section-closed);
   color: var(--text);
   cursor: pointer;
-  padding: 8px 12px;
-  font-size: 12px;
+  padding: 10px 12px;
+  font-size: 14px;
   font-weight: 700;
   text-align: left;
   user-select: none;
 }
 
 .settings-group-toggle::after {
-  content: "＋";
-  float: right;
-  color: var(--muted);
+  content: "\002B";
+  flex: 0 0 1em;
+  color: var(--text);
+  font-size: 18px;
+}
+
+body.theme-dark .settings-group {
+  --section-edge: #7c8da7;
+  --section-open: #2b3547;
+  --section-closed: #0b0f18;
+}
+
+.settings-group.open .settings-group-toggle {
+  background: var(--section-open);
+  border-inline-start-color: var(--accent);
+  border-bottom: 2px solid var(--section-edge);
+}
+
+.settings-group-toggle:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: -3px;
+}
+
+.settings-group-state {
+  margin-inline-start: auto;
+  flex-shrink: 0;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text);
 }
 
 .settings-group.open .settings-group-toggle::after {
-  content: "－";
+  content: "\2212";
 }
 
 .settings-group-body {
   display: grid;
   gap: 10px;
-  padding: 2px 12px 12px;
+  padding: 12px;
 }
 
 .settings-group:not(.open) .settings-group-body {

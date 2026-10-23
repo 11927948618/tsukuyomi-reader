@@ -1498,8 +1498,13 @@ export function initReader({
       const body = group.querySelector(".settings-group-body");
       if (!toggle || !body || toggle.dataset.bound === "true") return;
 
+      const stateLabel = document.createElement("span");
+      stateLabel.className = "settings-group-state";
+      stateLabel.setAttribute("aria-hidden", "true");
+      toggle.append(stateLabel);
       const syncGroupState = () => {
         const isOpen = group.classList.contains("open");
+        stateLabel.textContent = isOpen ? "開いています" : "折りたたみ中";
         toggle.setAttribute("aria-expanded", String(isOpen));
         body.hidden = !isOpen;
       };
