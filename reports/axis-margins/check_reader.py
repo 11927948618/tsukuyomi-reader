@@ -21,7 +21,7 @@ async def main():
    async def setval(id,value):
     await page.locator('#'+id).evaluate('(e,v)=>{e.value=v;e.dispatchEvent(new Event("input"))}',value);await page.wait_for_timeout(220)
    async def metrics():
-    return await page.evaluate('''()=>({rect:document.querySelector('.mobile-text-page').getBoundingClientRect().toJSON(),font:parseFloat(getComputedStyle(document.querySelector('#bookContent')).fontSize),top:parseFloat(getComputedStyle(document.querySelector('#readerViewport')).paddingTop),label:document.querySelector('#pageMarginValue').textContent,warning:document.body.classList.contains('pager-fit-warning'),bodySize:[document.querySelector('.mobile-text-page-body').scrollWidth,document.querySelector('.mobile-text-page-body').clientWidth,document.querySelector('.mobile-text-page-body').scrollHeight,document.querySelector('.mobile-text-page-body').clientHeight],line:getComputedStyle(document.querySelector('#bookContent')).lineHeight})''')
+    return await page.evaluate('''()=>({rect:document.querySelector('.mobile-text-page').getBoundingClientRect().toJSON(),font:parseFloat(getComputedStyle(document.querySelector('#bookContent')).fontSize),top:parseFloat(getComputedStyle(document.querySelector('#readerViewport')).paddingTop),label:document.querySelector('#pageMarginValue').textContent,warning:document.body.classList.contains('pager-fit-warning'),bodySize:[document.querySelector('.mobile-text-page-body').scrollWidth,document.querySelector('.mobile-text-page-body').clientWidth,document.querySelector('.mobile-text-page-body').scrollHeight,document.querySelector('.mobile-text-page-body').clientHeight],line:getComputedStyle(document.querySelector('#bookContent')).lineHeight,allPages:Array.from(document.querySelectorAll('.mobile-text-page')).map(e=>({w:e.clientWidth,sw:e.scrollWidth,h:e.clientHeight,sh:e.scrollHeight,body:[e.lastElementChild.clientWidth,e.lastElementChild.scrollWidth,e.lastElementChild.clientHeight,e.lastElementChild.scrollHeight]}))})''')
    before=await metrics();await setval('pageVerticalMarginRange',14);after=await metrics()
    assert after['top']>before['top'] and after['rect']['height']<before['rect']['height'],(before,after)
    assert abs(before['rect']['width']-after['rect']['width'])<1
@@ -49,9 +49,33 @@ async def main():
      assert int(refined['label'].split('×')[-1].split('列')[0])>=int(single['label'].split('×')[-1].split('列')[0])+1,(layout,single,refined)
      await page.locator('#addVerticalColumnBtn').evaluate('(e)=>e.click()')
      assert await page.evaluate('lastSettings.lineHeight')==1.8
+     await setval('lineHeightRange',1.4)
+     minimum=await metrics()
+     assert not await page.locator('#addVerticalColumnBtn').is_disabled()
+     await page.locator('#addVerticalColumnBtn').evaluate('(e)=>e.click()');await page.wait_for_timeout(220)
+     tighter=await metrics()
+     assert int(tighter['label'].split('×')[-1].split('列')[0])>=int(minimum['label'].split('×')[-1].split('列')[0])+1,(layout,minimum,tighter)
+     assert not tighter['warning'],tighter
+     await page.locator('#addVerticalColumnBtn').evaluate('(e)=>e.click()')
+     assert await page.evaluate('lastSettings.lineHeight')==1.4
+     await setval('lineHeightRange',1.8)
      await page.locator('#'+layout).evaluate('(e)=>e.click()')
    await page.locator('#addVerticalColumnBtn').evaluate('(e)=>e.click()')
 
+   await setval('lineHeightRange',1.4)
+   if await page.locator('#addVerticalColumnBtn').is_checked():
+    await page.locator('#addVerticalColumnBtn').evaluate('(e)=>e.click()')
+   minimum=await metrics()
+   assert not await page.locator('#addVerticalColumnBtn').is_disabled()
+   await page.locator('#addVerticalColumnBtn').evaluate('(e)=>e.click()');await page.wait_for_timeout(220)
+   tighter=await metrics()
+   assert int(tighter['label'].split('×')[-1].split('列')[0])>=int(minimum['label'].split('×')[-1].split('列')[0])+1,(minimum,tighter)
+   assert await page.locator('#lineHeightRange').input_value()=='1.4'
+   assert not tighter['warning'],tighter
+   await page.locator('#addVerticalColumnBtn').evaluate('(e)=>e.click()')
+   assert await page.evaluate('lastSettings.lineHeight')==1.4
+   await setval('lineHeightRange',1.8)
+   await page.locator('#addVerticalColumnBtn').evaluate('(e)=>e.click()')
    await setval('fontSizeRange',240);large=await metrics()
    assert abs(large['font']-38.4)<.1,large
    assert not large['warning'],large

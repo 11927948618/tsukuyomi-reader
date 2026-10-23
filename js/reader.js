@@ -6,6 +6,8 @@ import { APP_VERSION } from "./version.js";
 const HORIZONTAL_LINE_NUMBER_GUTTER_EM = 2.8;
 const VERTICAL_LINE_NUMBER_GUTTER_EM = 1.9;
 const PAGE_MARGIN_STANDARD_PERCENT = 6;
+// Fine adjustment may tighten beyond the slider minimum, down to one em.
+const EXTRA_COLUMN_MIN_LINE_HEIGHT = 1;
 const PAGE_MARGIN_MAX_PERCENT = 20;
 const PAGE_MARGIN_SLIDER_CENTER = 50;
 const PAGE_MARGIN_SLIDER_MAX = 100;
@@ -1114,13 +1116,15 @@ export function initReader({
 
 
   function formatMobileTextPageBody(html, lineStart = 1) {
-    if (!lineNumbers) return html;
+    const fixedColumns = extraColumnBaseLineHeight !== null && normalizeWritingModePreference(writingModePreference) === "vertical";
+    if (!lineNumbers && !fixedColumns) return html;
     const lines = String(html || "").split("\n");
     return lines
       .map((line, index) => {
         const number = String(Math.max(1, lineStart + index)).padStart(4, "0");
         const content = line || "&nbsp;";
-        return `<span class="mobile-text-line" data-line="${escapeAttribute(number)}">${content}</span>`;
+        if (!lineNumbers) return `<span class="mobile-text-column">${content}</span>`;
+        return `<span class="mobile-text-line${fixedColumns ? " mobile-text-column" : ""}" data-line="${escapeAttribute(number)}">${content}</span>`;
       })
       .join("");
   }
@@ -1301,6 +1305,7 @@ export function initReader({
     if (!nextSettings) return;
     extraColumnBaseLineHeight = Number(nextSettings.extraColumnBaseLineHeight) >= 1.4
       ? Number(nextSettings.extraColumnBaseLineHeight) : null;
+    document.body.classList.toggle("extra-column-enabled", extraColumnBaseLineHeight !== null);
 
     document.documentElement.style.setProperty("--font-size", Number(nextSettings.fontSize) || 100);
     document.documentElement.style.setProperty(
@@ -1368,7 +1373,7 @@ export function initReader({
       const plan = resolveMobileTextPagerPlan();
       const metrics = getReaderTextMetrics();
       const adjusted = normalizeWritingModePreference(writingModePreference) === "vertical"
-        ? Math.min(baseline, Math.max(1.4, Math.floor(plan.blockSize / (plan.lines + 1) / metrics.fontPx * 100) / 100))
+        ? Math.min(baseline, Math.max(EXTRA_COLUMN_MIN_LINE_HEIGHT, Math.floor(plan.blockSize / (plan.lines + 1) / metrics.fontPx * 100) / 100))
         : baseline;
       applySettings({ ...nextSettings, lineHeight: adjusted }, false);
     }
@@ -1408,7 +1413,7 @@ export function initReader({
       if (normalizeWritingModePreference(writingModePreference) !== "vertical") return;
       const plan = resolveMobileTextPagerPlan();
       const metrics = getReaderTextMetrics();
-      const next = Math.max(1.4, Math.floor((plan.blockSize / (plan.lines + 1) / metrics.fontPx) * 100) / 100);
+      const next = Math.max(EXTRA_COLUMN_MIN_LINE_HEIGHT, Math.floor((plan.blockSize / (plan.lines + 1) / metrics.fontPx) * 100) / 100);
       updateSettings({ extraColumnBaseLineHeight: Number(lineHeightRange.value), lineHeight: Math.min(Number(lineHeightRange.value), next) });
     });
     fontSizeRange.addEventListener("input", () => updateSettings({ fontSize: Number(fontSizeRange.value) }));
@@ -1566,7 +1571,7 @@ export function initReader({
       const plan = resolveMobileTextPagerPlan();
       addVerticalColumnBtn.checked = extraColumnBaseLineHeight !== null;
       addVerticalColumnBtn.disabled = extraColumnBaseLineHeight === null && (normalizeWritingModePreference(writingModePreference) !== "vertical"
-        || plan.blockSize / (plan.lines + 1) / metrics.fontPx < 1.4);
+        || plan.blockSize / (plan.lines + 1) / metrics.fontPx < EXTRA_COLUMN_MIN_LINE_HEIGHT);
     }
     const contentPercent = Math.max(60, 100 - marginPercent * 2);
     const viewportWidth = getHorizontalPageSize();

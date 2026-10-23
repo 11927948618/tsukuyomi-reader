@@ -1773,3 +1773,12 @@ body.mode-paged .reader-viewport::after {
 #pageArrangementOptions legend { font-size: 0.9em; }
 #pageArrangementOptions label { display: inline-flex; align-items: center; gap: 0.35rem; }
 #pageGroupStatus:empty { display: none; }
+
+/* Keep the computed advance when ruby would enlarge anonymous line boxes.
+   Ruby keeps its font size and stays visible between the fixed columns. */
+body.extra-column-enabled .mobile-text-page.vertical .mobile-text-column {
+  display: block;
+  block-size: calc(1em * var(--line-height, 1.8));
+  inline-size: 100%;
+  white-space: nowrap;
+}
