@@ -1272,8 +1272,12 @@ export function initReader({
     });
   }
 
+  let extraColumnBaseLineHeight = null;
+
   function applySettings(nextSettings) {
     if (!nextSettings) return;
+    extraColumnBaseLineHeight = Number(nextSettings.extraColumnBaseLineHeight) >= 1.4
+      ? Number(nextSettings.extraColumnBaseLineHeight) : null;
 
     document.documentElement.style.setProperty("--font-size", Number(nextSettings.fontSize) || 100);
     document.documentElement.style.setProperty(
@@ -1340,7 +1344,7 @@ export function initReader({
 
   function bindSettingsEvents() {
     qs('#paperPresetBtn')?.addEventListener('click', () => updateSettings({
-      fontFamilyPreference: 'mincho', fontSize: 100, lineHeight: 1.8,
+      fontFamilyPreference: 'mincho', fontSize: 100, lineHeight: 1.8, extraColumnBaseLineHeight: null,
       letterSpacing: 0, pageMarginPercent: 6, pageVerticalMarginPercent: 7, theme: 'light',
       displayMode: 'paged', writingModePreference: 'vertical',
       spreadView: false, pageColumns: false, stackedView: false,
@@ -1350,18 +1354,22 @@ export function initReader({
     pageVerticalMarginRange?.addEventListener("input", () => updateSettings({
       pageVerticalMarginPercent: Number(pageVerticalMarginRange.value)
     }));
-    addVerticalColumnBtn?.addEventListener("click", () => {
+    addVerticalColumnBtn?.addEventListener("change", () => {
+      if (extraColumnBaseLineHeight !== null) {
+        updateSettings({ lineHeight: extraColumnBaseLineHeight, extraColumnBaseLineHeight: null });
+        return;
+      }
       if (normalizeWritingModePreference(writingModePreference) !== "vertical") return;
       const plan = resolveMobileTextPagerPlan();
       const metrics = getReaderTextMetrics();
       const next = Math.max(1.4, Math.floor((plan.blockSize / (plan.lines + 1) / metrics.fontPx) * 100) / 100);
-      updateSettings({ lineHeight: Math.min(Number(lineHeightRange.value), next) });
+      updateSettings({ extraColumnBaseLineHeight: Number(lineHeightRange.value), lineHeight: Math.min(Number(lineHeightRange.value), next) });
     });
     fontSizeRange.addEventListener("input", () => updateSettings({ fontSize: Number(fontSizeRange.value) }));
     fontFamilySelect?.addEventListener("change", () => {
       updateSettings({ fontFamilyPreference: normalizeFontFamilyPreference(fontFamilySelect.value) });
     });
-    lineHeightRange.addEventListener("input", () => updateSettings({ lineHeight: Number(lineHeightRange.value) }));
+    lineHeightRange.addEventListener("input", () => updateSettings({ lineHeight: Number(lineHeightRange.value), extraColumnBaseLineHeight: null }));
     letterSpacingRange.addEventListener("input", () => updateSettings({ letterSpacing: Number(letterSpacingRange.value) }));
     pageMarginRange?.addEventListener("input", () => {
       const margin = pageMarginSliderPositionToPercent(pageMarginRange.value);
@@ -1492,8 +1500,9 @@ export function initReader({
     if (pageVerticalMarginValue) pageVerticalMarginValue.textContent = `上下各${Number(pageVerticalMarginRange?.value ?? 7)}%`;
     if (addVerticalColumnBtn) {
       const plan = resolveMobileTextPagerPlan();
-      addVerticalColumnBtn.disabled = normalizeWritingModePreference(writingModePreference) !== "vertical"
-        || plan.blockSize / (plan.lines + 1) / metrics.fontPx < 1.4;
+      addVerticalColumnBtn.checked = extraColumnBaseLineHeight !== null;
+      addVerticalColumnBtn.disabled = extraColumnBaseLineHeight === null && (normalizeWritingModePreference(writingModePreference) !== "vertical"
+        || plan.blockSize / (plan.lines + 1) / metrics.fontPx < 1.4);
     }
     const contentPercent = Math.max(60, 100 - marginPercent * 2);
     const viewportWidth = getHorizontalPageSize();
@@ -1583,6 +1592,7 @@ export function initReader({
       fontSize: Number(fontSizeRange.value) || 100,
       fontFamilyPreference: normalizeFontFamilyPreference(fontFamilySelect?.value),
       lineHeight: Number(lineHeightRange.value) || 1.8,
+      extraColumnBaseLineHeight,
       letterSpacing: Number(letterSpacingRange.value) || 0,
       pageMarginPercent: currentPageMargin,
       pageVerticalMarginPercent: Number(pageVerticalMarginRange?.value??7),
