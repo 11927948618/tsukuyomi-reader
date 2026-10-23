@@ -21,6 +21,7 @@ export function initReader({
   onSaveSettings,
   onUpdateProgress
 }) {
+  let extraColumnBaseLineHeight = null;
   const backBtn = qs("#backBtn");
   const printBtn = qs("#printBtn");
   const exportBtn = qs("#exportBtn");
@@ -719,6 +720,7 @@ export function initReader({
   const handleViewportResize = () => {
     window.clearTimeout(viewportResizeTimer);
     viewportResizeTimer = window.setTimeout(() => {
+      if (extraColumnBaseLineHeight !== null) applySettings(getCurrentSettings());
       reflowReaderLayout({ preservePosition: true });
     }, 140);
   };
@@ -1272,9 +1274,7 @@ export function initReader({
     });
   }
 
-  let extraColumnBaseLineHeight = null;
-
-  function applySettings(nextSettings) {
+  function applySettings(nextSettings, refineColumn = true) {
     if (!nextSettings) return;
     extraColumnBaseLineHeight = Number(nextSettings.extraColumnBaseLineHeight) >= 1.4
       ? Number(nextSettings.extraColumnBaseLineHeight) : null;
@@ -1335,6 +1335,21 @@ export function initReader({
     renderToc(book);
     updateSettingValueLabels();
     updateSavedRangePins();
+    if (refineColumn && extraColumnBaseLineHeight !== null) {
+      // Compute from the slider baseline and the actual single-page frame,
+      // including the two frames used by spreads and stacked pages.
+      const baseline = extraColumnBaseLineHeight;
+      document.documentElement.style.setProperty("--line-height", baseline);
+      lineHeightRange.value = String(baseline);
+      const plan = resolveMobileTextPagerPlan();
+      const metrics = getReaderTextMetrics();
+      const adjusted = normalizeWritingModePreference(writingModePreference) === "vertical"
+        ? Math.min(baseline, Math.max(1.4, Math.floor(plan.blockSize / (plan.lines + 1) / metrics.fontPx * 100) / 100))
+        : baseline;
+      applySettings({ ...nextSettings, lineHeight: adjusted }, false);
+    }
+    // The slider always represents the baseline; the switch is a fine adjustment.
+    if (extraColumnBaseLineHeight !== null) lineHeightRange.value = String(extraColumnBaseLineHeight);
   }
 
   function applyTheme(theme) {
@@ -1369,7 +1384,7 @@ export function initReader({
     fontFamilySelect?.addEventListener("change", () => {
       updateSettings({ fontFamilyPreference: normalizeFontFamilyPreference(fontFamilySelect.value) });
     });
-    lineHeightRange.addEventListener("input", () => updateSettings({ lineHeight: Number(lineHeightRange.value), extraColumnBaseLineHeight: null }));
+    lineHeightRange.addEventListener("input", () => updateSettings({ lineHeight: Number(lineHeightRange.value), extraColumnBaseLineHeight: extraColumnBaseLineHeight !== null ? Number(lineHeightRange.value) : null }));
     letterSpacingRange.addEventListener("input", () => updateSettings({ letterSpacing: Number(letterSpacingRange.value) }));
     pageMarginRange?.addEventListener("input", () => {
       const margin = pageMarginSliderPositionToPercent(pageMarginRange.value);
