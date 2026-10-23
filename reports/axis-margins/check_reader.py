@@ -34,12 +34,33 @@ async def main():
    assert int(extra['label'].split('×')[-1].split('列')[0])>=int(base['label'].split('×')[-1].split('列')[0])+1
    assert extra['font']==base['font'];assert abs(extra['rect']['width']-base['rect']['width'])<1
    assert not extra['warning'],(base,extra)
+   assert await page.locator('#lineHeightRange').input_value()=='1.8'
+   await setval('lineHeightRange',1.9)
+   assert await page.locator('#addVerticalColumnBtn').is_checked()
+   await page.locator('#addVerticalColumnBtn').evaluate('(e)=>e.click()')
+   assert await page.evaluate('lastSettings.lineHeight')==1.9
+   await setval('lineHeightRange',1.8)
+   if w>=800:
+    for layout in ['spreadViewCheck','stackedViewCheck']:
+     await page.locator('#'+layout).evaluate('(e)=>e.click()');await page.wait_for_timeout(220)
+     single=await metrics()
+     await page.locator('#addVerticalColumnBtn').evaluate('(e)=>e.click()');await page.wait_for_timeout(220)
+     refined=await metrics()
+     assert int(refined['label'].split('×')[-1].split('列')[0])>=int(single['label'].split('×')[-1].split('列')[0])+1,(layout,single,refined)
+     await page.locator('#addVerticalColumnBtn').evaluate('(e)=>e.click()')
+     assert await page.evaluate('lastSettings.lineHeight')==1.8
+     await page.locator('#'+layout).evaluate('(e)=>e.click()')
+   await page.locator('#addVerticalColumnBtn').evaluate('(e)=>e.click()')
+
    await setval('fontSizeRange',240);large=await metrics()
    assert abs(large['font']-38.4)<.1,large
    assert not large['warning'],large
    await page.locator('#writingModeSelect').evaluate("e=>{e.value='horizontal';e.dispatchEvent(new Event('change'))}")
    await page.wait_for_timeout(220)
    horizontal=await metrics();assert not horizontal['warning'],horizontal
+   assert await page.locator('#addVerticalColumnBtn').is_checked()
+   await page.locator('#addVerticalColumnBtn').evaluate('(e)=>e.click()')
+   assert not await page.locator('#addVerticalColumnBtn').is_checked()
    assert await page.locator('#addVerticalColumnBtn').is_disabled()
    assert await page.locator('#pageMarginHint').count()==0
    assert not errors,errors
