@@ -1606,11 +1606,14 @@ async function downloadReviewAuthLog() {
 
 function clearAdminAuthLog() {
   adminAuthLogEvents = [];
+  if (adminAuthLogBlock) adminAuthLogBlock.open = false;
   showAllAdminAuthLog = false;
   renderAdminAuthLog("");
 }
 
 function renderAdminAuthLog(message = "") {
+  const count = document.getElementById("adminAuthLogCount");
+  if (count) count.textContent = isAdminReady() && adminAuthLogEvents.length ? `（${adminAuthLogEvents.length.toLocaleString()}件）` : "";
   if (adminAuthLogBlock) adminAuthLogBlock.hidden = !isAdminReady();
   if (!adminAuthLog) return;
   if (!isAdminReady()) {
