@@ -361,6 +361,14 @@ async function writeAdminChallenges(bucket, value) {
   return next;
 }
 
+export function recordAdminTokenCheck(bucket, ok) {
+  // A browser token check is not a change to Cloudflare's configured secret.
+  // Never pass request headers, token values or token fingerprints to the log.
+  return recordAdminAuthEvent(bucket, {
+    type: 'token-checked', result: ok ? 'ok' : 'failed', reason: ok ? 'verified' : 'invalid-token'
+  });
+}
+
 async function recordAdminAuthEvent(bucket, event) {
   if (!bucket) return null;
   try {
