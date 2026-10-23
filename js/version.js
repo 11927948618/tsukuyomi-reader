@@ -1,3 +1,3 @@
-export const APP_VERSION = "0.1.255";
+export const APP_VERSION = "0.1.256";
 export const BUILD_TIME = "2026-10-23 JST";
-export const COMMIT = "admin-current-audit";
+export const COMMIT = "reader-minimum-line-extra-column";
