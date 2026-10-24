@@ -707,11 +707,7 @@ export function initReader({
       toggleSettings(true);
     }
   });
-  mainMenuBtn?.addEventListener("click", () => {
-    closeToc();
-    setReaderChromeVisible(true, { reflow: false });
-    toggleSettings(false);
-  });
+  mainMenuBtn?.addEventListener("click", onBack);
 
   tocBtn?.addEventListener("click", () => {
     const isOpen = tocPanel?.classList.contains("open");

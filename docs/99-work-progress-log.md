@@ -1974,3 +1974,9 @@ TSUKUYOMI_REVIEW_PASSWORD_DAYS=7
 - 実機: Android Chrome(Xiaomi 11T Pro)で通し確認済み。iPad Safari は未確認(正式配布前・娘用配布前の必須確認)。
 - 運用メモ: ブランチのプレビューURLの別名は 28 文字に切り詰められる(例 `fix-issue1-firefox-offline-s`)。
 
+
+## 2026-10-24 v0.1.258 メインメニューへの戻りを修正
+
+読書画面の「メインメニューに戻る」は、設定・章一覧を閉じるだけで画面遷移していなかった。既存のLibraryボタンと同じonBackへ接続し、作品選択画面へ戻るよう修正。Service Workerのキャッシュ版も更新。
+
+確認：npm testの10ファイルが成功。`python reports/navigation/check_reader.py` で390×844・800×1280の実アプリ画面から戻り、栞の読書位置の再開、既存Libraryボタンの動作を確認。保護された作品や本番データはテストに使用していない。
