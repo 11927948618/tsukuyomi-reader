@@ -1,3 +1,4 @@
+import { readReaderControl } from "../../_shared/reader-control.js";
 import { error, getBucket, json } from "../../_shared/books.js";
 import { applyRateLimit } from "../../_shared/rate-limit.js";
 import {
@@ -33,7 +34,11 @@ export async function onRequestPost(context) {
     return error(message, status);
   }
 
-  const session = await createReviewSession(login.entry, context.env);
+  let control;
+  try { control = await readReaderControl(bucket, context.env); }
+  catch { return error("認証状態を確認できません", 503); }
+  if (control.paused) return error("配信を一時停止しています", 503);
+  const session = await createReviewSession(login.entry, { ...context.env, READER_SESSION_GENERATION: control.generation });
   if (!session) return error("認証セッションを作成できませんでした", 500);
 
   return json(

@@ -1,3 +1,4 @@
+import { readReaderControl } from "./reader-control.js";
 import { error, json, safeText } from "./books.js";
 import {
   normalizeReviewAccessEmail,
@@ -54,6 +55,10 @@ export async function requireReviewPasswordAuth(request, bucket, env) {
 }
 
 export async function getReviewAuthDecision(request, bucket, env) {
+  let control;
+  try { control = await readReaderControl(bucket, env); }
+  catch { return { ok: false, authRequired: true, reason: "control-unavailable", response: error("認証状態を確認できません", 503) }; }
+  if (control.paused) return { ok: false, authRequired: true, reason: "paused", response: error("配信を一時停止しています", 503) };
   if (!reviewPasswordAuthEnabled(env)) {
     return { ok: true, authRequired: false, email: "", status: "" };
   }
@@ -88,6 +93,9 @@ export async function getReviewAuthDecision(request, bucket, env) {
     };
   }
 
+  if ((session.payload.generation || "") !== control.generation) {
+    return { ok: false, authRequired: true, reason: "session-revoked", response: reviewAuthRequiredResponse("再ログインしてください") };
+  }
   const email = normalizeReviewAccessEmail(session.payload?.email);
   const reviewerId = normalizeReviewAccessReviewerId(session.payload?.reviewerId);
   if (!email && !reviewerId) {
@@ -138,6 +146,7 @@ export async function createReviewSession(identity, env) {
   const payload = {
     v: 1,
     scope: "review-password",
+    generation: env.READER_SESSION_GENERATION || "",
     email: normalizedEmail,
     reviewerId,
     sid: createSessionId(),

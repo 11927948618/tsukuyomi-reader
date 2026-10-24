@@ -1205,6 +1205,9 @@ export function initReader({
       const btn = document.createElement("button");
       btn.type = "button";
       btn.innerHTML = escapeHtml(item.title || "");
+      const level = Math.max(1, Math.min(3, Number(item.level) || 1));
+      li.dataset.headingLevel = String(level);
+      btn.style.paddingInlineStart = `${0.75 + (level - 1) * 1.25}rem`;
       btn.addEventListener("click", () => {
         if (mobileTextPager.active) {
           const pageIndex = mobileTextPager.chapterPageMap.get(item.chapterId);
