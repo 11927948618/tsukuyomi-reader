@@ -164,6 +164,15 @@
       </section>
     </section>
 
+    <section class="card admin-card">
+      <h2>配信ブレーカー</h2>
+      <p>全員ログアウトは読者の認証を無効化します。配信停止は新たな取得を止めます。取得済みの本文は回収できません。</p>
+      <button type="button" data-reader-control="status">状態確認</button>
+      <button type="button" data-reader-control="logout-all">全員ログアウト</button>
+      <button type="button" data-reader-control="pause">配信停止</button>
+      <button type="button" data-reader-control="resume">配信再開</button>
+      <p id="readerControlStatus" role="status">状態未確認</p>
+    </section>
     <section class="card admin-card admin-review-access-card">
       <div class="admin-list-head">
         <h2>限定レビュー認証管理</h2>

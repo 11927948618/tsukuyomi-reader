@@ -1867,3 +1867,24 @@ async function loadAdminOperationLog(download = false) {
 function operationTypeLabel(type) {
   return ({'book-created':'作品追加','book-saved':'作品保存','book-metadata-updated':'作品情報更新','book-publish-changed':'公開状態変更','book-publish-failed':'公開状態変更','book-save-failed':'作品保存','book-updated':'作品更新','book-deleted':'作品削除','book-cover-removed':'表紙削除','book-promoted-public':'一般公開へ昇格','content-folder-create':'フォルダ作成','content-folder-move':'フォルダ移動'})[type] || type || '-';
 }
+
+// Emergency controls deliberately require an explicit action and confirmation.
+document.querySelectorAll('[data-reader-control]').forEach((button) => {
+  button.addEventListener('click', async () => {
+    const action = button.dataset.readerControl;
+    if (action !== 'status' && !window.confirm(`${button.textContent}を実行しますか？`)) return;
+    const status = document.getElementById('readerControlStatus');
+    button.disabled = true;
+    try {
+      const res = await fetch('./api/admin/review-access/control', {
+        method: action === 'status' ? 'GET' : 'POST',
+        headers: { ...authHeaders(getToken()), 'content-type': 'application/json' },
+        ...(action === 'status' ? {} : { body: JSON.stringify({ action }) })
+      });
+      const payload = await readJson(res);
+      if (!res.ok) throw new Error(payload.error || '操作に失敗しました');
+      status.textContent = `${payload.paused ? '配信停止中' : '配信中'}${payload.environmentPaused ? '（Cloudflareの環境設定で停止中）' : ''}・${action === 'logout-all' ? '全員ログアウト済み' : '状態確認済み'}`;
+    } catch (err) { status.textContent = err.message; }
+    finally { button.disabled = false; }
+  });
+});
